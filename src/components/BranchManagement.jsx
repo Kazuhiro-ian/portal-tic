@@ -3,6 +3,12 @@ import { Plus, Edit, Trash2, Store, Search, MapPin, Hash, FileText, Building2 } 
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
 
+/**
+ * Aplica a máscara de formatação padrão para CNPJ (XX.XXX.XXX/XXXX-XX).
+ * Remove todos os caracteres não numéricos e formata progressivamente.
+ * * @param {string} value - O valor bruto digitado no input.
+ * @returns {string} O valor formatado com a máscara de CNPJ.
+ */
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
   if (digits.length <= 2) return digits;
@@ -13,16 +19,36 @@ function formatCnpj(value) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
+// Estado inicial padronizado para limpar ou inicializar o formulário
 const emptyForm = { branchNumber: '', name: '', cnpj: '', address: '' };
 
+/**
+ * Componente principal de Gestão de Filiais.
+ * Responsável por listar, buscar, criar, editar e excluir as filiais do sistema.
+ */
 export function BranchManagement() {
+  
+  // ==== ESTADOS DA APLICAÇÃO ====
+  
+  // Hook customizado para persistência de dados no LocalStorage
   const [branches, setBranches] = useLocalStorage('ithub_branches', []);
+  
+  // Estados de Interface (UI)
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingBranch, setEditingBranch] = useState(null);
+  
+  // Estados de Manipulação do Formulário
+  const [editingBranch, setEditingBranch] = useState(null); // Guarda a filial em edição (null se for nova)
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
 
+
+  // ==== REGRAS DE NEGÓCIO E LÓGICA ====
+
+  /**
+   * Filtra as filiais ativas com base no termo de busca digitado.
+   * A busca não diferencia maiúsculas de minúsculas e abrange múltiplos campos.
+   */
   const filtered = branches.filter((b) => {
     const q = search.toLowerCase();
     return (
@@ -33,6 +59,9 @@ export function BranchManagement() {
     );
   });
 
+  /**
+   * Prepara os estados para abrir o modal em modo de "Criação".
+   */
   const openNew = () => {
     setEditingBranch(null);
     setForm(emptyForm);
@@ -40,6 +69,11 @@ export function BranchManagement() {
     setShowModal(true);
   };
 
+  /**
+   * Prepara os estados para abrir o modal em modo de "Edição", 
+   * populando o formulário com os dados da filial selecionada.
+   * * @param {Object} branch - Objeto da filial selecionada.
+   */
   const openEdit = (branch) => {
     setEditingBranch(branch);
     setForm({
@@ -52,9 +86,13 @@ export function BranchManagement() {
     setShowModal(true);
   };
 
+  /**
+   * Valida os dados, checa duplicidades e salva (criação ou atualização) os dados.
+   */
   const handleSave = () => {
+    // 1. Validações de campos obrigatórios
     if (!form.branchNumber.trim()) {
-      setFormError('Informe o numero da filial.');
+      setFormError('Informe o número da filial.');
       return;
     }
     if (!form.name.trim()) {
@@ -62,17 +100,21 @@ export function BranchManagement() {
       return;
     }
 
+    // 2. Validação de duplicidade (Impede duas filiais com o mesmo número)
     const duplicate = branches.find(
       (b) =>
         b.branchNumber === form.branchNumber.trim() &&
         (!editingBranch || b.id !== editingBranch.id)
     );
+    
     if (duplicate) {
-      setFormError(`Ja existe uma filial com o numero ${form.branchNumber}.`);
+      setFormError(`Já existe uma filial com o número ${form.branchNumber}.`);
       return;
     }
 
+    // 3. Persistência dos dados (Update vs Create)
     if (editingBranch) {
+      // Atualiza filial existente
       setBranches(
         branches.map((b) =>
           b.id === editingBranch.id
@@ -81,39 +123,53 @@ export function BranchManagement() {
         )
       );
     } else {
+      // Cria uma nova filial
       const newBranch = {
-        id: Date.now().toString(),
+        id: Date.now().toString(), // Geração de ID simples baseado no timestamp
         branchNumber: form.branchNumber.trim(),
         name: form.name.trim(),
         cnpj: form.cnpj,
         address: form.address.trim(),
       };
+      
+      // Adiciona a nova filial e mantém a lista sempre ordenada numericamente
       setBranches(
         [...branches, newBranch].sort((a, b) => a.branchNumber.localeCompare(b.branchNumber))
       );
     }
 
+    // 4. Limpa os estados e fecha o modal após o sucesso
     setShowModal(false);
     setEditingBranch(null);
     setForm(emptyForm);
     setFormError('');
   };
 
+  /**
+   * Remove uma filial da base de dados após solicitar a confirmação do usuário.
+   * * @param {Object} branch - Objeto da filial a ser excluída.
+   */
   const handleDelete = (branch) => {
+    // Alerta de segurança considerando as restrições sistêmicas (relações em outras tabelas/telas)
     if (
       confirm(
-        `Excluir a filial "${branch.name}"?\n\nAtencao: os registros de cotas e envios Zebra associados a esta filial serao afetados.`
+        `Excluir a filial "${branch.name}"?\n\nAtenção: os registros de cotas e envios Zebra associados a esta filial serão afetados.`
       )
     ) {
       setBranches(branches.filter((b) => b.id !== branch.id));
     }
   };
 
+
+  // ==== RENDERIZAÇÃO DA INTERFACE (JSX) ====
+  
   return (
     <div className="space-y-6">
+      
+      {/* 1. Cabeçalho do Módulo e Botão de Ação Primária */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Gestao de Filiais</h1>
+          <h1 className="text-2xl font-bold text-white">Gestão de Filiais</h1>
           <p className="text-dark-400 mt-1">
             {branches.length} {branches.length === 1 ? 'filial cadastrada' : 'filiais cadastradas'}
           </p>
@@ -124,6 +180,7 @@ export function BranchManagement() {
         </button>
       </div>
 
+      {/* 2. Cards de Destaque - Exibe as primeiras 4 filiais cadastradas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {branches.slice(0, 4).map((b) => (
           <div key={b.id} className="card py-4">
@@ -140,12 +197,15 @@ export function BranchManagement() {
         ))}
       </div>
 
+      {/* 3. Tabela Principal e Barra de Pesquisa */}
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Building2 className="w-5 h-5 text-primary-400" />
             Todas as Filiais
           </h2>
+          
+          {/* Input de Filtro/Busca */}
           <div className="relative sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
             <input
@@ -165,17 +225,18 @@ export function BranchManagement() {
                 <th className="table-header w-20">
                   <span className="flex items-center gap-1">
                     <Hash className="w-3.5 h-3.5" />
-                    Num.
+                    Núm.
                   </span>
                 </th>
                 <th className="table-header">Nome da Filial</th>
                 <th className="table-header">CNPJ</th>
-                <th className="table-header">Endereco</th>
-                <th className="table-header text-right">Acoes</th>
+                <th className="table-header">Endereço</th>
+                <th className="table-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
+                // Estado Vazio (Empty State) - Quando não há filiais cadastradas ou filtro não encontrou dados
                 <tr>
                   <td colSpan={5} className="text-center py-16 text-dark-400">
                     {search ? 'Nenhuma filial encontrada para esta busca.' : (
@@ -191,6 +252,7 @@ export function BranchManagement() {
                   </td>
                 </tr>
               ) : (
+                // Listagem Iterativa de Filiais
                 filtered.map((branch) => (
                   <tr
                     key={branch.id}
@@ -227,16 +289,19 @@ export function BranchManagement() {
                       </div>
                     </td>
                     <td className="table-cell text-right">
+                      {/* Agrupamento de Botões de Ação (Editar / Deletar) */}
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEdit(branch)}
                           className="btn-secondary px-3 py-1.5"
+                          title="Editar"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(branch)}
                           className="btn-danger px-3 py-1.5"
+                          title="Excluir"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -250,6 +315,7 @@ export function BranchManagement() {
         </div>
       </div>
 
+      {/* 4. Overlay/Modal de Criação e Edição de Filial */}
       <Modal
         isOpen={showModal}
         onClose={() => {
@@ -263,11 +329,13 @@ export function BranchManagement() {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            
+            {/* Campo: Número da Filial */}
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">
                 <span className="flex items-center gap-1.5">
                   <Hash className="w-4 h-4" />
-                  Numero da Filial *
+                  Número da Filial *
                 </span>
               </label>
               <input
@@ -275,12 +343,14 @@ export function BranchManagement() {
                 value={form.branchNumber}
                 onChange={(e) => {
                   setForm({ ...form, branchNumber: e.target.value });
-                  setFormError('');
+                  setFormError(''); // Limpa o erro ao digitar
                 }}
                 className="input-field"
                 placeholder="Ex: 001"
               />
             </div>
+            
+            {/* Campo: CNPJ */}
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">
                 <span className="flex items-center gap-1.5">
@@ -291,6 +361,7 @@ export function BranchManagement() {
               <input
                 type="text"
                 value={form.cnpj}
+                // A máscara de CNPJ é aplicada em tempo real durante a digitação
                 onChange={(e) => setForm({ ...form, cnpj: formatCnpj(e.target.value) })}
                 className="input-field font-mono"
                 placeholder="00.000.000/0000-00"
@@ -299,6 +370,7 @@ export function BranchManagement() {
             </div>
           </div>
 
+          {/* Campo: Nome da Filial */}
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">
               <span className="flex items-center gap-1.5">
@@ -318,11 +390,12 @@ export function BranchManagement() {
             />
           </div>
 
+          {/* Campo: Endereço */}
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4" />
-                Endereco
+                Endereço
               </span>
             </label>
             <input
@@ -334,12 +407,14 @@ export function BranchManagement() {
             />
           </div>
 
+          {/* Renderização Condicional do Bloco de Erro */}
           {formError && (
             <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
               {formError}
             </p>
           )}
 
+          {/* Rodapé do Formulário: Botões de Ação */}
           <div className="flex justify-end gap-3 pt-2">
             <button
               onClick={() => {
@@ -353,7 +428,7 @@ export function BranchManagement() {
               Cancelar
             </button>
             <button onClick={handleSave} className="btn-primary">
-              {editingBranch ? 'Salvar Alteracoes' : (
+              {editingBranch ? 'Salvar Alterações' : (
                 <>
                   <Plus className="w-4 h-4" />
                   Cadastrar Filial

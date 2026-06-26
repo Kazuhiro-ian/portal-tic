@@ -29,13 +29,12 @@ export function Sidebar({ currentView, onViewChange, zebraPendingCount = 0 }) {
               </span>z
               <span className="text-brand-500">.</span>
             </p>
-            <p className="text-dark-400 text-xs font-medium tracking-widest uppercase mt-0.5">IT-Hub Central</p>
+            <p className="text-dark-400 text-xs font-medium tracking-widest uppercase mt-0.5">Portal TIC</p>
           </div>
         </div>
       </div>
 
       <nav className="flex-1 p-4">
-        <p className="text-dark-500 text-[10px] font-semibold uppercase tracking-widest px-4 mb-3">Menu</p>
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
