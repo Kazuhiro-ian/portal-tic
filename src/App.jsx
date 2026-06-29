@@ -1,4 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Menu, X } from 'lucide-react';
+import api from './services/api.js';
+
+// Importação dos Componentes
 import { Sidebar } from './components/Sidebar.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { LinksManager } from './components/LinksManager.jsx';
@@ -8,30 +12,65 @@ import { EmployeeSchedule } from './components/EmployeeSchedule.jsx';
 import { KnowledgeBase } from './components/KnowledgeBase.jsx';
 import { ZebraSupplies } from './components/ZebraSupplies.jsx';
 import { BranchManagement } from './components/BranchManagement.jsx';
-import { initializeData } from './data/initialData.js';
-import { useLocalStorage } from './hooks/useLocalStorage.js';
-import { Menu, X } from 'lucide-react';
 
 function App() {
+  // 1. Estados de Navegação e Interface
   const [currentView, setCurrentView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [printers] = useLocalStorage('ithub_printers', []);
-  const [stock, setStock] = useLocalStorage('ithub_stock', []);
-  const [stockMovements, setStockMovements] = useLocalStorage('ithub_stock_movements', []);
-  const [employees] = useLocalStorage('ithub_employees', []);
-  const [branchQuotas] = useLocalStorage('ithub_branch_quotas', []);
-  const [zebraDistributions] = useLocalStorage('ithub_zebra_distributions', []);
+  // 2. Estados de Status da API (Essenciais para comunicação com o Backend)
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // 3. Estados dos Dados (Substituímos o useLocalStorage pelo useState padrão)
+  const [printers, setPrinters] = useState([]);
+  const [stock, setStock] = useState([]);
+  const [stockMovements, setStockMovements] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [branchQuotas, setBranchQuotas] = useState([]);
+  const [zebraDistributions, setZebraDistributions] = useState([]);
+
+  // 4. Efeito para buscar os dados na API quando o App carregar
   useEffect(() => {
-    initializeData();
-  }, []);
+    const fetchAllData = async () => {
+      try {
+        setIsLoading(true);
+        
+        /* AQUI ENTRA O AXIOS REAL:
+          Quando a sua API Node.js estiver pronta, você vai descomentar as linhas abaixo
+          para buscar os dados diretamente do seu PostgreSQL.
+          
+          const [resPrinters, resStock, resEmployees, resQuotas, resZebra] = await Promise.all([
+            api.get('/printers'),
+            api.get('/stock'),
+            api.get('/employees'),
+            api.get('/branch-quotas'),
+            api.get('/zebra-distributions')
+          ]);
 
+          setPrinters(resPrinters.data);
+          setStock(resStock.data);
+          // ... e assim por diante
+        */
+
+      } catch (err) {
+        console.error("Erro ao conectar com a API:", err);
+        setError("Não foi possível carregar os dados do sistema.");
+      } finally {
+        setIsLoading(false); // Remove a tela de carregamento independentemente de dar erro ou sucesso
+      }
+    };
+
+    fetchAllData();
+  }, []); // Array vazio garante que rode apenas 1 vez ao abrir o portal
+
+  // 5. Lógica de Negócio (Mantida, mas agora reagirá aos dados do backend)
   const zebraPendingCount = useMemo(() => {
     const today = new Date();
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
+    
     return branchQuotas.filter((quota) => {
       if (currentDay < quota.dispatchDay) return false;
       return !zebraDistributions.some((d) => {
@@ -45,7 +84,12 @@ function App() {
     }).length;
   }, [branchQuotas, zebraDistributions]);
 
+  // 6. Roteamento Interno
   const renderContent = () => {
+    // Se a API ainda estiver carregando, mostramos um aviso genérico antes de renderizar as telas
+    if (isLoading) return <div className="p-8 text-white">Carregando módulos do sistema...</div>;
+    if (error) return <div className="p-8 text-red-500">{error}</div>;
+
     switch (currentView) {
       case 'dashboard':
         return <Dashboard printers={printers} stock={stock} employees={employees} />;
@@ -70,11 +114,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-dark-900 flex">
+      {/* Overlay Escuro para Mobile */}
       <div
         className={`fixed inset-0 bg-black/50 z-40 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
         onClick={() => setSidebarOpen(false)}
       />
 
+      {/* Sidebar Lateral */}
       <div
         className={`fixed lg:static inset-y-0 left-0 z-50 transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -90,7 +136,10 @@ function App() {
         />
       </div>
 
+      {/* Conteúdo Principal */}
       <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* Cabeçalho Mobile */}
         <header className="lg:hidden bg-dark-800 border-b border-dark-700 px-4 py-3 sticky top-0 z-30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -104,6 +153,7 @@ function App() {
                 <p className="text-dark-400 text-[10px] uppercase tracking-widest">IT-Hub Central</p>
               </div>
             </div>
+            
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center"
@@ -113,9 +163,11 @@ function App() {
           </div>
         </header>
 
+        {/* Área de Renderização dos Componentes */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin">
           {renderContent()}
         </main>
+        
       </div>
     </div>
   );
