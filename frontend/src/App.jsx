@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Menu, X } from 'lucide-react';
-import api from './services/api.js';
 
 // Importação dos Componentes
 import { Sidebar } from './components/Sidebar.jsx';
@@ -15,14 +14,11 @@ import { BranchManagement } from './components/BranchManagement.jsx';
 
 function App() {
   // 1. Estados de Navegação e Interface
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState('branches'); // Sugestão: iniciar na tela de filiais para testarmos
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 2. Estados de Status da API (Essenciais para comunicação com o Backend)
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // 3. Estados dos Dados (Substituímos o useLocalStorage pelo useState padrão)
+  // 2. Estados dos Dados (Temporariamente vazios até criarmos o backend de cada um)
+  // O useState vazio garante que a tela não quebre ao tentar renderizar listas
   const [printers, setPrinters] = useState([]);
   const [stock, setStock] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
@@ -30,41 +26,8 @@ function App() {
   const [branchQuotas, setBranchQuotas] = useState([]);
   const [zebraDistributions, setZebraDistributions] = useState([]);
 
-  // 4. Efeito para buscar os dados na API quando o App carregar
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        setIsLoading(true);
-        
-        /* AQUI ENTRA O AXIOS REAL:
-          Quando a sua API Node.js estiver pronta, você vai descomentar as linhas abaixo
-          para buscar os dados diretamente do seu PostgreSQL.
-          
-          const [resPrinters, resStock, resEmployees, resQuotas, resZebra] = await Promise.all([
-            api.get('/printers'),
-            api.get('/stock'),
-            api.get('/employees'),
-            api.get('/branch-quotas'),
-            api.get('/zebra-distributions')
-          ]);
-
-          setPrinters(resPrinters.data);
-          setStock(resStock.data);
-          // ... e assim por diante
-        */
-
-      } catch (err) {
-        console.error("Erro ao conectar com a API:", err);
-        setError("Não foi possível carregar os dados do sistema.");
-      } finally {
-        setIsLoading(false); // Remove a tela de carregamento independentemente de dar erro ou sucesso
-      }
-    };
-
-    fetchAllData();
-  }, []); // Array vazio garante que rode apenas 1 vez ao abrir o portal
-
-  // 5. Lógica de Negócio (Mantida, mas agora reagirá aos dados do backend)
+  // 3. Lógica de Negócio (Zebra)
+  // Como branchQuotas e zebraDistributions estão vazios por enquanto, isso retornará 0
   const zebraPendingCount = useMemo(() => {
     const today = new Date();
     const currentDay = today.getDate();
@@ -84,12 +47,8 @@ function App() {
     }).length;
   }, [branchQuotas, zebraDistributions]);
 
-  // 6. Roteamento Interno
+  // 4. Roteamento Interno
   const renderContent = () => {
-    // Se a API ainda estiver carregando, mostramos um aviso genérico antes de renderizar as telas
-    if (isLoading) return <div className="p-8 text-white">Carregando módulos do sistema...</div>;
-    if (error) return <div className="p-8 text-red-500">{error}</div>;
-
     switch (currentView) {
       case 'dashboard':
         return <Dashboard printers={printers} stock={stock} employees={employees} />;
@@ -106,6 +65,7 @@ function App() {
       case 'zebra':
         return <ZebraSupplies />;
       case 'branches':
+        // BranchManagement agora é 100% autônomo. Ele mesmo busca e salva no backend.
         return <BranchManagement />;
       default:
         return <Dashboard printers={printers} stock={stock} employees={employees} />;
