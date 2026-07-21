@@ -1,4 +1,7 @@
 package portal.ti.queiroz.repository;
 
-public class EstoqueItemRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+import portal.ti.queiroz.model.EstoqueItem;
+
+public interface EstoqueItemRepository extends JpaRepository<EstoqueItem, Long> {
 }
