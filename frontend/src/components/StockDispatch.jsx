@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package } from 'lucide-react';
+import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
+import { listarMovimentos, salvarMovimento, atualizarEstoqueItem } from '../services/api.js';
 
 function SearchableSelect({ items, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -83,7 +84,11 @@ function SearchableSelect({ items, value, onChange }) {
   );
 }
 
-export function StockDispatch({ items, setItems, movements, setMovements }) {
+export function StockDispatch({ items }) {
+  const [movements, setMovements] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [form, setForm] = useState({
     itemId: '',
     quantity: 1,
@@ -93,9 +98,25 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  useEffect(() => {
+    carregarMovimentos();
+  }, []);
+
+  const carregarMovimentos = async () => {
+    try {
+      setIsLoadingHistory(true);
+      const data = await listarMovimentos();
+      setMovements(data);
+    } catch (err) {
+      setError('Erro ao carregar o histórico de movimentações.');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   const selectedItem = items.find((i) => i.id === form.itemId) || null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
     setSuccess('');
 
@@ -105,11 +126,11 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
     }
     const qty = Math.floor(Number(form.quantity));
     if (!qty || qty <= 0) {
-      setError('Informe uma quantidade valida maior que zero.');
+      setError('Informe uma quantidade válida maior que zero.');
       return;
     }
     if (qty > selectedItem.quantity) {
-      setError(`Estoque insuficiente. Disponivel: ${selectedItem.quantity} un. de "${selectedItem.name}".`);
+      setError(`Estoque insuficiente. Disponível: ${selectedItem.quantity} un. de "${selectedItem.name}".`);
       return;
     }
     if (!form.destination.trim()) {
@@ -117,25 +138,40 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
       return;
     }
 
-    const movement = {
-      id: Date.now().toString(),
-      itemId: selectedItem.id,
-      itemName: selectedItem.name,
-      type: 'OUT',
-      quantity: qty,
-      destination: form.destination.trim(),
-      date: new Date().toISOString(),
-      notes: form.notes.trim() || undefined,
-    };
+    try {
+      setIsSubmitting(true);
 
-    setMovements((prev) => [movement, ...prev]);
-    setItems((prev) =>
-      prev.map((i) => (i.id === selectedItem.id ? { ...i, quantity: i.quantity - qty } : i))
-    );
+      // 1. Registra a saída no banco de Movimentações
+      const movement = {
+        itemId: selectedItem.id.toString(),
+        itemName: selectedItem.name,
+        type: 'OUT',
+        quantity: qty,
+        destination: form.destination.trim(),
+        date: new Date().toISOString().substring(0, 19), // ISO compatível com o LocalDateTime do Java
+        notes: form.notes.trim() || null,
+      };
+      
+      await salvarMovimento(movement);
 
-    setSuccess(`${qty} un. de "${selectedItem.name}" enviadas para ${form.destination.trim()}.`);
-    setForm({ itemId: '', quantity: 1, destination: '', notes: '' });
-    setTimeout(() => setSuccess(''), 4000);
+      // 2. Atualiza a quantidade do item principal na API de Estoque
+      const novaQuantidade = selectedItem.quantity - qty;
+      await atualizarEstoqueItem(selectedItem.id, { ...selectedItem, quantity: novaQuantidade });
+      
+      // Atualiza a visualização local instantaneamente
+      selectedItem.quantity = novaQuantidade; 
+
+      // 3. Atualiza a tabela na tela e limpa os campos
+      setSuccess(`${qty} un. de "${selectedItem.name}" enviadas para ${form.destination.trim()}.`);
+      setForm({ itemId: '', quantity: 1, destination: '', notes: '' });
+      await carregarMovimentos();
+      
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err) {
+      setError('Falha na comunicação com o servidor. A transação foi abortada.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatDate = (iso) => {
@@ -158,7 +194,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
               <Send className="w-5 h-5 text-warning-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Registrar Nova Entrega / Saida</h3>
+              <h3 className="font-semibold text-white">Registrar Nova Entrega / Saída</h3>
               <p className="text-xs text-dark-400">Subtrai automaticamente do estoque</p>
             </div>
           </div>
@@ -173,7 +209,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
               />
               {selectedItem && (
                 <p className="text-xs text-dark-400 mt-1.5">
-                  Estoque disponivel: <span className="font-bold text-white">{selectedItem.quantity}</span> un.
+                  Estoque disponível: <span className="font-bold text-white">{selectedItem.quantity}</span> un.
                 </p>
               )}
             </div>
@@ -202,7 +238,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Observacoes (opcional)</label>
+              <label className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -223,9 +259,13 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
               </p>
             )}
 
-            <button onClick={handleSubmit} className="btn-primary w-full">
-              <Send className="w-4 h-4" />
-              Registrar Entrega
+            <button 
+              onClick={handleSubmit} 
+              disabled={isSubmitting}
+              className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {isSubmitting ? 'Processando transação...' : 'Registrar Entrega'}
             </button>
           </div>
         </div>
@@ -239,7 +279,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
                 <Package className="w-5 h-5 text-primary-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Historico de Movimentacoes</h3>
+                <h3 className="font-semibold text-white">Histórico de Movimentações</h3>
                 <p className="text-xs text-dark-400">{movements.length} registros</p>
               </div>
             </div>
@@ -258,10 +298,16 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
                 </tr>
               </thead>
               <tbody>
-                {movements.length === 0 ? (
+                {isLoadingHistory ? (
+                   <tr>
+                    <td colSpan={6} className="text-center py-12 text-dark-400">
+                      Carregando histórico do banco de dados...
+                    </td>
+                  </tr>
+                ) : movements.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-12 text-dark-400">
-                      Nenhuma movimentacao registrada ainda
+                      Nenhuma movimentação registrada ainda
                     </td>
                   </tr>
                 ) : (
@@ -279,7 +325,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
                         ) : (
                           <span className="badge badge-warning">
                             <ArrowUpCircle className="w-3 h-3 mr-1" />
-                            Saida
+                            Saída
                           </span>
                         )}
                       </td>
@@ -290,7 +336,7 @@ export function StockDispatch({ items, setItems, movements, setMovements }) {
                         <span className="font-bold text-white">{m.quantity}</span>
                       </td>
                       <td className="table-cell text-dark-300">{m.destination}</td>
-                      <td className="table-cell text-dark-400 text-sm max-w-[200px] truncate">
+                      <td className="table-cell text-dark-400 text-sm max-w-[200px] truncate" title={m.notes}>
                         {m.notes || '-'}
                       </td>
                     </tr>

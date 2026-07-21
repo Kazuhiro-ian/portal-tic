@@ -1,39 +1,64 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight, Package, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { StockDispatch } from './StockDispatch.jsx';
+import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
 
 const categoryInfo = {
-  peripherals: { label: 'Perifericos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
-  storage: { label: 'Armazenamento e Memoria', icon: HardDrive, bgClass: 'bg-accent-500/20', textClass: 'text-accent-400' },
-  consumables: { label: 'Consumiveis de Impressao', icon: Printer, bgClass: 'bg-brand-500/20', textClass: 'text-brand-400' },
+  peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
+  storage: { label: 'Armazenamento e Memória', icon: HardDrive, bgClass: 'bg-accent-500/20', textClass: 'text-accent-400' },
+  consumables: { label: 'Consumíveis de Impressão', icon: Printer, bgClass: 'bg-brand-500/20', textClass: 'text-brand-400' },
 };
 
-export function StockDashboard({ items, setItems, movements, setMovements }) {
+const emptyForm = {
+  name: '',
+  category: 'peripherals',
+  subcategory: '',
+  quantity: 0,
+  minQuantity: 5,
+  location: '',
+};
+
+export function StockDashboard({ movements, setMovements }) {
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [activeTab, setActiveTab] = useState('inventory');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    category: 'peripherals',
-    subcategory: '',
-    quantity: 0,
-    minQuantity: 5,
-    location: '',
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustItem, setAdjustItem] = useState(null);
-  const [adjustData, setAdjustData] = useState({
-    type: 'IN',
-    quantity: 1,
-    destination: '',
-    notes: '',
-  });
+  const [adjustData, setAdjustData] = useState({ type: 'IN', quantity: 1, destination: '', notes: '' });
   const [adjustError, setAdjustError] = useState('');
+
+  // Sistema de Notificações
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => { setToast(null); }, 4000);
+  };
+
+  useEffect(() => {
+    carregarEstoque();
+  }, []);
+
+  const carregarEstoque = async () => {
+    try {
+      setIsLoading(true);
+      const data = await listarEstoqueItens();
+      setItems(data);
+    } catch (error) {
+      console.error(error);
+      showToast('Erro ao carregar os itens do estoque.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredItems = items.filter((item) => {
     const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
@@ -48,56 +73,68 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
     if (item) {
       setEditingItem(item);
       setFormData({
-        name: item.name,
-        category: item.category,
+        name: item.name || '',
+        category: item.category || 'peripherals',
         subcategory: item.subcategory || '',
-        quantity: item.quantity,
-        minQuantity: item.minQuantity,
-        location: item.location,
+        quantity: item.quantity || 0,
+        minQuantity: item.minQuantity || 0,
+        location: item.location || '',
       });
     } else {
       setEditingItem(null);
-      setFormData({
-        name: '',
-        category: 'peripherals',
-        subcategory: '',
-        quantity: 0,
-        minQuantity: 5,
-        location: '',
-      });
+      setFormData(emptyForm);
     }
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!formData.name.trim() || !formData.location.trim()) return;
-
-    if (editingItem) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === editingItem.id ? { ...i, ...formData } : i))
-      );
-    } else {
-      const newItem = {
-        id: Date.now().toString(),
-        ...formData,
-      };
-      setItems((prev) => [newItem, ...prev]);
+  const handleSave = async () => {
+    if (!formData.name.trim() || !formData.location.trim()) {
+      showToast('Preencha os campos obrigatórios.', 'error');
+      return;
     }
-    setShowModal(false);
+
+    try {
+      if (editingItem) {
+        await atualizarEstoqueItem(editingItem.id, formData);
+        showToast('Item atualizado com sucesso!');
+      } else {
+        await salvarEstoqueItem(formData);
+        showToast('Novo item adicionado ao estoque!');
+      }
+      
+      await carregarEstoque();
+      setShowModal(false);
+      setEditingItem(null);
+      setFormData(emptyForm);
+    } catch (error) {
+      showToast('Erro ao salvar item.', 'error');
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Tem certeza que deseja excluir este item?')) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      try {
+        await deletarEstoqueItem(id);
+        showToast('Item excluído com sucesso.');
+        await carregarEstoque();
+      } catch (error) {
+        showToast('Erro ao excluir item.', 'error');
+      }
     }
   };
 
-  const adjustQuantity = (id, delta) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
-      )
-    );
+  const adjustQuantity = async (item, delta) => {
+    const newQuantity = Math.max(0, item.quantity + delta);
+    
+    // Otimista (atualiza na tela na hora)
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, quantity: newQuantity } : i)));
+
+    try {
+      await atualizarEstoqueItem(item.id, { ...item, quantity: newQuantity });
+    } catch (error) {
+      showToast('Erro ao atualizar quantidade no banco.', 'error');
+      carregarEstoque(); // Reverte caso dê erro
+    }
   };
 
   const openAdjustModal = (item) => {
@@ -107,51 +144,71 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
     setShowAdjustModal(true);
   };
 
-  const handleAdjustSave = () => {
+  const handleAdjustSave = async () => {
     if (!adjustItem) return;
     const qty = Math.floor(Number(adjustData.quantity));
     if (!qty || qty <= 0) {
-      setAdjustError('Informe uma quantidade valida maior que zero.');
+      setAdjustError('Informe uma quantidade válida maior que zero.');
       return;
     }
     if (adjustData.type === 'OUT' && qty > adjustItem.quantity) {
-      setAdjustError(`Estoque insuficiente. Disponivel: ${adjustItem.quantity}.`);
+      setAdjustError(`Estoque insuficiente. Disponível: ${adjustItem.quantity}.`);
       return;
     }
     if (adjustData.type === 'OUT' && !adjustData.destination.trim()) {
-      setAdjustError('Informe o destino da saida.');
+      setAdjustError('Informe o destino da saída.');
       return;
     }
 
-    const newQuantity =
-      adjustData.type === 'IN' ? adjustItem.quantity + qty : adjustItem.quantity - qty;
+    const newQuantity = adjustData.type === 'IN' ? adjustItem.quantity + qty : adjustItem.quantity - qty;
 
-    setItems((prev) =>
-      prev.map((i) => (i.id === adjustItem.id ? { ...i, quantity: newQuantity } : i))
-    );
+    try {
+      // 1. Atualiza a quantidade no banco
+      await atualizarEstoqueItem(adjustItem.id, { ...adjustItem, quantity: newQuantity });
 
-    const movement = {
-      id: Date.now().toString(),
-      itemId: adjustItem.id,
-      itemName: adjustItem.name,
-      type: adjustData.type,
-      quantity: qty,
-      destination: adjustData.destination.trim() || (adjustData.type === 'IN' ? 'Entrada manual' : 'Saida manual'),
-      date: new Date().toISOString(),
-      notes: adjustData.notes.trim() || undefined,
-    };
-    setMovements((prev) => [movement, ...prev]);
+      // 2. Dispara o POST salvando o histórico real de movimentação
+      const movement = {
+        itemId: adjustItem.id.toString(),
+        itemName: adjustItem.name,
+        type: adjustData.type,
+        quantity: qty,
+        destination: adjustData.destination.trim() || (adjustData.type === 'IN' ? 'Entrada manual (Ajuste)' : 'Saída manual (Ajuste)'),
+        date: new Date().toISOString().substring(0, 19),
+        notes: adjustData.notes.trim() || null,
+      };
+      
+      await salvarMovimento(movement);
 
-    setShowAdjustModal(false);
+      showToast('Ajuste de estoque realizado e registrado com sucesso!');
+      await carregarEstoque();
+      setShowAdjustModal(false);
+    } catch (error) {
+      setAdjustError('Erro de comunicação com o servidor ao salvar o ajuste.');
+    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Estoque e Insumos</h1>
           <p className="text-dark-400 mt-1">
-            {items.length} itens cadastrados
+            {isLoading ? 'Carregando...' : `${items.length} itens cadastrados`}
             {criticalCount > 0 && (
               <span className="text-red-400 ml-2">
                 ({criticalCount} com estoque baixo)
@@ -177,7 +234,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
           }`}
         >
           <Package className="w-4 h-4 inline mr-2" />
-          Inventario
+          Inventário
         </button>
         <button
           onClick={() => setActiveTab('dispatch')}
@@ -188,14 +245,13 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
           }`}
         >
           <ArrowLeftRight className="w-4 h-4 inline mr-2" />
-          Entregas e Movimentacoes
+          Entregas e Movimentações
         </button>
       </div>
 
       {activeTab === 'dispatch' ? (
         <StockDispatch
           items={items}
-          setItems={setItems}
           movements={movements}
           setMovements={setMovements}
         />
@@ -220,7 +276,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                       <p className="font-medium text-white">{info.label}</p>
                       <p className="text-sm text-dark-400">{count} itens</p>
                       {critical > 0 && (
-                        <p className="text-xs text-red-400">{critical} criticos</p>
+                        <p className="text-xs text-red-400">{critical} críticos</p>
                       )}
                     </div>
                   </div>
@@ -260,13 +316,19 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                     <th className="table-header">Item</th>
                     <th className="table-header">Categoria</th>
                     <th className="table-header text-center">Quantidade</th>
-                    <th className="table-header text-center">Minimo</th>
-                    <th className="table-header">Localizacao</th>
-                    <th className="table-header text-right">Acoes</th>
+                    <th className="table-header text-center">Mínimo</th>
+                    <th className="table-header">Localização</th>
+                    <th className="table-header text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.length === 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-dark-400">
+                        Conectando ao banco de dados...
+                      </td>
+                    </tr>
+                  ) : filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-12 text-dark-400">
                         Nenhum item encontrado
@@ -275,7 +337,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                   ) : (
                     filteredItems.map((item) => {
                       const isCritical = item.quantity <= item.minQuantity;
-                      const info = categoryInfo[item.category];
+                      const info = categoryInfo[item.category] || categoryInfo.peripherals;
                       return (
                         <tr
                           key={item.id}
@@ -295,7 +357,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                           <td className="table-cell">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => adjustQuantity(item.id, -1)}
+                                onClick={() => adjustQuantity(item, -1)}
                                 className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
                               >
                                 <Minus className="w-4 h-4 text-dark-300" />
@@ -308,7 +370,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                                 {item.quantity}
                               </span>
                               <button
-                                onClick={() => adjustQuantity(item.id, 1)}
+                                onClick={() => adjustQuantity(item, 1)}
                                 className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
                               >
                                 <Plus className="w-4 h-4 text-dark-300" />
@@ -326,13 +388,13 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                               {isCritical && (
                                 <span className="badge badge-danger">
                                   <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Critico
+                                  Crítico
                                 </span>
                               )}
                               <button
                                 onClick={() => openAdjustModal(item)}
                                 className="btn-secondary px-3 py-1.5"
-                                title="Movimentar / Ajuste rapido"
+                                title="Movimentar / Ajuste rápido"
                               >
                                 <ArrowLeftRight className="w-4 h-4" />
                               </button>
@@ -413,7 +475,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade Minima (Critico)</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade Mínima (Crítico)</label>
             <input
               type="number"
               min="0"
@@ -423,7 +485,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-dark-300 mb-2">Localizacao Fisica *</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Localização Física *</label>
             <input
               type="text"
               value={formData.location}
@@ -438,7 +500,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
             Cancelar
           </button>
           <button onClick={handleSave} className="btn-primary">
-            {editingItem ? 'Salvar' : 'Adicionar'}
+            {editingItem ? 'Salvar Alterações' : 'Adicionar Item'}
           </button>
         </div>
       </Modal>
@@ -446,7 +508,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
       <Modal
         isOpen={showAdjustModal}
         onClose={() => setShowAdjustModal(false)}
-        title="Ajuste Rapido de Estoque"
+        title="Ajuste Rápido de Estoque"
         size="md"
       >
         {adjustItem && (
@@ -460,7 +522,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Operacao *</label>
+              <label className="block text-sm font-medium text-dark-300 mb-2">Operação *</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -484,7 +546,7 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                   }`}
                 >
                   <Minus className="w-4 h-4 inline mr-2" />
-                  Saida
+                  Saída
                 </button>
               </div>
             </div>
@@ -510,12 +572,12 @@ export function StockDashboard({ items, setItems, movements, setMovements }) {
                 value={adjustData.destination}
                 onChange={(e) => setAdjustData({ ...adjustData, destination: e.target.value })}
                 className="input-field"
-                placeholder={adjustData.type === 'IN' ? 'Ex: Compra, Doacao' : 'Ex: Filial Centro, Setor Financeiro'}
+                placeholder={adjustData.type === 'IN' ? 'Ex: Compra, Doação' : 'Ex: Filial Centro, Setor Financeiro'}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Observacoes (opcional)</label>
+              <label className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
               <textarea
                 value={adjustData.notes}
                 onChange={(e) => setAdjustData({ ...adjustData, notes: e.target.value })}

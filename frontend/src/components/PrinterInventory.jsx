@@ -1,33 +1,59 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage.js';
+import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
+import { listarImpressoras, salvarImpressora, atualizarImpressora, deletarImpressora } from '../services/api.js';
 
 const brands = ['HP', 'Canon', 'Epson', 'Brother', 'Samsung', 'Lexmark', 'Ricoh', 'Xerox'];
 
+const emptyForm = {
+  ip: '',
+  location: '',
+  brand: 'HP',
+  model: '',
+  serialNumber: '',
+  status: 'Offline',
+  lastMaintenance: new Date().toISOString().split('T')[0], 
+};
+
 export function PrinterInventory() {
-  const [printers, setPrinters] = useLocalStorage('ithub_printers', []);
+  const [printers, setPrinters] = useState([]);
   const [search, setSearch] = useState('');
   const [filterBrand, setFilterBrand] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
   const [pinging, setPinging] = useState(null);
-  const [formData, setFormData] = useState({
-    ip: '',
-    location: '',
-    brand: 'HP',
-    model: '',
-    serialNumber: '',
-    status: 'Offline',
-    lastMaintenance: '',
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => { setToast(null); }, 4000);
+  };
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      setIsLoading(true);
+      const data = await listarImpressoras();
+      setPrinters(data);
+    } catch (error) {
+      console.error(error);
+      showToast('Erro ao carregar impressoras do servidor.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredPrinters = printers.filter((p) => {
     const matchSearch =
-      p.ip.includes(search) ||
-      p.location.toLowerCase().includes(search.toLowerCase()) ||
-      p.model.toLowerCase().includes(search.toLowerCase());
+      (p.ip && p.ip.includes(search)) ||
+      (p.location && p.location.toLowerCase().includes(search.toLowerCase())) ||
+      (p.model && p.model.toLowerCase().includes(search.toLowerCase()));
     const matchBrand = filterBrand === 'all' || p.brand === filterBrand;
     const matchStatus = filterStatus === 'all' || p.status === filterStatus;
     return matchSearch && matchBrand && matchStatus;
@@ -37,72 +63,108 @@ export function PrinterInventory() {
     if (printer) {
       setEditingPrinter(printer);
       setFormData({
-        ip: printer.ip,
-        location: printer.location,
-        brand: printer.brand,
-        model: printer.model,
-        serialNumber: printer.serialNumber,
-        status: printer.status,
-        lastMaintenance: printer.lastMaintenance,
+        ip: printer.ip || '',
+        location: printer.location || '',
+        brand: printer.brand || 'HP',
+        model: printer.model || '',
+        serialNumber: printer.serialNumber || '',
+        status: printer.status || 'Offline',
+        lastMaintenance: printer.lastMaintenance || '',
       });
     } else {
       setEditingPrinter(null);
-      setFormData({
-        ip: '',
-        location: '',
-        brand: 'HP',
-        model: '',
-        serialNumber: '',
-        status: 'Offline',
-        lastMaintenance: new Date().toISOString().split('T')[0],
-      });
+      setFormData(emptyForm);
     }
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!formData.ip.trim() || !formData.location.trim() || !formData.model.trim() || !formData.serialNumber.trim()) return;
+  const handleSave = async () => {
+    if (!formData.ip.trim() || !formData.location.trim() || !formData.model.trim() || !formData.serialNumber.trim()) {
+      showToast('Preencha os campos obrigatórios.', 'error');
+      return;
+    }
 
-    if (editingPrinter) {
-      setPrinters(
-        printers.map((p) =>
-          p.id === editingPrinter.id ? { ...p, ...formData } : p
-        )
-      );
-    } else {
-      const newPrinter = {
-        id: Date.now().toString(),
+    try {
+      // Formata o payload para garantir que strings vazias de data sejam nulas para o Java
+      const payload = {
         ...formData,
+        lastMaintenance: formData.lastMaintenance ? formData.lastMaintenance : null
       };
-      setPrinters([newPrinter, ...printers]);
+
+      if (editingPrinter) {
+        await atualizarImpressora(editingPrinter.id, payload);
+        showToast('Impressora atualizada com sucesso!');
+      } else {
+        await salvarImpressora(payload);
+        showToast('Impressora cadastrada com sucesso!');
+      }
+      
+      await carregarDados();
+      setShowModal(false);
+      setEditingPrinter(null);
+      setFormData(emptyForm);
+    } catch (error) {
+      showToast('Erro ao salvar impressora.', 'error');
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Tem certeza que deseja excluir esta impressora?')) {
-      setPrinters(printers.filter((p) => p.id !== id));
+      try {
+        await deletarImpressora(id);
+        showToast('Impressora excluída com sucesso.');
+        await carregarDados();
+      } catch (error) {
+        showToast('Erro ao excluir a impressora.', 'error');
+      }
     }
   };
 
-  const handlePing = async (id) => {
-    setPinging(id);
+  const handlePing = async (printer) => {
+    setPinging(printer.id);
+    
+    // Simulação do tempo de resposta do Ping
     await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
-    const success = Math.random() > 0.3;
-    setPrinters(
-      printers.map((p) =>
-        p.id === id ? { ...p, status: success ? 'Online' : 'Offline' } : p
-      )
-    );
-    setPinging(null);
+    const success = Math.random() > 0.3; // 70% de chance de sucesso
+    
+    const novoStatus = success ? 'Online' : 'Offline';
+    
+    try {
+      // Atualiza o status no banco de dados
+      await atualizarImpressora(printer.id, { ...printer, status: novoStatus });
+      showToast(`Ping concluído: A impressora está ${novoStatus}.`, success ? 'success' : 'error');
+      await carregarDados();
+    } catch (error) {
+      showToast('Erro ao registrar o status do ping.', 'error');
+    } finally {
+      setPinging(null);
+    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      
+      {/* Sistema de Notificação Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Inventario de Impressoras</h1>
-          <p className="text-dark-400 mt-1">{printers.length} impressoras cadastradas</p>
+          <h1 className="text-2xl font-bold text-white">Inventário de Impressoras</h1>
+          <p className="text-dark-400 mt-1">
+            {isLoading ? 'Carregando...' : `${printers.length} impressoras cadastradas`}
+          </p>
         </div>
         <button onClick={() => handleOpenModal()} className="btn-primary">
           <Plus className="w-4 h-4" />
@@ -163,7 +225,7 @@ export function PrinterInventory() {
               {filteredPrinters.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-dark-400">
-                    Nenhuma impressora encontrada
+                    {isLoading ? 'Conectando ao banco de dados...' : 'Nenhuma impressora encontrada.'}
                   </td>
                 </tr>
               ) : (
@@ -189,14 +251,15 @@ export function PrinterInventory() {
                     <td className="table-cell text-dark-100">{printer.model}</td>
                     <td className="table-cell text-dark-300 text-sm">{printer.serialNumber}</td>
                     <td className="table-cell text-dark-300 text-sm">
-                      {new Date(printer.lastMaintenance).toLocaleDateString('pt-BR')}
+                      {printer.lastMaintenance ? new Date(printer.lastMaintenance + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                     </td>
                     <td className="table-cell">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handlePing(printer.id)}
+                          onClick={() => handlePing(printer)}
                           disabled={pinging === printer.id}
                           className="btn-secondary px-3 py-1.5 text-sm"
+                          title="Atualizar status da rede"
                         >
                           {pinging === printer.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -235,7 +298,7 @@ export function PrinterInventory() {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Endereco IP *</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Endereço IP *</label>
             <input
               type="text"
               value={formData.ip}
@@ -245,7 +308,7 @@ export function PrinterInventory() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Localizacao/Setor *</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Localização/Setor *</label>
             <input
               type="text"
               value={formData.location}
@@ -279,7 +342,7 @@ export function PrinterInventory() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Numero de Serie *</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Número de Série *</label>
             <input
               type="text"
               value={formData.serialNumber}
@@ -289,7 +352,7 @@ export function PrinterInventory() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Status</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Status Inicial</label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -300,7 +363,7 @@ export function PrinterInventory() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-dark-300 mb-2">Data da Ultima Manutencao</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Data da Última Manutenção</label>
             <input
               type="date"
               value={formData.lastMaintenance}
@@ -314,7 +377,7 @@ export function PrinterInventory() {
             Cancelar
           </button>
           <button onClick={handleSave} className="btn-primary">
-            {editingPrinter ? 'Salvar' : 'Adicionar'}
+            {editingPrinter ? 'Salvar Alterações' : 'Adicionar'}
           </button>
         </div>
       </Modal>

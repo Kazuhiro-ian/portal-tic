@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage.js';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
+import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
 
 const categoryLabels = {
   internal: 'Sistemas Internos',
@@ -15,18 +15,45 @@ const categoryIcons = {
   infrastructure: Zap,
 };
 
+const emptyForm = { name: '', url: '', category: 'internal', tags: '' };
+
 export function LinksManager() {
-  const [links, setLinks] = useLocalStorage('ithub_links', []);
+  const [links, setLinks] = useState([]);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingLink, setEditingLink] = useState(null);
-  const [formData, setFormData] = useState({ name: '', url: '', category: 'internal', tags: '' });
+  const [formData, setFormData] = useState(emptyForm);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Sistema de Notificações
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => { setToast(null); }, 4000);
+  };
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      setIsLoading(true);
+      const data = await listarLinks();
+      setLinks(data);
+    } catch (error) {
+      console.error(error);
+      showToast('Erro ao carregar os links do banco de dados.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredLinks = links.filter((link) => {
     const matchSearch =
-      link.name.toLowerCase().includes(search.toLowerCase()) ||
-      link.tags?.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+      (link.name && link.name.toLowerCase().includes(search.toLowerCase())) ||
+      (link.tags && link.tags.some((t) => t.toLowerCase().includes(search.toLowerCase())));
     const matchCategory = filterCategory === 'all' || link.category === filterCategory;
     return matchSearch && matchCategory;
   });
@@ -35,56 +62,93 @@ export function LinksManager() {
     if (link) {
       setEditingLink(link);
       setFormData({
-        name: link.name,
-        url: link.url,
-        category: link.category,
+        name: link.name || '',
+        url: link.url || '',
+        category: link.category || 'internal',
         tags: link.tags?.join(', ') || '',
       });
     } else {
       setEditingLink(null);
-      setFormData({ name: '', url: '', category: 'internal', tags: '' });
+      setFormData(emptyForm);
     }
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!formData.name.trim() || !formData.url.trim()) return;
+  const handleSave = async () => {
+    if (!formData.name.trim() || !formData.url.trim()) {
+      showToast('Nome e URL são obrigatórios.', 'error');
+      return;
+    }
+
+    // Formatação de URL para garantir que links funcionem externamente
+    let finalUrl = formData.url.trim();
+    if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = 'https://' + finalUrl;
+    }
 
     const tagsArray = formData.tags
       .split(',')
       .map((t) => t.trim())
       .filter((t) => t);
 
-    if (editingLink) {
-      setLinks(
-        links.map((l) =>
-          l.id === editingLink.id ? { ...l, ...formData, tags: tagsArray } : l
-        )
-      );
-    } else {
-      const newLink = {
-        id: Date.now().toString(),
-        name: formData.name,
-        url: formData.url,
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        url: finalUrl,
         category: formData.category,
         tags: tagsArray,
       };
-      setLinks([newLink, ...links]);
+
+      if (editingLink) {
+        await atualizarLink(editingLink.id, payload);
+        showToast('Link atualizado com sucesso!');
+      } else {
+        await salvarLink(payload);
+        showToast('Link adicionado com sucesso!');
+      }
+
+      await carregarDados();
+      setShowModal(false);
+      setEditingLink(null);
+      setFormData(emptyForm);
+    } catch (error) {
+      showToast('Erro ao salvar o link no servidor.', 'error');
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Tem certeza que deseja excluir este link?')) {
-      setLinks(links.filter((l) => l.id !== id));
+      try {
+        await deletarLink(id);
+        showToast('Link excluído com sucesso.');
+        await carregarDados();
+      } catch (error) {
+        showToast('Erro ao excluir o link.', 'error');
+      }
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      
+      {/* Sistema de Notificação Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Links Uteis</h1>
+          <h1 className="text-2xl font-bold text-white">Links Úteis</h1>
           <p className="text-dark-400 mt-1">Gerenciamento de links frequentes</p>
         </div>
         <button onClick={() => handleOpenModal()} className="btn-primary">
@@ -120,23 +184,25 @@ export function LinksManager() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredLinks.length === 0 ? (
+          {isLoading ? (
+            <p className="text-dark-400 col-span-full text-center py-12">Conectando ao banco de dados...</p>
+          ) : filteredLinks.length === 0 ? (
             <p className="text-dark-400 col-span-full text-center py-12">Nenhum link encontrado</p>
           ) : (
             filteredLinks.map((link) => {
-              const Icon = categoryIcons[link.category];
+              const Icon = categoryIcons[link.category] || categoryIcons.internal;
               return (
                 <div
                   key={link.id}
-                  className="p-4 rounded-lg bg-dark-700/50 border border-dark-600 hover:border-dark-500 transition-all group"
+                  className="p-4 rounded-lg bg-dark-700/50 border border-dark-600 hover:border-dark-500 transition-all group flex flex-col justify-between"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 bg-primary-500/20 rounded-lg flex items-center justify-center shrink-0">
                       <Icon className="w-6 h-6 text-primary-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-white truncate">{link.name}</h3>
-                      <p className="text-xs text-dark-400 truncate">{link.url}</p>
+                      <h3 className="font-medium text-white truncate" title={link.name}>{link.name}</h3>
+                      <p className="text-xs text-dark-400 truncate" title={link.url}>{link.url}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="badge badge-info">{categoryLabels[link.category]}</span>
                       </div>
@@ -156,7 +222,7 @@ export function LinksManager() {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-secondary flex-1 justify-center text-sm py-1.5"
+                      className="btn-secondary flex-1 justify-center text-sm py-1.5 hover:text-white"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Abrir
@@ -204,7 +270,7 @@ export function LinksManager() {
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
               className="input-field"
-              placeholder="https://exemplo.com"
+              placeholder="exemplo.com ou https://exemplo.com"
             />
           </div>
           <div>
@@ -236,7 +302,7 @@ export function LinksManager() {
               Cancelar
             </button>
             <button onClick={handleSave} className="btn-primary">
-              {editingLink ? 'Salvar' : 'Adicionar'}
+              {editingLink ? 'Salvar Alterações' : 'Adicionar Link'}
             </button>
           </div>
         </div>
