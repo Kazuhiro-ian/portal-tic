@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Phone, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, CheckCircle2, AlertCircle, X, Coffee } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, CheckCircle2, AlertCircle, X, Coffee, CheckSquare, ListTodo, Circle, PlayCircle } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { 
   listarColaboradores, salvarColaborador, atualizarColaborador, deletarColaborador,
-  listarEscalasPorPeriodo, salvarEscalaDia 
+  listarEscalasPorPeriodo, salvarEscalaDia,
+  listarTarefasPorData, salvarTarefaPlantao, atualizarStatusTarefa, deletarTarefaPlantao
 } from '../services/api.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
@@ -28,11 +29,13 @@ export function EmployeeSchedule() {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
 
-  // Guarda qual célula está aberta
   const [activeCellMenu, setActiveCellMenu] = useState(null); 
-
-  // Novo estado para controlar a visualização do card lateral ('trabalhando' ou 'folga')
   const [viewModeToday, setViewModeToday] = useState('trabalhando');
+
+  // Estados das Tarefas do Plantão
+  const [tarefasHoje, setTarefasHoje] = useState([]);
+  const [novaTarefaText, setNovaTarefaText] = useState('');
+  const [isSavingTarefa, setIsSavingTarefa] = useState(false);
 
   const [toast, setToast] = useState(null);
   const showToast = (message, type = 'success') => {
@@ -43,6 +46,9 @@ export function EmployeeSchedule() {
   useEffect(() => {
     carregarDadosIniciais();
   }, [currentWeekOffset]);
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
 
   const carregarDadosIniciais = async () => {
     try {
@@ -62,16 +68,19 @@ export function EmployeeSchedule() {
       });
       setEscalas(mapaEscalas);
 
+      // Carrega as tarefas do dia de hoje
+      const tarefas = await listarTarefasPorData(todayStr);
+      setTarefasHoje(tarefas);
+
     } catch (error) {
       console.error(error);
-      showToast('Erro ao carregar escala do servidor.', 'error');
+      showToast('Erro ao carregar dados do servidor.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const getWeekDates = (offset) => {
-    const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay() + offset * 7);
     return weekDays.map((_, index) => {
@@ -82,7 +91,6 @@ export function EmployeeSchedule() {
   };
 
   const weekDates = getWeekDates(currentWeekOffset);
-  const today = new Date();
 
   const handleSelectTurno = async (colaboradorId, dataDateObj, turnoSelecionado) => {
     const dataStr = dataDateObj.toISOString().split('T')[0];
@@ -102,6 +110,52 @@ export function EmployeeSchedule() {
       showToast('Escala atualizada com sucesso!');
     } catch (error) {
       showToast('Erro ao atualizar turno.', 'error');
+    }
+  };
+
+  // Funções de gerenciamento de Tarefas
+  const handleAddTarefa = async () => {
+    if (!novaTarefaText.trim()) return;
+
+    try {
+      setIsSavingTarefa(true);
+      const payload = {
+        data: todayStr,
+        descricao: novaTarefaText.trim(),
+        status: 'PENDENTE'
+      };
+
+      const criada = await salvarTarefaPlantao(payload);
+      setTarefasHoje(prev => [...prev, criada]);
+      setNovaTarefaText('');
+      showToast('Missão adicionada ao plantão!');
+    } catch (error) {
+      showToast('Erro ao adicionar tarefa.', 'error');
+    } finally {
+      setIsSavingTarefa(false);
+    }
+  };
+
+  const handleToggleStatusTarefa = async (tarefa) => {
+    let proximoStatus = 'EM_ANDAMENTO';
+    if (tarefa.status === 'EM_ANDAMENTO') proximoStatus = 'CONCLUIDO';
+    else if (tarefa.status === 'CONCLUIDO') proximoStatus = 'PENDENTE';
+
+    try {
+      await atualizarStatusTarefa(tarefa.id, proximoStatus);
+      setTarefasHoje(prev => prev.map(t => t.id === tarefa.id ? { ...t, status: proximoStatus } : t));
+    } catch (error) {
+      showToast('Erro ao alterar status da tarefa.', 'error');
+    }
+  };
+
+  const handleDeleteTarefa = async (id) => {
+    try {
+      await deletarTarefaPlantao(id);
+      setTarefasHoje(prev => prev.filter(t => t.id !== id));
+      showToast('Tarefa removida.');
+    } catch (error) {
+      showToast('Erro ao excluir tarefa.', 'error');
     }
   };
 
@@ -156,9 +210,6 @@ export function EmployeeSchedule() {
     }
   };
 
-  // Filtros do dia atual
-  const todayStr = today.toISOString().split('T')[0];
-  
   const workingToday = employees.filter((e) => {
     const turnoHoje = escalas[`${e.id}_${todayStr}`];
     return turnoHoje && turnoHoje !== 'Folga' && turnoHoje !== '-';
@@ -347,103 +398,183 @@ export function EmployeeSchedule() {
           </div>
         </div>
 
-        {/* CARD LATERAL COM O NOVO BOTÃO ALTERNADOR DE VISUALIZAÇÃO */}
-        <div className="card h-fit lg:col-span-1">
-          <div className="flex items-center justify-between mb-3 border-b border-dark-700 pb-3">
-            <div className="flex items-center gap-2">
-              {viewModeToday === 'trabalhando' ? (
-                <Clock className="w-5 h-5 text-green-400 shrink-0" />
+        {/* BARRA LATERAL: DADOS DE HOJE E CARD DE MISSÕES / TAREFAS */}
+        <div className="space-y-6 lg:col-span-1">
+          
+          {/* CARD 1: ESCALADOS E FOLGA HOJE */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-3 border-b border-dark-700 pb-3">
+              <div className="flex items-center gap-2">
+                {viewModeToday === 'trabalhando' ? (
+                  <Clock className="w-5 h-5 text-green-400 shrink-0" />
+                ) : (
+                  <Coffee className="w-5 h-5 text-amber-400 shrink-0" />
+                )}
+                <h2 className="text-base font-semibold text-white">
+                  {viewModeToday === 'trabalhando' ? 'Escalados Hoje' : 'De Folga Hoje'}
+                </h2>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 p-1 bg-dark-800 rounded-lg border border-dark-700 mb-4">
+              <button
+                type="button"
+                onClick={() => setViewModeToday('trabalhando')}
+                className={`py-1.5 text-xs font-medium rounded-md transition-all ${
+                  viewModeToday === 'trabalhando'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'text-dark-400 hover:text-white'
+                }`}
+              >
+                Trabalhando ({workingToday.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewModeToday('folga')}
+                className={`py-1.5 text-xs font-medium rounded-md transition-all ${
+                  viewModeToday === 'folga'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : 'text-dark-400 hover:text-white'
+                }`}
+              >
+                Folga ({offToday.length})
+              </button>
+            </div>
+
+            <p className="text-dark-400 mb-4 text-xs">
+              {weekDays[today.getDay()]}, {today.toLocaleDateString('pt-BR')}
+            </p>
+
+            <div className="space-y-3">
+              {isLoading ? (
+                 <p className="text-dark-400 text-center py-4 text-sm">Carregando...</p>
+              ) : viewModeToday === 'trabalhando' ? (
+                workingToday.length === 0 ? (
+                  <p className="text-dark-400 text-center py-4 text-sm">Nenhum colaborador escalado para hoje.</p>
+                ) : (
+                  workingToday.map((employee) => (
+                    <div key={employee.id} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center shrink-0">
+                          <UserCheck className="w-4 h-4 text-green-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-white text-sm truncate">{employee.name}</p>
+                          <p className="text-xs text-primary-400 font-mono">{escalas[`${employee.id}_${todayStr}`]}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )
               ) : (
-                <Coffee className="w-5 h-5 text-amber-400 shrink-0" />
+                offToday.length === 0 ? (
+                  <p className="text-dark-400 text-center py-4 text-sm">Nenhum colaborador de folga hoje.</p>
+                ) : (
+                  offToday.map((employee) => (
+                    <div key={employee.id} className="p-3 rounded-lg bg-dark-700/50 border border-dark-600 opacity-80">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
+                          <Coffee className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-white text-sm truncate">{employee.name}</p>
+                          <p className="text-xs text-dark-400">{employee.role}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )
               )}
-              <h2 className="text-base font-semibold text-white">
-                {viewModeToday === 'trabalhando' ? 'Escalados Hoje' : 'De Folga Hoje'}
-              </h2>
             </div>
           </div>
 
-          {/* Botões de alternância Trabalhando / Folga */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-dark-800 rounded-lg border border-dark-700 mb-4">
-            <button
-              type="button"
-              onClick={() => setViewModeToday('trabalhando')}
-              className={`py-1.5 text-xs font-medium rounded-md transition-all ${
-                viewModeToday === 'trabalhando'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'text-dark-400 hover:text-white'
-              }`}
-            >
-              Trabalhando ({workingToday.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewModeToday('folga')}
-              className={`py-1.5 text-xs font-medium rounded-md transition-all ${
-                viewModeToday === 'folga'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'text-dark-400 hover:text-white'
-              }`}
-            >
-              Folga ({offToday.length})
-            </button>
+          {/* CARD 2: NOVO CARD DE MISSÕES / TAREFAS DO PLANTÃO */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-3 border-b border-dark-700 pb-3">
+              <div className="flex items-center gap-2">
+                <ListTodo className="w-5 h-5 text-primary-400 shrink-0" />
+                <h2 className="text-base font-semibold text-white">Missões do Plantão</h2>
+              </div>
+              <span className="text-xs text-dark-400 font-mono">{tarefasHoje.length} tarefas</span>
+            </div>
+
+            {/* Input de rápida adição */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={novaTarefaText}
+                onChange={(e) => setNovaTarefaText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTarefa()}
+                placeholder="Nova missão do dia..."
+                className="input-field py-1.5 text-xs flex-1"
+                disabled={isSavingTarefa}
+              />
+              <button 
+                type="button" 
+                onClick={handleAddTarefa}
+                disabled={isSavingTarefa}
+                className="btn-primary px-3 py-1.5 text-xs shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Lista de tópicos com troca de status rápida */}
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {tarefasHoje.length === 0 ? (
+                <p className="text-dark-400 text-center py-4 text-xs">Nenhuma missão cadastrada para hoje.</p>
+              ) : (
+                tarefasHoje.map((tarefa) => {
+                  let statusBadge = "text-dark-400 hover:text-amber-400";
+                  let statusIcon = <Circle className="w-4 h-4 shrink-0" />;
+                  let textStyle = "text-dark-200";
+
+                  if (tarefa.status === 'EM_ANDAMENTO') {
+                    statusBadge = "text-amber-400";
+                    statusIcon = <PlayCircle className="w-4 h-4 shrink-0" />;
+                    textStyle = "text-amber-200 font-medium";
+                  } else if (tarefa.status === 'CONCLUIDO') {
+                    statusBadge = "text-emerald-400";
+                    statusIcon = <CheckSquare className="w-4 h-4 shrink-0" />;
+                    textStyle = "text-dark-400 line-through";
+                  }
+
+                  return (
+                    <div 
+                      key={tarefa.id} 
+                      className="p-2.5 rounded-lg bg-dark-700/40 border border-dark-600 flex items-center justify-between gap-2 group hover:border-dark-500 transition-colors"
+                    >
+                      <button 
+                        type="button" 
+                        onClick={() => handleToggleStatusTarefa(tarefa)}
+                        className={`flex items-start gap-2 text-left flex-1 min-w-0 ${statusBadge}`}
+                        title="Clique para mudar o status"
+                      >
+                        <span className="mt-0.5">{statusIcon}</span>
+                        <span className={`text-xs break-words ${textStyle}`}>{tarefa.descricao}</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => handleDeleteTarefa(tarefa.id)}
+                        className="text-dark-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Excluir missão"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <p className="text-[10px] text-dark-500 text-center mt-3">
+              Clique no ícone para alterar: Pendente ➔ Em Andamento ➔ Concluído
+            </p>
           </div>
 
-          <p className="text-dark-400 mb-4 text-xs">
-            {weekDays[today.getDay()]}, {today.toLocaleDateString('pt-BR')}
-          </p>
-
-          <div className="space-y-3">
-            {isLoading ? (
-               <p className="text-dark-400 text-center py-4 text-sm">Carregando...</p>
-            ) : viewModeToday === 'trabalhando' ? (
-              // LISTA DOS QUE ESTÃO TRABALHANDO
-              workingToday.length === 0 ? (
-                <p className="text-dark-400 text-center py-4 text-sm">Nenhum colaborador escalado para hoje.</p>
-              ) : (
-                workingToday.map((employee) => (
-                  <div
-                    key={employee.id}
-                    className="p-3 rounded-lg bg-dark-700/50 border border-dark-600"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center shrink-0">
-                        <UserCheck className="w-4 h-4 text-green-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-white text-sm truncate">{employee.name}</p>
-                        <p className="text-xs text-primary-400 font-mono">{escalas[`${employee.id}_${todayStr}`]}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )
-            ) : (
-              // LISTA DOS QUE ESTÃO DE FOLGA
-              offToday.length === 0 ? (
-                <p className="text-dark-400 text-center py-4 text-sm">Nenhum colaborador de folga hoje.</p>
-              ) : (
-                offToday.map((employee) => (
-                  <div
-                    key={employee.id}
-                    className="p-3 rounded-lg bg-dark-700/50 border border-dark-600 opacity-80"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
-                        <Coffee className="w-4 h-4 text-amber-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-white text-sm truncate">{employee.name}</p>
-                        <p className="text-xs text-dark-400">{employee.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )
-            )}
-          </div>
         </div>
       </div>
 
+      {/* CARD DE GERENCIAMENTO DE COLABORADORES */}
       <div className="card">
         <h2 className="text-lg font-semibold text-white mb-4">Gerenciar Colaboradores Cadastrados</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

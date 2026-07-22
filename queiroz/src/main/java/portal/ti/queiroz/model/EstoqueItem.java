@@ -29,4 +29,7 @@ public class EstoqueItem {
 
     @Column(nullable = false)
     private String location;
+
+    @Column(name = "categoria_zebra")
+    private String categoriaZebra;
 }

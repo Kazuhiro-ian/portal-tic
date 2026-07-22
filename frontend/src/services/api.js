@@ -217,3 +217,173 @@ export const salvarEscalaDia = async (escalaData) => {
   if (!response.ok) throw new Error('Erro ao salvar escala.');
   return await response.json();
 };
+
+// --- ROTAS DE TAREFAS DE PLANTÃO ---
+const BASE_URL_TAREFAS = 'http://172.128.100.104:8080/api/tarefas-plantao';
+
+export const listarTarefasPorData = async (dataYYYYMMDD) => {
+  const response = await fetch(`${BASE_URL_TAREFAS}?data=${dataYYYYMMDD}`);
+  if (!response.ok) throw new Error('Erro ao buscar tarefas do plantão.');
+  return await response.json();
+};
+
+export const salvarTarefaPlantao = async (tarefaData) => {
+  const response = await fetch(BASE_URL_TAREFAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tarefaData),
+  });
+  if (!response.ok) throw new Error('Erro ao criar tarefa.');
+  return await response.json();
+};
+
+export const atualizarStatusTarefa = async (id, novoStatus) => {
+  const response = await fetch(`${BASE_URL_TAREFAS}/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(novoStatus),
+  });
+  if (!response.ok) throw new Error('Erro ao atualizar status da tarefa.');
+  return await response.json();
+};
+
+export const deletarTarefaPlantao = async (id) => {
+  const response = await fetch(`${BASE_URL_TAREFAS}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar tarefa.');
+};
+
+// --- ROTAS DE ARTIGOS (BASE DE CONHECIMENTO) ---
+const BASE_URL_ARTIGOS = 'http://172.128.100.104:8080/api/artigos';
+
+export const listarArtigos = async () => {
+  const response = await fetch(BASE_URL_ARTIGOS);
+  if (!response.ok) throw new Error('Erro ao buscar artigos.');
+  return await response.json();
+};
+
+export const salvarArtigo = async (artigoData) => {
+  const response = await fetch(BASE_URL_ARTIGOS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(artigoData),
+  });
+  if (!response.ok) throw new Error('Erro ao salvar artigo.');
+  return await response.json();
+};
+
+export const atualizarArtigo = async (id, artigoData) => {
+  const response = await fetch(`${BASE_URL_ARTIGOS}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(artigoData),
+  });
+  if (!response.ok) throw new Error('Erro ao atualizar artigo.');
+  return await response.json();
+};
+
+export const deletarArtigo = async (id) => {
+  const response = await fetch(`${BASE_URL_ARTIGOS}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar artigo.');
+};
+
+// --- ROTAS DE CREDENCIAIS ---
+const BASE_URL_CREDENCIAIS = 'http://172.128.100.104:8080/api/credenciais';
+
+export const listarCredenciais = async () => {
+  const response = await fetch(BASE_URL_CREDENCIAIS);
+  if (!response.ok) throw new Error('Erro ao buscar credenciais.');
+  return await response.json();
+};
+
+export const salvarCredencial = async (credData) => {
+  const response = await fetch(BASE_URL_CREDENCIAIS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credData),
+  });
+  if (!response.ok) throw new Error('Erro ao salvar credencial.');
+  return await response.json();
+};
+
+export const atualizarCredencial = async (id, credData) => {
+  const response = await fetch(`${BASE_URL_CREDENCIAIS}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credData),
+  });
+  if (!response.ok) throw new Error('Erro ao atualizar credencial.');
+  return await response.json();
+};
+
+export const deletarCredencial = async (id) => {
+  const response = await fetch(`${BASE_URL_CREDENCIAIS}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar credencial.');
+};
+
+// --- ROTAS DE COTAS ZEBRA ---
+const BASE_URL_ZEBRA_COTAS = 'http://172.128.100.104:8080/api/zebra-cotas';
+
+export const listarZebraCotas = async () => {
+  const response = await fetch(BASE_URL_ZEBRA_COTAS);
+  if (!response.ok) throw new Error('Erro ao buscar cotas Zebra.');
+  return await response.json();
+};
+
+export const salvarZebraCota = async (cotaData) => {
+  const response = await fetch(BASE_URL_ZEBRA_COTAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cotaData),
+  });
+  if (!response.ok) throw new Error(await response.text() || 'Erro ao salvar cota.');
+  return await response.json();
+};
+
+export const atualizarZebraCota = async (id, cotaData) => {
+  const response = await fetch(`${BASE_URL_ZEBRA_COTAS}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cotaData),
+  });
+  if (!response.ok) throw new Error(await response.text() || 'Erro ao atualizar cota.');
+  return await response.json();
+};
+
+export const deletarZebraCota = async (id) => {
+  const response = await fetch(`${BASE_URL_ZEBRA_COTAS}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar cota.');
+};
+
+// --- ROTAS DE ENVIOS ZEBRA ---
+const BASE_URL_ZEBRA_ENVIOS = 'http://172.128.100.104:8080/api/zebra-envios';
+
+export const listarZebraEnvios = async () => {
+  const response = await fetch(BASE_URL_ZEBRA_ENVIOS);
+  if (!response.ok) throw new Error('Erro ao buscar envios Zebra.');
+  return await response.json();
+};
+
+export const salvarZebraEnvio = async (envioData) => {
+  const response = await fetch(BASE_URL_ZEBRA_ENVIOS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(envioData),
+  });
+  if (!response.ok) throw new Error(await response.text() || 'Erro ao registrar envio.');
+  return await response.json();
+};
+
+export const deletarZebraEnvio = async (id) => {
+  const response = await fetch(`${BASE_URL_ZEBRA_ENVIOS}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar envio.');
+};
