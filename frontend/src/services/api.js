@@ -162,3 +162,58 @@ export const salvarMovimento = async (movimentoData) => {
   if (!response.ok) throw new Error('Erro ao registrar movimentação.');
   return await response.json();
 };
+
+// --- ROTAS DE COLABORADORES ---
+const BASE_URL_COLABORADORES = 'http://172.128.100.104:8080/api/colaboradores';
+
+export const listarColaboradores = async () => {
+  const response = await fetch(BASE_URL_COLABORADORES);
+  if (!response.ok) throw new Error('Erro ao buscar colaboradores.');
+  return await response.json();
+};
+
+export const salvarColaborador = async (colaboradorData) => {
+  const response = await fetch(BASE_URL_COLABORADORES, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(colaboradorData),
+  });
+  if (!response.ok) throw new Error('Erro ao salvar colaborador.');
+  return await response.json();
+};
+
+export const atualizarColaborador = async (id, colaboradorData) => {
+  const response = await fetch(`${BASE_URL_COLABORADORES}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(colaboradorData),
+  });
+  if (!response.ok) throw new Error('Erro ao atualizar colaborador.');
+  return await response.json();
+};
+
+export const deletarColaborador = async (id) => {
+  const response = await fetch(`${BASE_URL_COLABORADORES}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Erro ao deletar colaborador.');
+};
+
+// --- ROTAS DE ESCALAS ---
+const BASE_URL_ESCALAS = 'http://172.128.100.104:8080/api/escalas';
+
+export const listarEscalasPorPeriodo = async (inicio, fim) => {
+  const response = await fetch(`${BASE_URL_ESCALAS}?inicio=${inicio}&fim=${fim}`);
+  if (!response.ok) throw new Error('Erro ao buscar escalas do período.');
+  return await response.json();
+};
+
+export const salvarEscalaDia = async (escalaData) => {
+  const response = await fetch(BASE_URL_ESCALAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(escalaData),
+  });
+  if (!response.ok) throw new Error('Erro ao salvar escala.');
+  return await response.json();
+};
