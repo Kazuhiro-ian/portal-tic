@@ -12,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/escalas")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class EscalaController {
 
     @Autowired

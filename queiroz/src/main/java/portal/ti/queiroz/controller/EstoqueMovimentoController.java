@@ -9,7 +9,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/estoque/movimentos")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class EstoqueMovimentoController {
 
     @Autowired

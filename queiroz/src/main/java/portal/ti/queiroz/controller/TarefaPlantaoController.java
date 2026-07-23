@@ -12,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tarefas-plantao")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class TarefaPlantaoController {
 
     @Autowired
@@ -29,22 +28,15 @@ public class TarefaPlantaoController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<TarefaPlantao> atualizarStatus(@PathVariable Long id, @RequestBody String status) {
-        try {
-            // Remove aspas caso enviadas via body
-            String statusLimpo = status.replace("\"", "").trim();
-            TarefaPlantao atualizada = service.atualizarStatus(id, statusLimpo);
-            return ResponseEntity.ok(atualizada);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public TarefaPlantao atualizarStatus(@PathVariable Long id, @RequestBody String status) {
+        // Remove aspas caso enviadas via body
+        String statusLimpo = status.replace("\"", "").trim();
+        return service.atualizarStatus(id, statusLimpo);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        if (service.deletar(id)) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+        service.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

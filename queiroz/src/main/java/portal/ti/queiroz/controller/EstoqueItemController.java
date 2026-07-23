@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/estoque/itens")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class EstoqueItemController {
 
     @Autowired
@@ -27,22 +26,13 @@ public class EstoqueItemController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EstoqueItem> atualizar(@PathVariable Long id, @RequestBody EstoqueItem itemAtualizado) {
-        try {
-            EstoqueItem itemSalvo = service.atualizar(id, itemAtualizado);
-            return ResponseEntity.ok(itemSalvo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public EstoqueItem atualizar(@PathVariable Long id, @RequestBody EstoqueItem itemAtualizado) {
+        return service.atualizar(id, itemAtualizado);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        boolean deletado = service.deletar(id);
-        if (deletado) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        service.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

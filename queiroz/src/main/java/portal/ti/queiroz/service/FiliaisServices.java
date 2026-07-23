@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.repository.FiliaisRepository;
 
@@ -33,16 +34,14 @@ public class FiliaisServices {
             filial.setEndereco(filialAtualizada.getEndereco());
 
             return repository.save(filial);
-        } else {
-            throw new RuntimeException("Filial não encontrada com o ID: " + id);
         }
+        throw new RecursoNaoEncontradoException("Filial não encontrada com o ID: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Filial não encontrada com o ID: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

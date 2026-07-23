@@ -2,6 +2,8 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
+import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.ZebraCota;
 import portal.ti.queiroz.repository.ZebraCotaRepository;
 
@@ -21,7 +23,7 @@ public class ZebraCotaService {
     public ZebraCota salvar(ZebraCota cota) {
         Optional<ZebraCota> existente = repository.findByFilialId(cota.getFilialId());
         if (existente.isPresent() && !existente.get().getId().equals(cota.getId())) {
-            throw new RuntimeException("Já existe uma cota para esta filial.");
+            throw new RegraDeNegocioException("Já existe uma cota para esta filial.");
         }
         return repository.save(cota);
     }
@@ -33,10 +35,13 @@ public class ZebraCotaService {
             cota.setDiaEnvio1(cotaAtualizada.getDiaEnvio1());
             cota.setDiaEnvio2(cotaAtualizada.getDiaEnvio2());
             return repository.save(cota);
-        }).orElseThrow(() -> new RuntimeException("Cota não encontrada."));
+        }).orElseThrow(() -> new RecursoNaoEncontradoException("Cota não encontrada."));
     }
 
     public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Cota não encontrada.");
+        }
         repository.deleteById(id);
     }
 }

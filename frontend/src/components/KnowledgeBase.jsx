@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, CheckCircle2, AlertCircle, X, ArrowRight, FileText } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { 
+import {
   listarArtigos, salvarArtigo, atualizarArtigo, deletarArtigo,
-  listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial 
+  listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial
 } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const categoryInfo = {
   networks: { label: 'Redes', icon: Network, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -16,6 +17,9 @@ const emptyArticleForm = { title: '', category: 'networks', summary: '', content
 const emptyCredForm = { name: '', username: '', password: '', notes: '' };
 
 export function KnowledgeBase() {
+  const { canWrite, hasRole } = useAuth();
+  const podeVerCredenciais = hasRole('ADMIN', 'TECNICO');
+
   const [articles, setArticles] = useState([]);
   const [credentials, setCredentials] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,7 +58,7 @@ export function KnowledgeBase() {
       setIsLoading(true);
       const [artigosData, credsData] = await Promise.all([
         listarArtigos(),
-        listarCredenciais()
+        podeVerCredenciais ? listarCredenciais() : Promise.resolve([]),
       ]);
       setArticles(artigosData);
       setCredentials(credsData);
@@ -233,13 +237,15 @@ export function KnowledgeBase() {
           <h1 className="text-2xl font-bold text-white">Base de Conhecimento</h1>
           <p className="text-dark-400 mt-1">Procedimentos operacionais e cofre de credenciais</p>
         </div>
-        <button
-          onClick={() => activeTab === 'articles' ? handleOpenArticleModal() : handleOpenCredModal()}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" />
-          {activeTab === 'articles' ? 'Novo Artigo' : 'Nova Credencial'}
-        </button>
+        {canWrite && (activeTab === 'articles' || podeVerCredenciais) && (
+          <button
+            onClick={() => activeTab === 'articles' ? handleOpenArticleModal() : handleOpenCredModal()}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            {activeTab === 'articles' ? 'Novo Artigo' : 'Nova Credencial'}
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2 p-1 bg-dark-800 rounded-lg w-fit">
@@ -252,15 +258,17 @@ export function KnowledgeBase() {
           <BookOpen className="w-4 h-4" />
           Artigos ({articles.length})
         </button>
-        <button
-          onClick={() => setActiveTab('credentials')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-            activeTab === 'credentials' ? 'bg-primary-600 text-white' : 'text-dark-400 hover:text-white'
-          }`}
-        >
-          <Key className="w-4 h-4" />
-          Credenciais ({credentials.length})
-        </button>
+        {podeVerCredenciais && (
+          <button
+            onClick={() => setActiveTab('credentials')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+              activeTab === 'credentials' ? 'bg-primary-600 text-white' : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            Credenciais ({credentials.length})
+          </button>
+        )}
       </div>
 
       {/* ABA DE ARTIGOS */}
@@ -317,22 +325,24 @@ export function KnowledgeBase() {
                             </h3>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => handleOpenArticleModal(article)}
-                            className="btn-secondary px-2 py-1"
-                            title="Editar"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteArticle(article.id, e)}
-                            className="btn-danger px-2 py-1"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {canWrite && (
+                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleOpenArticleModal(article)}
+                              className="btn-secondary px-2 py-1"
+                              title="Editar"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteArticle(article.id, e)}
+                              className="btn-danger px-2 py-1"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Resumo do Artigo */}
@@ -356,7 +366,7 @@ export function KnowledgeBase() {
       )}
 
       {/* ABA DE CREDENCIAIS */}
-      {activeTab === 'credentials' && (
+      {activeTab === 'credentials' && podeVerCredenciais && (
         <div className="card">
           <div className="flex items-center gap-2 mb-6 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
             <Lock className="w-5 h-5 text-yellow-400 shrink-0" />
@@ -485,17 +495,19 @@ export function KnowledgeBase() {
               </button>
 
               <div className="flex gap-2">
-                <button 
-                  onClick={() => {
-                    const art = viewingArticle;
-                    setViewingArticle(null);
-                    handleOpenArticleModal(art);
-                  }}
-                  className="btn-secondary"
-                >
-                  <Edit className="w-4 h-4" />
-                  Editar
-                </button>
+                {canWrite && (
+                  <button
+                    onClick={() => {
+                      const art = viewingArticle;
+                      setViewingArticle(null);
+                      handleOpenArticleModal(art);
+                    }}
+                    className="btn-secondary"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Editar
+                  </button>
+                )}
                 <button onClick={() => setViewingArticle(null)} className="btn-primary">
                   Fechar
                 </button>

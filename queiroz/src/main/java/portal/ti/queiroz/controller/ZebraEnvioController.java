@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/zebra-envios")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class ZebraEnvioController {
 
     @Autowired
@@ -22,12 +21,8 @@ public class ZebraEnvioController {
     }
 
     @PostMapping
-    public ResponseEntity<?> criar(@RequestBody ZebraEnvio envio) {
-        try {
-            return ResponseEntity.ok(service.salvar(envio));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ZebraEnvio criar(@RequestBody ZebraEnvio envio) {
+        return service.salvar(envio);
     }
 
     @DeleteMapping("/{id}")

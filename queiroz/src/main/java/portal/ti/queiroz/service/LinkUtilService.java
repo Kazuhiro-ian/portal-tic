@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.LinkUtil;
 import portal.ti.queiroz.repository.LinkUtilRepository;
 
@@ -33,16 +34,14 @@ public class LinkUtilService {
             link.setTags(linkAtualizado.getTags());
 
             return repository.save(link);
-        } else {
-            throw new RuntimeException("Link não encontrado com o ID: " + id);
         }
+        throw new RecursoNaoEncontradoException("Link não encontrado: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Link não encontrado: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

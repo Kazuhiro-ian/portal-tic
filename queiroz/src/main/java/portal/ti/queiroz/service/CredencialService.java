@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Credencial;
 import portal.ti.queiroz.repository.CredencialRepository;
 
@@ -32,14 +33,13 @@ public class CredencialService {
             c.setNotes(credencialAtualizada.getNotes());
             return repository.save(c);
         }
-        throw new RuntimeException("Credencial não encontrada: " + id);
+        throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

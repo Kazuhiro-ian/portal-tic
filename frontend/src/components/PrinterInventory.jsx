@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarImpressoras, salvarImpressora, atualizarImpressora, deletarImpressora } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const brands = ['HP', 'Canon', 'Epson', 'Brother', 'Samsung', 'Lexmark', 'Ricoh', 'Xerox'];
 
@@ -16,6 +17,7 @@ const emptyForm = {
 };
 
 export function PrinterInventory() {
+  const { canWrite } = useAuth();
   const [printers, setPrinters] = useState([]);
   const [search, setSearch] = useState('');
   const [filterBrand, setFilterBrand] = useState('all');
@@ -166,10 +168,12 @@ export function PrinterInventory() {
             {isLoading ? 'Carregando...' : `${printers.length} impressoras cadastradas`}
           </p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Nova Impressora
-        </button>
+        {canWrite && (
+          <button onClick={() => handleOpenModal()} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Nova Impressora
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -254,33 +258,35 @@ export function PrinterInventory() {
                       {printer.lastMaintenance ? new Date(printer.lastMaintenance + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                     </td>
                     <td className="table-cell">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handlePing(printer)}
-                          disabled={pinging === printer.id}
-                          className="btn-secondary px-3 py-1.5 text-sm"
-                          title="Atualizar status da rede"
-                        >
-                          {pinging === printer.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Wifi className="w-4 h-4" />
-                          )}
-                          {pinging === printer.id ? 'Testando...' : 'Ping'}
-                        </button>
-                        <button
-                          onClick={() => handleOpenModal(printer)}
-                          className="btn-secondary px-3 py-1.5"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(printer.id)}
-                          className="btn-danger px-3 py-1.5"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {canWrite && (
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handlePing(printer)}
+                            disabled={pinging === printer.id}
+                            className="btn-secondary px-3 py-1.5 text-sm"
+                            title="Atualizar status da rede"
+                          >
+                            {pinging === printer.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Wifi className="w-4 h-4" />
+                            )}
+                            {pinging === printer.id ? 'Testando...' : 'Ping'}
+                          </button>
+                          <button
+                            onClick={() => handleOpenModal(printer)}
+                            className="btn-secondary px-3 py-1.5"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(printer.id)}
+                            className="btn-danger px-3 py-1.5"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

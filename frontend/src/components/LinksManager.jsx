@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const categoryLabels = {
   internal: 'Sistemas Internos',
@@ -18,6 +19,7 @@ const categoryIcons = {
 const emptyForm = { name: '', url: '', category: 'internal', tags: '' };
 
 export function LinksManager() {
+  const { canWrite } = useAuth();
   const [links, setLinks] = useState([]);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -151,10 +153,12 @@ export function LinksManager() {
           <h1 className="text-2xl font-bold text-white">Links Úteis</h1>
           <p className="text-dark-400 mt-1">Gerenciamento de links frequentes</p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Novo Link
-        </button>
+        {canWrite && (
+          <button onClick={() => handleOpenModal()} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Novo Link
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -227,18 +231,22 @@ export function LinksManager() {
                       <ExternalLink className="w-4 h-4" />
                       Abrir
                     </a>
-                    <button
-                      onClick={() => handleOpenModal(link)}
-                      className="btn-secondary px-3 py-1.5"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(link.id)}
-                      className="btn-danger px-3 py-1.5"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canWrite && (
+                      <>
+                        <button
+                          onClick={() => handleOpenModal(link)}
+                          className="btn-secondary px-3 py-1.5"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(link.id)}
+                          className="btn-danger px-3 py-1.5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

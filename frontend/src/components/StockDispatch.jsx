@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
 import { listarMovimentos, salvarMovimento, atualizarEstoqueItem } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function SearchableSelect({ items, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -85,6 +86,7 @@ function SearchableSelect({ items, value, onChange }) {
 }
 
 export function StockDispatch({ items }) {
+  const { canWrite } = useAuth();
   const [movements, setMovements] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -187,6 +189,7 @@ export function StockDispatch({ items }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {canWrite && (
       <div className="lg:col-span-2">
         <div className="card">
           <div className="flex items-center gap-3 mb-5">
@@ -270,8 +273,9 @@ export function StockDispatch({ items }) {
           </div>
         </div>
       </div>
+      )}
 
-      <div className="lg:col-span-3">
+      <div className={canWrite ? 'lg:col-span-3' : 'lg:col-span-5'}>
         <div className="card">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">

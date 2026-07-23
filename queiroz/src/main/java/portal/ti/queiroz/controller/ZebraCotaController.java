@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/zebra-cotas")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class ZebraCotaController {
 
     @Autowired
@@ -22,21 +21,13 @@ public class ZebraCotaController {
     }
 
     @PostMapping
-    public ResponseEntity<?> criar(@RequestBody ZebraCota cota) {
-        try {
-            return ResponseEntity.ok(service.salvar(cota));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ZebraCota criar(@RequestBody ZebraCota cota) {
+        return service.salvar(cota);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> atualizar(@PathVariable Long id, @RequestBody ZebraCota cota) {
-        try {
-            return ResponseEntity.ok(service.atualizar(id, cota));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ZebraCota atualizar(@PathVariable Long id, @RequestBody ZebraCota cota) {
+        return service.atualizar(id, cota);
     }
 
     @DeleteMapping("/{id}")

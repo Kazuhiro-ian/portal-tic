@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Impressora;
 import portal.ti.queiroz.repository.ImpressoraRepository;
 
@@ -36,16 +37,14 @@ public class ImpressoraService {
             impressora.setLastMaintenance(impressoraAtualizada.getLastMaintenance());
 
             return repository.save(impressora);
-        } else {
-            throw new RuntimeException("Impressora não encontrada com o ID: " + id);
         }
+        throw new RecursoNaoEncontradoException("Impressora não encontrada com o ID: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Impressora não encontrada com o ID: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

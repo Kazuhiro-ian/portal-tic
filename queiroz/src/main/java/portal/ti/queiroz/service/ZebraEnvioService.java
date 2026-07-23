@@ -2,6 +2,8 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
+import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.ZebraEnvio;
 import portal.ti.queiroz.repository.ZebraEnvioRepository;
 
@@ -19,12 +21,15 @@ public class ZebraEnvioService {
 
     public ZebraEnvio salvar(ZebraEnvio envio) {
         if ("EXTRA".equalsIgnoreCase(envio.getTipoEnvio()) && (envio.getMotivoExtra() == null || envio.getMotivoExtra().trim().isEmpty())) {
-            throw new RuntimeException("O motivo é obrigatório para envios extras.");
+            throw new RegraDeNegocioException("O motivo é obrigatório para envios extras.");
         }
         return repository.save(envio);
     }
 
     public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Envio não encontrado: " + id);
+        }
         repository.deleteById(id);
     }
 }

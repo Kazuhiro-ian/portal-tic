@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, CheckCircle2, AlertCircle, X, Coffee, CheckSquare, ListTodo, Circle, PlayCircle } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { 
+import {
   listarColaboradores, salvarColaborador, atualizarColaborador, deletarColaborador,
   listarEscalasPorPeriodo, salvarEscalaDia,
   listarTarefasPorData, salvarTarefaPlantao, atualizarStatusTarefa, deletarTarefaPlantao
 } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
@@ -20,6 +21,7 @@ const TURNOS_OPCOES = [
 const emptyForm = { name: '', role: '', isOnCall: false };
 
 export function EmployeeSchedule() {
+  const { canWrite } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [escalas, setEscalas] = useState({}); 
   const [isLoading, setIsLoading] = useState(true);
@@ -244,10 +246,12 @@ export function EmployeeSchedule() {
             {isLoading ? 'Carregando...' : `${employees.length} colaboradores cadastrados`}
           </p>
         </div>
-        <button onClick={() => handleOpenModal()} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Novo Colaborador
-        </button>
+        {canWrite && (
+          <button onClick={() => handleOpenModal()} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Novo Colaborador
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -356,17 +360,19 @@ export function EmployeeSchedule() {
                           return (
                             <td
                               key={dataStr}
-                              className={`table-cell text-center cursor-pointer group relative ${isToday ? 'bg-primary-500/5' : ''}`}
-                              onClick={() => setActiveCellMenu(isOpenMenu ? null : cellKey)}
+                              className={`table-cell text-center group relative ${canWrite ? 'cursor-pointer' : ''} ${isToday ? 'bg-primary-500/5' : ''}`}
+                              onClick={() => canWrite && setActiveCellMenu(isOpenMenu ? null : cellKey)}
                             >
                               <div className="flex flex-col items-center py-1">
                                 <span className={`text-[11px] font-medium px-2 py-1 rounded-md transition-all ${badgeStyle}`}>
                                   {turnoAtual}
                                 </span>
-                                <span className="text-[10px] text-dark-400 opacity-0 group-hover:opacity-100 mt-1 transition-opacity">Alterar</span>
+                                {canWrite && (
+                                  <span className="text-[10px] text-dark-400 opacity-0 group-hover:opacity-100 mt-1 transition-opacity">Alterar</span>
+                                )}
                               </div>
 
-                              {isOpenMenu && (
+                              {canWrite && isOpenMenu && (
                                 <div 
                                   className={`absolute z-50 ${positionClasses} ${alignClasses} w-48 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl p-1.5 space-y-1 text-left`} 
                                   onClick={(e) => e.stopPropagation()}
@@ -499,25 +505,27 @@ export function EmployeeSchedule() {
             </div>
 
             {/* Input de rápida adição */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={novaTarefaText}
-                onChange={(e) => setNovaTarefaText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddTarefa()}
-                placeholder="Nova missão do dia..."
-                className="input-field py-1.5 text-xs flex-1"
-                disabled={isSavingTarefa}
-              />
-              <button 
-                type="button" 
-                onClick={handleAddTarefa}
-                disabled={isSavingTarefa}
-                className="btn-primary px-3 py-1.5 text-xs shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+            {canWrite && (
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={novaTarefaText}
+                  onChange={(e) => setNovaTarefaText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTarefa()}
+                  placeholder="Nova missão do dia..."
+                  className="input-field py-1.5 text-xs flex-1"
+                  disabled={isSavingTarefa}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTarefa}
+                  disabled={isSavingTarefa}
+                  className="btn-primary px-3 py-1.5 text-xs shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Lista de tópicos com troca de status rápida */}
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -544,23 +552,32 @@ export function EmployeeSchedule() {
                       key={tarefa.id} 
                       className="p-2.5 rounded-lg bg-dark-700/40 border border-dark-600 flex items-center justify-between gap-2 group hover:border-dark-500 transition-colors"
                     >
-                      <button 
-                        type="button" 
-                        onClick={() => handleToggleStatusTarefa(tarefa)}
-                        className={`flex items-start gap-2 text-left flex-1 min-w-0 ${statusBadge}`}
-                        title="Clique para mudar o status"
-                      >
-                        <span className="mt-0.5">{statusIcon}</span>
-                        <span className={`text-xs break-words ${textStyle}`}>{tarefa.descricao}</span>
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => handleDeleteTarefa(tarefa.id)}
-                        className="text-dark-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Excluir missão"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canWrite ? (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatusTarefa(tarefa)}
+                          className={`flex items-start gap-2 text-left flex-1 min-w-0 ${statusBadge}`}
+                          title="Clique para mudar o status"
+                        >
+                          <span className="mt-0.5">{statusIcon}</span>
+                          <span className={`text-xs break-words ${textStyle}`}>{tarefa.descricao}</span>
+                        </button>
+                      ) : (
+                        <div className={`flex items-start gap-2 text-left flex-1 min-w-0 ${statusBadge}`}>
+                          <span className="mt-0.5">{statusIcon}</span>
+                          <span className={`text-xs break-words ${textStyle}`}>{tarefa.descricao}</span>
+                        </div>
+                      )}
+                      {canWrite && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTarefa(tarefa.id)}
+                          className="text-dark-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Excluir missão"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   );
                 })
@@ -602,21 +619,23 @@ export function EmployeeSchedule() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-dark-600">
-                  <button
-                    onClick={() => handleOpenModal(employee)}
-                    className="btn-secondary flex-1 justify-center py-1.5 text-sm"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Editar Perfil
-                  </button>
-                  <button
-                    onClick={() => handleDeleteColaborador(employee.id)}
-                    className="btn-danger px-3 py-1.5"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {canWrite && (
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-dark-600">
+                    <button
+                      onClick={() => handleOpenModal(employee)}
+                      className="btn-secondary flex-1 justify-center py-1.5 text-sm"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Editar Perfil
+                    </button>
+                    <button
+                      onClick={() => handleDeleteColaborador(employee.id)}
+                      className="btn-danger px-3 py-1.5"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           )}

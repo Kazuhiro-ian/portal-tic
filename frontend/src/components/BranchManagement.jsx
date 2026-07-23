@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Store, Search, MapPin, Hash, Building2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarFiliais, salvarFilial, atualizarFilial, deletarFilial } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -16,6 +17,7 @@ function formatCnpj(value) {
 const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '' };
 
 export function BranchManagement() {
+  const { canWrite } = useAuth();
   const [branches, setBranches] = useState([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -157,10 +159,12 @@ export function BranchManagement() {
             {isLoading ? 'Carregando...' : `${branches.length} ${branches.length === 1 ? 'filial cadastrada' : 'filiais cadastradas'}`}
           </p>
         </div>
-        <button onClick={openNew} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Nova Filial
-        </button>
+        {canWrite && (
+          <button onClick={openNew} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Nova Filial
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -212,14 +216,16 @@ export function BranchManagement() {
                     <td className="table-cell font-mono text-dark-300">{branch.cnpj || '—'}</td>
                     <td className="table-cell text-dark-300">{branch.endereco || '—'}</td>
                     <td className="table-cell text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {canWrite && (
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

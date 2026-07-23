@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.TarefaPlantao;
 import portal.ti.queiroz.repository.TarefaPlantaoRepository;
 
@@ -33,14 +34,13 @@ public class TarefaPlantaoService {
             t.setStatus(novoStatus);
             return repository.save(t);
         }
-        throw new RuntimeException("Tarefa não encontrada: " + id);
+        throw new RecursoNaoEncontradoException("Tarefa não encontrada: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Tarefa não encontrada: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

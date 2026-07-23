@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.EstoqueItem;
 import portal.ti.queiroz.repository.EstoqueItemRepository;
 
@@ -35,16 +36,14 @@ public class EstoqueItemService {
             item.setLocation(itemAtualizado.getLocation());
 
             return repository.save(item);
-        } else {
-            throw new RuntimeException("Item não encontrado no estoque com o ID: " + id);
         }
+        throw new RecursoNaoEncontradoException("Item não encontrado no estoque com o ID: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Item não encontrado no estoque com o ID: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }

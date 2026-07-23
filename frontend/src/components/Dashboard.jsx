@@ -1,46 +1,84 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
+import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios } from '../services/api.js';
 
-export function Dashboard({ printers, stock, employees }) {
+export function Dashboard() {
+  const [printers, setPrinters] = useState([]);
+  const [stock, setStock] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [branchQuotas, setBranchQuotas] = useState([]);
+  const [zebraDistributions, setZebraDistributions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // "Avisos" ainda não tem entidade própria no backend — permanece no localStorage por enquanto.
   const [links] = useLocalStorage('ithub_links', []);
   const [notices, setNotices] = useLocalStorage('ithub_notices', []);
-  const [branches] = useLocalStorage('ithub_branches', []);
-  const [branchQuotas] = useLocalStorage('ithub_branch_quotas', []);
-  const [zebraDistributions] = useLocalStorage('ithub_zebra_distributions', []);
   const [showAddNotice, setShowAddNotice] = useState(false);
   const [newNotice, setNewNotice] = useState({ message: '', priority: 'medium' });
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      setIsLoading(true);
+      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData] = await Promise.all([
+        listarImpressoras(),
+        listarEstoqueItens(),
+        listarColaboradores(),
+        listarFiliais(),
+        listarZebraCotas(),
+        listarZebraEnvios(),
+      ]);
+      setPrinters(impressorasData);
+      setStock(estoqueData);
+      setEmployees(colaboradoresData);
+      setBranches(filiaisData);
+      setBranchQuotas(cotasData);
+      setZebraDistributions(enviosData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const onlinePrinters = printers.filter((p) => p.status === 'Online').length;
   const lowStockItems = stock.filter((s) => s.quantity <= s.minQuantity);
   const todayName = new Date().toLocaleDateString('pt-BR', { weekday: 'long' });
   const capitalizedToday = todayName.charAt(0).toUpperCase() + todayName.slice(1);
   const todayEmployees = employees.filter((e) =>
-    e.workingDays.some((d) => d.toLowerCase() === todayName.toLowerCase())
+    (e.workingDays || []).some((d) => d.toLowerCase() === todayName.toLowerCase())
   );
 
   const zebraPendingBranches = (() => {
     const today = new Date();
-    const currentDay = today.getDate();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
+    const currentDay = today.getDate();
+
     return branchQuotas.filter((quota) => {
-      if (currentDay < quota.dispatchDay) return false;
-      return !zebraDistributions.some((d) => {
-        const dDate = new Date(d.date + 'T00:00:00');
-        return (
-          d.branchId === quota.branchId &&
+      const enviosRegularesNoMes = zebraDistributions.filter((d) => {
+        const dDate = new Date(d.dataEnvio + 'T00:00:00');
+        return d.filialId?.toString() === quota.filialId?.toString() &&
+          d.tipoEnvio === 'REGULAR' &&
           dDate.getMonth() === currentMonth &&
-          dDate.getFullYear() === currentYear
-        );
+          dDate.getFullYear() === currentYear;
       });
+
+      if (enviosRegularesNoMes.length === 0 && currentDay >= quota.diaEnvio1) return true;
+      if (enviosRegularesNoMes.length === 1 && currentDay >= quota.diaEnvio2) return true;
+      return false;
     });
   })();
 
-  const zebraBranchLabel = (branchId) => {
-    const b = branches.find((br) => br.id === branchId);
-    return b ? `Loja ${b.branchNumber} - ${b.name}` : branchId;
+  const zebraBranchLabel = (filialId) => {
+    const b = branches.find((br) => br.id === filialId || br.numeroFilial?.toString() === filialId?.toString());
+    return b ? `Loja ${b.numeroFilial} - ${b.nome}` : filialId;
   };
 
   const handleAddNotice = () => {
@@ -98,7 +136,7 @@ export function Dashboard({ printers, stock, employees }) {
               <Printer className="w-6 h-6 text-primary-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{printers.length}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '—' : printers.length}</p>
               <p className="text-sm text-dark-400">Impressoras</p>
             </div>
           </div>
@@ -111,7 +149,7 @@ export function Dashboard({ printers, stock, employees }) {
               <Package className="w-6 h-6 text-red-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{lowStockItems.length}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '—' : lowStockItems.length}</p>
               <p className="text-sm text-dark-400">Estoque Baixo</p>
             </div>
           </div>
@@ -124,7 +162,7 @@ export function Dashboard({ printers, stock, employees }) {
               <Users className="w-6 h-6 text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{todayEmployees.length}</p>
+              <p className="text-2xl font-bold text-white">{isLoading ? '—' : todayEmployees.length}</p>
               <p className="text-sm text-dark-400">No Plantao Hoje</p>
             </div>
           </div>
@@ -150,7 +188,7 @@ export function Dashboard({ printers, stock, employees }) {
               <Tag className={`w-6 h-6 ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-dark-400'}`} />
             </div>
             <div>
-              <p className={`text-2xl font-bold ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-white'}`}>{zebraPendingBranches.length}</p>
+              <p className={`text-2xl font-bold ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-white'}`}>{isLoading ? '—' : zebraPendingBranches.length}</p>
               <p className="text-sm text-dark-400">Zebra Pendentes</p>
             </div>
           </div>
@@ -168,7 +206,7 @@ export function Dashboard({ printers, stock, employees }) {
             <p className="text-sm text-dark-300 mt-1">
               Atencao: Enviar insumos para as filiais:{' '}
               <span className="font-semibold text-white">
-                {zebraPendingBranches.map((b) => zebraBranchLabel(b.branchId)).join(', ')}
+                {zebraPendingBranches.map((b) => zebraBranchLabel(b.filialId)).join(', ')}
               </span>
             </p>
           </div>

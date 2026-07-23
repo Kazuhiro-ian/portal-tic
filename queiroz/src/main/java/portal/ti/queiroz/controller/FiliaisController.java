@@ -7,11 +7,9 @@ import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.service.FiliaisServices;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/filiais")
-@CrossOrigin(origins = "*") // Permite que o seu React (localhost:5173) acesse essa API na sua máquina local
 public class FiliaisController {
 
     @Autowired
@@ -28,22 +26,13 @@ public class FiliaisController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Filiais> atualizar(@PathVariable Long id, @RequestBody Filiais filialAtualizada) {
-        try {
-            Filiais filialSalva = service.atualizar(id, filialAtualizada);
-            return ResponseEntity.ok(filialSalva);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public Filiais atualizar(@PathVariable Long id, @RequestBody Filiais filialAtualizada) {
+        return service.atualizar(id, filialAtualizada);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        boolean deletado = service.deletar(id);
-        if (deletado) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        service.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

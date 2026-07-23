@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/colaboradores")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class ColaboradorController {
 
     @Autowired
@@ -27,22 +26,13 @@ public class ColaboradorController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Colaborador> atualizar(@PathVariable Long id, @RequestBody Colaborador colaboradorAtualizado) {
-        try {
-            Colaborador colaboradorSalvo = service.atualizar(id, colaboradorAtualizado);
-            return ResponseEntity.ok(colaboradorSalvo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public Colaborador atualizar(@PathVariable Long id, @RequestBody Colaborador colaboradorAtualizado) {
+        return service.atualizar(id, colaboradorAtualizado);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        boolean deletado = service.deletar(id);
-        if (deletado) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        service.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

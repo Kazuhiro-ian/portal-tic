@@ -1,4 +1,5 @@
-import { LayoutDashboard, Link, Printer, Package, Calendar, BookOpen, Monitor, Tag, Store } from 'lucide-react';
+import { LayoutDashboard, Link, Printer, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,7 +12,19 @@ const menuItems = [
   { id: 'zebra', label: 'Insumos Zebra', icon: Tag },
 ];
 
-export function Sidebar({ currentView, onViewChange, zebraPendingCount = 0 }) {
+const roleLabels = {
+  ADMIN: 'Administrador',
+  TECNICO: 'Técnico',
+  LEITURA: 'Leitura',
+};
+
+export function Sidebar({ currentView, onViewChange }) {
+  const { user, logout, isAdmin } = useAuth();
+
+  const items = isAdmin
+    ? [...menuItems, { id: 'usuarios', label: 'Usuários', icon: Users }]
+    : menuItems;
+
   return (
     <aside className="w-64 bg-dark-900 border-r border-dark-700 flex flex-col min-h-screen">
       <div className="h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-accent-500 w-full" />
@@ -36,7 +49,7 @@ export function Sidebar({ currentView, onViewChange, zebraPendingCount = 0 }) {
 
       <nav className="flex-1 p-4">
         <ul className="space-y-1">
-          {menuItems.map((item) => {
+          {items.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
             return (
@@ -47,11 +60,6 @@ export function Sidebar({ currentView, onViewChange, zebraPendingCount = 0 }) {
                 >
                   <Icon className={`w-5 h-5 ${isActive ? 'text-primary-400' : 'text-dark-400'}`} />
                   <span className={`flex-1 text-sm font-medium text-left ${isActive ? 'text-white' : 'text-dark-300'}`}>{item.label}</span>
-                  {item.id === 'zebra' && zebraPendingCount > 0 && (
-                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[10px] font-bold text-white">
-                      {zebraPendingCount}
-                    </span>
-                  )}
                 </button>
               </li>
             );
@@ -61,13 +69,20 @@ export function Sidebar({ currentView, onViewChange, zebraPendingCount = 0 }) {
 
       <div className="p-4 border-t border-dark-700">
         <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-dark-800 border border-dark-700">
-          <div className="w-9 h-9 bg-primary-500/20 border border-primary-500/40 rounded-full flex items-center justify-center">
+          <div className="w-9 h-9 bg-primary-500/20 border border-primary-500/40 rounded-full flex items-center justify-center shrink-0">
             <Monitor className="w-4 h-4 text-primary-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Admin TI</p>
-            <p className="text-xs text-dark-400">Grupo Queiroz</p>
+            <p className="text-sm font-semibold text-white truncate">{user?.nomeCompleto || user?.username}</p>
+            <p className="text-xs text-dark-400">{roleLabels[user?.role] || user?.role}</p>
           </div>
+          <button
+            onClick={logout}
+            title="Sair"
+            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-dark-400 transition-colors shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

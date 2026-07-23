@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/impressoras")
-@CrossOrigin(origins = {"http://localhost:5173", "http://172.128.100.104:5173"})
 public class ImpressoraController {
 
     @Autowired
@@ -27,22 +26,13 @@ public class ImpressoraController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Impressora> atualizar(@PathVariable Long id, @RequestBody Impressora impressoraAtualizada) {
-        try {
-            Impressora impressoraSalva = service.atualizar(id, impressoraAtualizada);
-            return ResponseEntity.ok(impressoraSalva);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public Impressora atualizar(@PathVariable Long id, @RequestBody Impressora impressoraAtualizada) {
+        return service.atualizar(id, impressoraAtualizada);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        boolean deletado = service.deletar(id);
-        if (deletado) {
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        service.deletar(id);
+        return ResponseEntity.noContent().build();
     }
 }

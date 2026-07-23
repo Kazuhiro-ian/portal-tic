@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Print
 import { Modal } from './Modal.jsx';
 import { StockDispatch } from './StockDispatch.jsx';
 import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const categoryInfo = {
   peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -20,6 +21,7 @@ const emptyForm = {
 };
 
 export function StockDashboard({ movements, setMovements }) {
+  const { canWrite } = useAuth();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -216,7 +218,7 @@ export function StockDashboard({ movements, setMovements }) {
             )}
           </p>
         </div>
-        {activeTab === 'inventory' && (
+        {activeTab === 'inventory' && canWrite && (
           <button onClick={() => handleOpenModal()} className="btn-primary">
             <Plus className="w-4 h-4" />
             Novo Item
@@ -356,12 +358,14 @@ export function StockDashboard({ movements, setMovements }) {
                           </td>
                           <td className="table-cell">
                             <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => adjustQuantity(item, -1)}
-                                className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
-                              >
-                                <Minus className="w-4 h-4 text-dark-300" />
-                              </button>
+                              {canWrite && (
+                                <button
+                                  onClick={() => adjustQuantity(item, -1)}
+                                  className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+                                >
+                                  <Minus className="w-4 h-4 text-dark-300" />
+                                </button>
+                              )}
                               <span
                                 className={`font-bold text-lg min-w-[40px] text-center ${
                                   isCritical ? 'text-red-400' : 'text-white'
@@ -369,12 +373,14 @@ export function StockDashboard({ movements, setMovements }) {
                               >
                                 {item.quantity}
                               </span>
-                              <button
-                                onClick={() => adjustQuantity(item, 1)}
-                                className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
-                              >
-                                <Plus className="w-4 h-4 text-dark-300" />
-                              </button>
+                              {canWrite && (
+                                <button
+                                  onClick={() => adjustQuantity(item, 1)}
+                                  className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+                                >
+                                  <Plus className="w-4 h-4 text-dark-300" />
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="table-cell text-center">
@@ -391,25 +397,29 @@ export function StockDashboard({ movements, setMovements }) {
                                   Crítico
                                 </span>
                               )}
-                              <button
-                                onClick={() => openAdjustModal(item)}
-                                className="btn-secondary px-3 py-1.5"
-                                title="Movimentar / Ajuste rápido"
-                              >
-                                <ArrowLeftRight className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleOpenModal(item)}
-                                className="btn-secondary px-3 py-1.5"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item.id)}
-                                className="btn-danger px-3 py-1.5"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {canWrite && (
+                                <>
+                                  <button
+                                    onClick={() => openAdjustModal(item)}
+                                    className="btn-secondary px-3 py-1.5"
+                                    title="Movimentar / Ajuste rápido"
+                                  >
+                                    <ArrowLeftRight className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenModal(item)}
+                                    className="btn-secondary px-3 py-1.5"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(item.id)}
+                                    className="btn-danger px-3 py-1.5"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>

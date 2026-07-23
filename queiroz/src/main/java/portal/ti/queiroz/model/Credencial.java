@@ -2,6 +2,7 @@ package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import portal.ti.queiroz.security.CredencialPasswordConverter;
 
 @Data
 @Entity
@@ -18,7 +19,8 @@ public class Credencial {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Convert(converter = CredencialPasswordConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String password;
 
     private String notes;

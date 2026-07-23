@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Colaborador;
 import portal.ti.queiroz.repository.ColaboradorRepository;
 
@@ -32,16 +33,14 @@ public class ColaboradorService {
             colaborador.setIsOnCall(colaboradorAtualizado.getIsOnCall());
 
             return repository.save(colaborador);
-        } else {
-            throw new RuntimeException("Colaborador não encontrado com o ID: " + id);
         }
+        throw new RecursoNaoEncontradoException("Colaborador não encontrado com o ID: " + id);
     }
 
-    public boolean deletar(Long id) {
-        if (repository.existsById(id)) {
-            repository.deleteById(id);
-            return true;
+    public void deletar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Colaborador não encontrado com o ID: " + id);
         }
-        return false;
+        repository.deleteById(id);
     }
 }
