@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, Alert
 import { Modal } from './Modal.jsx';
 import { listarImpressoras, salvarImpressora, atualizarImpressora, deletarImpressora, pingImpressora } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 const brands = ['HP', 'Canon', 'Epson', 'Brother', 'Samsung', 'Lexmark', 'Ricoh', 'Xerox'];
 
@@ -28,11 +29,7 @@ export function PrinterInventory() {
   const [formData, setFormData] = useState(emptyForm);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => { setToast(null); }, 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     carregarDados();
@@ -125,8 +122,6 @@ export function PrinterInventory() {
   const handlePing = async (printer) => {
     setPinging(printer.id);
     try {
-      // Teste de conexão real: o backend tenta ICMP e, se bloqueado pelo firewall da
-      // impressora, cai para uma conexão TCP nas portas comuns (9100/631/80) do IP cadastrado.
       const resultado = await pingImpressora(printer.id);
       const online = resultado.status === 'Online';
       showToast(
@@ -153,7 +148,7 @@ export function PrinterInventory() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>

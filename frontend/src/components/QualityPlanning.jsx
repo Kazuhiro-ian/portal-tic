@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ReceivingCalendar } from './ReceivingCalendar.jsx';
 import { InventoryPlan } from './InventoryPlan.jsx';
 import { MESES } from '../utils/datas.js';
+import { useToast } from '../hooks/useToast.js';
 
 const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
@@ -21,17 +22,7 @@ export function QualityPlanning() {
   // Conflitos devolvidos pela aplicação do padrão, repassados para a aba do plano.
   const [conflitosExternos, setConflitosExternos] = useState(null);
 
-  const [toast, setToast] = useState(null);
-  // useCallback com deps vazias: precisa manter a MESMA referência entre renders.
-  // ReceivingCalendar/InventoryPlan usam showToast dentro de um useCallback (`carregar`)
-  // do qual seu próprio useEffect depende — se showToast mudasse de identidade a cada
-  // render (como uma função comum faria), toda vez que ele fosse chamado para exibir um
-  // erro o pai re-renderizaria, recriando showToast, recriando carregar, disparando o
-  // useEffect de novo, chamando a API de novo, e assim em loop infinito.
-  const showToast = useCallback((message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  }, []);
+  const { toast, showToast, hideToast } = useToast();
 
   const mudarMes = (delta) => {
     const d = new Date(ano, mes - 1 + delta, 1);
@@ -55,7 +46,7 @@ export function QualityPlanning() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white shrink-0">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>

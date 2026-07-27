@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, CheckCircle2, AlertCircle, X, ArrowRight, FileText } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, CheckCircle2, AlertCircle, X, ArrowRight } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import {
   listarArtigos, salvarArtigo, atualizarArtigo, deletarArtigo,
   listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 const categoryInfo = {
   networks: { label: 'Redes', icon: Network, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -43,11 +44,7 @@ export function KnowledgeBase() {
   const [articleForm, setArticleForm] = useState(emptyArticleForm);
   const [credForm, setCredForm] = useState(emptyCredForm);
 
-  const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => { setToast(null); }, 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     carregarDados();
@@ -226,7 +223,7 @@ export function KnowledgeBase() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>

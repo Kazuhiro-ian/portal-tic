@@ -7,6 +7,7 @@ import {
   listarTarefasPorData, salvarTarefaPlantao, atualizarStatusTarefa, deletarTarefaPlantao
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
@@ -39,11 +40,7 @@ export function EmployeeSchedule() {
   const [novaTarefaText, setNovaTarefaText] = useState('');
   const [isSavingTarefa, setIsSavingTarefa] = useState(false);
 
-  const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => { setToast(null); }, 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     carregarDadosIniciais();
@@ -233,7 +230,7 @@ export function EmployeeSchedule() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -316,7 +313,7 @@ export function EmployeeSchedule() {
                   ) : employees.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="text-center py-12 text-dark-400">
-                        Nenhum colaborador cadastrado. Clique em "Novo Colaborador" acima.
+                        Nenhum colaborador cadastrado. Clique em &quot;Novo Colaborador&quot; acima.
                       </td>
                     </tr>
                   ) : (

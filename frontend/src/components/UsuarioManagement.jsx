@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Users, CheckCircle2, AlertCircle, X, ShieldCheck } 
 import { Modal } from './Modal.jsx';
 import { listarUsuarios, salvarUsuario, atualizarUsuario, desativarUsuario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 const roleLabels = {
   ADMIN: 'Administrador',
@@ -22,11 +23,7 @@ export function UsuarioManagement() {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
 
-  const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     carregarUsuarios();
@@ -110,7 +107,7 @@ export function UsuarioManagement() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>

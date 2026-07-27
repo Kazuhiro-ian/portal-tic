@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Search, Hash, Building2, CheckCircle2, AlertCircle,
 import { Modal } from './Modal.jsx';
 import { listarFiliais, salvarFilial, atualizarFilial, deletarFilial } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 import { grupoLabels, grupoBadge } from '../utils/qualidade.js';
 
 function formatCnpj(value) {
@@ -26,15 +27,7 @@ export function BranchManagement() {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-
-  const [toast, setToast] = useState(null);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     carregarFiliais();
@@ -147,7 +140,7 @@ export function BranchManagement() {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>

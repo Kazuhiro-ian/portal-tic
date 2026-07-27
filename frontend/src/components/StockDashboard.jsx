@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { StockDispatch } from './StockDispatch.jsx';
 import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 const categoryInfo = {
   peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -38,12 +39,7 @@ export function StockDashboard({ movements, setMovements }) {
   const [adjustData, setAdjustData] = useState({ type: 'IN', quantity: 1, destination: '', notes: '' });
   const [adjustError, setAdjustError] = useState('');
 
-  // Sistema de Notificações
-  const [toast, setToast] = useState(null);
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => { setToast(null); }, 4000);
-  };
+  const { toast, showToast, hideToast } = useToast();  
 
   useEffect(() => {
     carregarEstoque();
@@ -200,7 +196,7 @@ export function StockDashboard({ movements, setMovements }) {
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
           )}
           <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 text-dark-400 hover:text-white">
+          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
