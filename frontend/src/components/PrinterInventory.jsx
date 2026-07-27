@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { listarImpressoras, salvarImpressora, atualizarImpressora, deletarImpressora } from '../services/api.js';
+import { listarImpressoras, salvarImpressora, atualizarImpressora, deletarImpressora, pingImpressora } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const brands = ['HP', 'Canon', 'Epson', 'Brother', 'Samsung', 'Lexmark', 'Ricoh', 'Xerox'];
@@ -124,20 +124,18 @@ export function PrinterInventory() {
 
   const handlePing = async (printer) => {
     setPinging(printer.id);
-    
-    // Simulação do tempo de resposta do Ping
-    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
-    const success = Math.random() > 0.3; // 70% de chance de sucesso
-    
-    const novoStatus = success ? 'Online' : 'Offline';
-    
     try {
-      // Atualiza o status no banco de dados
-      await atualizarImpressora(printer.id, { ...printer, status: novoStatus });
-      showToast(`Ping concluído: A impressora está ${novoStatus}.`, success ? 'success' : 'error');
+      // Teste de conexão real: o backend tenta ICMP e, se bloqueado pelo firewall da
+      // impressora, cai para uma conexão TCP nas portas comuns (9100/631/80) do IP cadastrado.
+      const resultado = await pingImpressora(printer.id);
+      const online = resultado.status === 'Online';
+      showToast(
+        `Ping concluído em ${resultado.tempoRespostaMs}ms: a impressora está ${resultado.status}. ${resultado.detalhe}`,
+        online ? 'success' : 'error'
+      );
       await carregarDados();
     } catch (error) {
-      showToast('Erro ao registrar o status do ping.', 'error');
+      showToast(error.message || 'Erro ao testar a conexão da impressora.', 'error');
     } finally {
       setPinging(null);
     }

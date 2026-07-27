@@ -68,6 +68,7 @@ export const listarImpressoras = () => apiGet('/api/impressoras');
 export const salvarImpressora = (printerData) => apiPost('/api/impressoras', printerData);
 export const atualizarImpressora = (id, printerData) => apiPut(`/api/impressoras/${id}`, printerData);
 export const deletarImpressora = (id) => apiDelete(`/api/impressoras/${id}`);
+export const pingImpressora = (id) => apiPost(`/api/impressoras/${id}/ping`, {});
 
 // --- ROTAS DE LINKS UTEIS ---
 export const listarLinks = () => apiGet('/api/links');
@@ -125,3 +126,24 @@ export const deletarZebraCota = (id) => apiDelete(`/api/zebra-cotas/${id}`);
 export const listarZebraEnvios = () => apiGet('/api/zebra-envios');
 export const salvarZebraEnvio = (envioData) => apiPost('/api/zebra-envios', envioData);
 export const deletarZebraEnvio = (id) => apiDelete(`/api/zebra-envios/${id}`);
+
+// --- ROTAS DE QUALIDADE: CALENDÁRIO DE RECEBIMENTO ---
+export const listarDiasRecebimento = (inicio, fim) =>
+  apiGet(`/api/qualidade/recebimentos?inicio=${inicio}&fim=${fim}`);
+export const aplicarPadraoMensal = (payload) =>
+  apiPost('/api/qualidade/recebimentos/padrao-mensal', payload);
+export const salvarDiaRecebimento = (diaData) =>
+  apiPut('/api/qualidade/recebimentos/dia', diaData);
+export const listarConflitosRecebimento = (inicio, fim) =>
+  apiGet(`/api/qualidade/recebimentos/conflitos?inicio=${inicio}&fim=${fim}`);
+
+// --- ROTAS DE QUALIDADE: INVENTÁRIOS ---
+export const listarInventarios = (inicio, fim) =>
+  apiGet(`/api/qualidade/inventarios?inicio=${inicio}&fim=${fim}`);
+export const salvarInventario = (invData) => apiPost('/api/qualidade/inventarios', invData);
+export const atualizarInventario = (id, invData) => apiPut(`/api/qualidade/inventarios/${id}`, invData);
+export const deletarInventario = (id) => apiDelete(`/api/qualidade/inventarios/${id}`);
+export const gerarPlanoInventario = (ano, mes) =>
+  apiPost(`/api/qualidade/inventarios/gerar-plano?ano=${ano}&mes=${mes}`, {});
+export const salvarPlanoInventario = (payload) =>
+  apiPost('/api/qualidade/inventarios/salvar-plano', payload);

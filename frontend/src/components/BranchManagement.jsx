@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Store, Search, MapPin, Hash, Building2, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Hash, Building2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarFiliais, salvarFilial, atualizarFilial, deletarFilial } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { grupoLabels, grupoBadge } from '../utils/qualidade.js';
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -14,7 +15,7 @@ function formatCnpj(value) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
-const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '' };
+const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '' };
 
 export function BranchManagement() {
   const { canWrite } = useAuth();
@@ -76,6 +77,7 @@ export function BranchManagement() {
       nome: branch.nome || '',
       cnpj: branch.cnpj || '',
       endereco: branch.endereco || '',
+      grupoRecebimento: branch.grupoRecebimento || '',
     });
     setFormError('');
     setShowModal(true);
@@ -97,9 +99,8 @@ export function BranchManagement() {
         numeroFilial: parseInt(form.numeroFilial, 10),
         nome: form.nome.trim(),
         endereco: form.endereco.trim(),
-        prazoChamadoSobraFalta: "12:00:00",
-        inicioRecebimento: "07:30:00",
-        fimRecebimento: "21:00:00"
+        // string vazia no select significa "não definido" — o backend espera null
+        grupoRecebimento: form.grupoRecebimento || null,
       };
 
       if (editingBranch) {
@@ -194,13 +195,14 @@ export function BranchManagement() {
                 <th className="table-header">Nome da Filial</th>
                 <th className="table-header">CNPJ</th>
                 <th className="table-header">Endereço</th>
+                <th className="table-header">Grupo Receb.</th>
                 <th className="table-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-16 text-dark-400">
+                  <td colSpan={6} className="text-center py-16 text-dark-400">
                     {isLoading ? 'Conectando ao banco de dados...' : 'Nenhuma filial encontrada.'}
                   </td>
                 </tr>
@@ -215,6 +217,15 @@ export function BranchManagement() {
                     <td className="table-cell font-semibold text-white">{branch.nome}</td>
                     <td className="table-cell font-mono text-dark-300">{branch.cnpj || '—'}</td>
                     <td className="table-cell text-dark-300">{branch.endereco || '—'}</td>
+                    <td className="table-cell">
+                      {branch.grupoRecebimento ? (
+                        <span className={`badge ${grupoBadge(branch.grupoRecebimento)}`}>
+                          {grupoLabels[branch.grupoRecebimento]}
+                        </span>
+                      ) : (
+                        <span className="badge">Não definido</span>
+                      )}
+                    </td>
                     <td className="table-cell text-right">
                       {canWrite && (
                         <div className="flex items-center justify-end gap-2">
@@ -287,6 +298,23 @@ export function BranchManagement() {
               className="input-field"
               placeholder="Ex: Av. Principal, 100"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Grupo de Recebimento</label>
+            <select
+              value={form.grupoRecebimento}
+              onChange={(e) => setForm({ ...form, grupoRecebimento: e.target.value })}
+              className="select-field"
+            >
+              <option value="">Não definido</option>
+              <option value="GRUPO_1">Grupo 1</option>
+              <option value="GRUPO_2">Grupo 2</option>
+            </select>
+            <p className="text-xs text-dark-400 mt-1.5">
+              Define em quais dias a loja recebe material. Filiais sem grupo ficam de fora do
+              planejamento de inventário da Qualidade.
+            </p>
           </div>
 
           {formError && (

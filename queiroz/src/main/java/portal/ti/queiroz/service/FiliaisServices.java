@@ -32,6 +32,7 @@ public class FiliaisServices {
             filial.setNome(filialAtualizada.getNome());
             filial.setCnpj(filialAtualizada.getCnpj());
             filial.setEndereco(filialAtualizada.getEndereco());
+            filial.setGrupoRecebimento(filialAtualizada.getGrupoRecebimento());
 
             return repository.save(filial);
         }

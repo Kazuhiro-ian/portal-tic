@@ -8,6 +8,7 @@ const roleLabels = {
   ADMIN: 'Administrador',
   TECNICO: 'Técnico',
   LEITURA: 'Leitura',
+  QUALIDADE: 'Qualidade',
 };
 
 const emptyForm = { username: '', password: '', nomeCompleto: '', role: 'TECNICO', ativo: true };
@@ -230,6 +231,7 @@ export function UsuarioManagement() {
               <option value="ADMIN">Administrador — acesso total, inclusive usuários</option>
               <option value="TECNICO">Técnico — operação do dia a dia, inclusive credenciais</option>
               <option value="LEITURA">Leitura — apenas consulta, sem acesso a credenciais</option>
+              <option value="QUALIDADE">Qualidade — planejamento de inventário; consulta no restante</option>
             </select>
           </div>
           {editingUsuario && (

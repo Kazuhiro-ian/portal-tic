@@ -1,4 +1,4 @@
-import { LayoutDashboard, Link, Printer, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Link, Printer, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const menuItems = [
@@ -10,12 +10,14 @@ const menuItems = [
   { id: 'knowledge', label: 'Conhecimento', icon: BookOpen },
   { id: 'branches', label: 'Gest. Filiais', icon: Store },
   { id: 'zebra', label: 'Insumos Zebra', icon: Tag },
+  { id: 'qualidade', label: 'Qualidade', icon: ClipboardCheck },
 ];
 
 const roleLabels = {
   ADMIN: 'Administrador',
   TECNICO: 'Técnico',
   LEITURA: 'Leitura',
+  QUALIDADE: 'Qualidade',
 };
 
 export function Sidebar({ currentView, onViewChange }) {

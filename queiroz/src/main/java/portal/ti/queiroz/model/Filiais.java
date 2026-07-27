@@ -2,7 +2,6 @@ package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalTime;
 
 @Data
 @Entity
@@ -24,4 +23,16 @@ public class Filiais {
 
     @Column(nullable = false)
     private String endereco;
+
+    /**
+     * Grupo de recebimento da loja, usado pelo módulo de Qualidade para saber
+     * em quais dias ela recebe material (e portanto não pode inventariar).
+     *
+     * NULLABLE de propósito: ddl-auto=update não consegue adicionar uma coluna
+     * NOT NULL em tabela já populada — isso derrubaria o boot da aplicação inteira.
+     * Filial sem grupo é tratada como "não planejável" e sinalizada na UI.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "grupo_recebimento")
+    private GrupoRecebimento grupoRecebimento;
 }

@@ -12,6 +12,7 @@ import { KnowledgeBase } from './components/KnowledgeBase.jsx';
 import { ZebraSupplies } from './components/ZebraSupplies.jsx';
 import { BranchManagement } from './components/BranchManagement.jsx';
 import { UsuarioManagement } from './components/UsuarioManagement.jsx';
+import { QualityPlanning } from './components/QualityPlanning.jsx';
 import { LoginPage } from './components/LoginPage.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
@@ -43,6 +44,8 @@ function App() {
         return <ZebraSupplies />;
       case 'branches':
         return <BranchManagement />;
+      case 'qualidade':
+        return <QualityPlanning />;
       case 'usuarios':
         return isAdmin ? <UsuarioManagement /> : <Dashboard />;
       default:
@@ -51,7 +54,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-900 flex">
+    <div className="h-screen bg-dark-900 flex overflow-hidden">
       {/* Overlay Escuro para Mobile */}
       <div
         className={`fixed inset-0 bg-black/50 z-40 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}

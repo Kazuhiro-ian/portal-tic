@@ -45,7 +45,11 @@ export function AuthProvider({ children }) {
     logout,
     hasRole,
     isAdmin: user?.role === 'ADMIN',
-    canWrite: !!user && user.role !== 'LEITURA',
+    // Allowlist, e não "diferente de LEITURA": o papel QUALIDADE escreve apenas em
+    // /api/qualidade/**, então liberá-lo aqui mostraria botões que o backend recusa com 403.
+    canWrite: ['ADMIN', 'TECNICO'].includes(user?.role),
+    canWriteQualidade: ['ADMIN', 'TECNICO', 'QUALIDADE'].includes(user?.role),
+    isQualidade: user?.role === 'QUALIDADE',
   }), [user, token, login, logout, hasRole]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
