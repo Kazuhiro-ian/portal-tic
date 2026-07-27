@@ -2,13 +2,9 @@ package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-
 import java.time.LocalDate;
+import java.time.LocalTime;
 
-/**
- * Inventário planejado de uma filial. Cada filial faz um por mês, e nunca em um dia
- * em que ela recebe material (ver InventarioService).
- */
 @Data
 @Entity
 @Table(name = "inventarios")
@@ -24,18 +20,16 @@ public class Inventario {
     @Column(nullable = false)
     private LocalDate data;
 
+    @Column(name = "horario_inicio")
+    private LocalTime horarioInicio;
+    
+    @Column(name = "horario_fim")
+    private LocalTime horarioFim;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatusInventario status;
 
-    /**
-     * Dia-do-mês DESEJADO da filial — a âncora usada pelo gerador do plano para
-     * repetir o mesmo dia mês a mês.
-     *
-     * Guarda o dia pretendido, não o efetivamente usado: se um conflito de recebimento
-     * empurrou o inventário do dia 12 para o 13, este campo continua 12. Sem isso, o
-     * deslocamento pontual viraria o novo padrão permanente da loja (deriva mês a mês).
-     */
     @Column(name = "dia_preferencial")
     private Integer diaPreferencial;
 

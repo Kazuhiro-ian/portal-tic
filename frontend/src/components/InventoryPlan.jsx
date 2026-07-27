@@ -11,7 +11,7 @@ import {
 import { toISO, formatarBR, limitesDoMes, diasNoMes } from '../utils/datas.js';
 import { grupoLabels, grupoBadge, MOTIVOS, STATUS_INVENTARIO as STATUS } from '../utils/qualidade.js';
 
-const emptyForm = { filialId: '', data: '', status: 'PLANEJADO', responsavel: '', observacao: '' };
+const emptyForm = { filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO', responsavel: '', observacao: '' };
 
 export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos }) {
   const [filiais, setFiliais] = useState([]);
@@ -143,6 +143,8 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     setForm({
       filialId: String(inv.filialId),
       data: inv.data,
+      horarioInicio: inv.horarioInicio || '',
+      horarioFim: inv.horarioFim || '',
       status: inv.status,
       responsavel: inv.responsavel || '',
       observacao: inv.observacao || '',
@@ -165,6 +167,8 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       const payload = {
         filialId: Number(form.filialId),
         data: form.data,
+        horarioInicio: form.horarioInicio || null,
+        horarioFim: form.horarioFim || null,
         status: form.status,
         responsavel: form.responsavel.trim() || null,
         observacao: form.observacao.trim() || null,
@@ -508,6 +512,27 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               onChange={(e) => { setForm({ ...form, data: e.target.value }); setFormError(''); }}
               className="input-field"
             />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">Horário de início</label>
+              <input
+                type="time"
+                value={form.horarioInicio}
+                onChange={(e) => setForm({ ...form, horarioInicio: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-300 mb-2">Horário de término</label>
+              <input
+                type="time"
+                value={form.horarioFim}
+                onChange={(e) => setForm({ ...form, horarioFim: e.target.value })}
+                className="input-field"
+              />
+            </div>
           </div>
 
           <div>

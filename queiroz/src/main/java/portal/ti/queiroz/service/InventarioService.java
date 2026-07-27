@@ -48,6 +48,8 @@ public class InventarioService {
         inventario.setResponsavel(atualizado.getResponsavel());
         inventario.setObservacao(atualizado.getObservacao());
         inventario.setDiaPreferencial(atualizado.getDiaPreferencial());
+        inventario.setHorarioInicio(atualizado.getHorarioInicio());
+        inventario.setHorarioFim(atualizado.getHorarioFim());
 
         prepararEValidar(inventario, id);
         return repository.save(inventario);
@@ -72,6 +74,9 @@ public class InventarioService {
         }
         if (inventario.getData() == null) {
             throw new RegraDeNegocioException("Informe a data do inventário.");
+        }
+        if (inventario.getHorarioInicio() != null && inventario.getHorarioFim() != null && !inventario.getHorarioFim().isAfter(inventario.getHorarioInicio())) {
+            throw new RegraDeNegocioException("O horário do término deve ser depois do horário de início");
         }
         if (inventario.getStatus() == null) {
             inventario.setStatus(StatusInventario.PLANEJADO);

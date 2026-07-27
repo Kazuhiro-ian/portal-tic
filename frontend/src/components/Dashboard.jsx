@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag } from 'lucide-react';
+import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
-import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios } from '../services/api.js';
+import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento } from '../services/api.js';
+import { toISO } from '../utils/datas.js';
 
 export function Dashboard() {
   const [printers, setPrinters] = useState([]);
@@ -12,6 +13,8 @@ export function Dashboard() {
   const [branchQuotas, setBranchQuotas] = useState([]);
   const [zebraDistributions, setZebraDistributions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [qualidadeInventarios, setQualidadeInventarios] = useState([]);
+  const [qualidadeDiasRecebimento, setQualidadeDiasRecebimento] = useState([]);
 
   // "Avisos" ainda não tem entidade própria no backend — permanece no localStorage por enquanto.
   const [links] = useLocalStorage('ithub_links', []);
@@ -25,14 +28,22 @@ export function Dashboard() {
 
   const carregarDados = async () => {
     try {
+      const hoje = new Date();
+      const amanha = new Date(hoje);
+      amanha.setDate(amanha.getDate() + 1);
+      const hojeISO = toISO(hoje);
+      const amanhaISO = toISO(amanha);
+
       setIsLoading(true);
-      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData] = await Promise.all([
+      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData] = await Promise.all([
         listarImpressoras(),
         listarEstoqueItens(),
         listarColaboradores(),
         listarFiliais(),
         listarZebraCotas(),
         listarZebraEnvios(),
+        listarInventarios(hojeISO, amanhaISO),
+        listarDiasRecebimento(hojeISO, amanhaISO),
       ]);
       setPrinters(impressorasData);
       setStock(estoqueData);
@@ -40,6 +51,8 @@ export function Dashboard() {
       setBranches(filiaisData);
       setBranchQuotas(cotasData);
       setZebraDistributions(enviosData);
+      setQualidadeInventarios(inventariosData);
+      setQualidadeDiasRecebimento(diasRecebimentoData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -54,6 +67,71 @@ export function Dashboard() {
   const todayEmployees = employees.filter((e) =>
     (e.workingDays || []).some((d) => d.toLowerCase() === todayName.toLowerCase())
   );
+
+  const hojeISO = toISO(new Date());
+  const amanhaData = new Date();
+  amanhaData.setDate(amanhaData.getDate() + 1);
+  const amanhaISO = toISO(amanhaData);
+
+  const inventariosHoje = qualidadeInventarios.filter((i) => i.data === hojeISO && i.status !== 'CANCELADO');
+  const inventariosAmanha = qualidadeInventarios.filter((i) => i.data === amanhaISO && i.status !== 'CANCELADO');
+  const nomeInventariosAmanha = inventariosAmanha.map((inv) => {
+    const filial = branches.find((b) => b.id === inv.filialId);
+    return filial ? `${filial.numeroFilial} - ${filial.nome}` : `Filial #${inv.filialId}`;
+  }).join(', ');
+
+  const diaRecebimentoHoje = qualidadeDiasRecebimento.find((d) => d.data === hojeISO);
+  const diaRecebimentoAmanha = qualidadeDiasRecebimento.find((d) => d.data === amanhaISO);
+
+  const contarLojasDoGrupo = (tipo) => {
+    if (!tipo || tipo === 'SEM_PEDIDOS') return 0;
+    return branches.filter((b) => b.grupoRecebimento === tipo).length;
+  };
+
+  const recebimentoHojeQtd = contarLojasDoGrupo(diaRecebimentoHoje?.tipo);
+  const recebimentoAmanhaQtd = contarLojasDoGrupo(diaRecebimentoAmanha?.tipo);
+
+  const rotuloTipoDia = (tipo) => {
+    if (!tipo) return 'não configurado';
+    if (tipo === 'SEM_PEDIDOS') return 'sem pedidos';
+    return tipo === 'GRUPO_1' ? 'Grupo 1' : 'Grupo 2';
+  };
+
+  const formatarHora = (horario) => (horario ? horario.slice(0, 5) : null);
+
+  const statusExibicaoInventario = (inv) => {
+    if (inv.status === 'CANCELADO') {
+      return { texto: 'Cancelado', cor: 'text-dark-400' };
+    }
+    if (inv.status === 'REALIZADO') {
+      const intervalo = inv.horarioInicio && inv.horarioFim
+        ? ` (${formatarHora(inv.horarioInicio)} – ${formatarHora(inv.horarioFim)})`
+        : '';
+      return { texto: `Realizado${intervalo}`, cor: 'text-primary-400' };
+    }
+    if (!inv.horarioInicio) {
+      return { texto: 'Horário não definido', cor: 'text-dark-400' };
+    }
+
+    const agora = new Date();
+    const agoraMinutos = agora.getHours() * 60 + agora.getMinutes();
+    const [hIni, mIni] = inv.horarioInicio.split(':').map(Number);
+    const inicioMinutos = hIni * 60 + mIni;
+
+    if (agoraMinutos < inicioMinutos) {
+      return { texto: `Começa às ${formatarHora(inv.horarioInicio)}`, cor: 'text-amber-400' };
+    }
+
+    if (inv.horarioFim) {
+      const [hFim, mFim] = inv.horarioFim.split(':').map(Number);
+      const fimMinutos = hFim * 60 + mFim;
+      if (agoraMinutos > fimMinutos) {
+        return { texto: `Deveria terminar às ${formatarHora(inv.horarioFim)}`, cor: 'text-red-400' };
+      }
+    }
+
+    return { texto: `Em andamento (desde ${formatarHora(inv.horarioInicio)})`, cor: 'text-green-400' };
+  };
 
   const zebraPendingBranches = (() => {
     const today = new Date();
@@ -129,7 +207,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
         <div className="metric-card">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center">
@@ -182,7 +260,7 @@ export function Dashboard() {
           <p className="text-xs text-dark-400 mt-2">{notices.filter((n) => n.priority === 'high').length} urgentes</p>
         </div>
 
-        <div className={`metric-card sm:col-span-2 lg:col-span-1 ${zebraPendingBranches.length > 0 ? 'border-accent-500/40 bg-accent-500/5' : ''}`}>
+        <div className={`metric-card ${zebraPendingBranches.length > 0 ? 'border-accent-500/40 bg-accent-500/5' : ''}`}>
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${zebraPendingBranches.length > 0 ? 'bg-accent-500/20' : 'bg-dark-700'}`}>
               <Tag className={`w-6 h-6 ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-dark-400'}`} />
@@ -193,6 +271,21 @@ export function Dashboard() {
             </div>
           </div>
           <p className="text-xs text-dark-400 mt-2">{branchQuotas.length} filiais cadastradas</p>
+        </div>
+
+        <div className="metric-card">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center">
+              <Truck className="w-6 h-6 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">{isLoading ? '—' : recebimentoHojeQtd}</p>
+              <p className="text-sm text-dark-400">Recebimento Hoje ({rotuloTipoDia(diaRecebimentoHoje?.tipo)})</p>
+            </div>
+          </div>
+          <p className="text-xs text-dark-400 mt-2">
+            Amanhã: {isLoading ? '—' : recebimentoAmanhaQtd} ({rotuloTipoDia(diaRecebimentoAmanha?.tipo)})
+          </p>
         </div>
       </div>
 
@@ -212,6 +305,39 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <ClipboardCheck className="w-5 h-5 text-blue-400" />
+            Inventários de Hoje
+          </h2>
+          <span className="text-sm text-dark-400">
+            Amanhã: {isLoading ? '—' : (inventariosAmanha.length === 0 ? 'nenhum' : nomeInventariosAmanha)}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          {isLoading ? (
+            <p className="text-dark-400 text-center py-8">Carregando...</p>
+          ) : inventariosHoje.length === 0 ? (
+            <p className="text-dark-400 text-center py-8">Nenhum inventário agendado para hoje.</p>
+          ) : (
+            inventariosHoje.map((inv) => {
+              const filial = branches.find((b) => b.id === inv.filialId);
+              const statusInfo = statusExibicaoInventario(inv);
+              return (
+                <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg bg-dark-700/50 border border-dark-600">
+                  <p className="text-sm font-medium text-white">
+                    {filial ? `${filial.numeroFilial} — ${filial.nome}` : `Filial #${inv.filialId}`}
+                  </p>
+                  <p className={`text-sm font-medium ${statusInfo.cor}`}>{statusInfo.texto}</p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">

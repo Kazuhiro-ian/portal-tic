@@ -76,8 +76,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/api/credenciais/**").hasAnyRole("ADMIN", "TECNICO")
-                        // Precisa vir ANTES do matcher genérico de GET: senão o GET cairia na regra
-                        // ampla e a escrita cairia em ADMIN/TECNICO, barrando o papel QUALIDADE.
+                        // GET de leitura no módulo Qualidade segue a mesma regra do resto do sistema
+                        // (LEITURA também pode ver, ex.: os cards de inventário/recebimento do Dashboard).
+                        .requestMatchers(HttpMethod.GET, "/api/qualidade/**").hasAnyRole("ADMIN", "TECNICO", "LEITURA", "QUALIDADE")
+                        // Escrita no módulo Qualidade: precisa vir ANTES do matcher genérico de GET,
+                        // senão o GET cairia na regra ampla e a escrita cairia em ADMIN/TECNICO,
+                        // barrando o papel QUALIDADE.
                         .requestMatchers("/api/qualidade/**").hasAnyRole("ADMIN", "TECNICO", "QUALIDADE")
                         // QUALIDADE entra aqui porque o módulo precisa ler /api/filiais para montar
                         // os selects. A escrita fora de /api/qualidade/** continua negada abaixo.
