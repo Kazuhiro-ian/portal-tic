@@ -156,3 +156,9 @@ export const gerarPlanoInventario = (ano, mes) =>
   apiPost(`/api/qualidade/inventarios/gerar-plano?ano=${ano}&mes=${mes}`, {});
 export const salvarPlanoInventario = (payload) =>
   apiPost('/api/qualidade/inventarios/salvar-plano', payload);
+
+// --- ROTAS DE EQUIPES DE INVENTÁRIO ---
+export const listarEquipesInventario = () => apiGet('/api/qualidade/equipes');
+export const salvarEquipeInventario = (equipeData) => apiPost('/api/qualidade/equipes', equipeData);
+export const atualizarEquipeInventario = (id, equipeData) => apiPut(`/api/qualidade/equipes/${id}`, equipeData);
+export const deletarEquipeInventario = (id) => apiDelete(`/api/qualidade/equipes/${id}`);

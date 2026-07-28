@@ -5,9 +5,18 @@
 export const grupoLabels = {
   GRUPO_1: 'Grupo 1',
   GRUPO_2: 'Grupo 2',
+  CD: 'CD',
+  BV: 'BV',
 };
 
-export const grupoBadge = (grupo) => (grupo === 'GRUPO_1' ? 'badge-info' : 'badge-warning');
+const GRUPO_BADGES = {
+  GRUPO_1: 'badge-info',
+  GRUPO_2: 'badge-warning',
+  CD: 'badge-success',
+  BV: 'badge-danger',
+}
+
+export const grupoBadge = (grupo) => GRUPO_BADGES[grupo] || 'badge-info';
 
 export const TIPOS_DIA = {
   GRUPO_1: {

@@ -303,6 +303,8 @@ export function BranchManagement() {
               <option value="">Não definido</option>
               <option value="GRUPO_1">Grupo 1</option>
               <option value="GRUPO_2">Grupo 2</option>
+              <option value="CD">CD</option>
+              <option value="BV">BV</option>
             </select>
             <p className="text-xs text-dark-400 mt-1.5">
               Define em quais dias a loja recebe material. Filiais sem grupo ficam de fora do

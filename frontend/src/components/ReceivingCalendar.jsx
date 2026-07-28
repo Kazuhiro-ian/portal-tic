@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { listarDiasRecebimento, aplicarPadraoMensal, salvarDiaRecebimento } from '../services/api.js';
 import { toISO, formatarBR, limitesDoMes, diasNoMes, DIAS_SEMANA } from '../utils/datas.js';
 import { TIPOS_DIA } from '../utils/qualidade.js';
+import { useToast } from '../hooks/useToast.js';
 
 const padraoVazio = () =>
   DIAS_SEMANA.reduce((acc, d) => ({ ...acc, [d.java]: 'SEM_PEDIDOS' }), {});

@@ -3,12 +3,14 @@ import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X, ClipboardCheck
 import { useAuth } from '../context/AuthContext.jsx';
 import { ReceivingCalendar } from './ReceivingCalendar.jsx';
 import { InventoryPlan } from './InventoryPlan.jsx';
+import { EquipeInventarioManagement } from './EquipeInventarioManagement.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 
 const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
   { id: 'plano', label: 'Plano de Inventário' },
+  { id: 'equipes', label: 'Equipes' },
 ];
 
 export function QualityPlanning() {
@@ -99,7 +101,7 @@ export function QualityPlanning() {
           showToast={showToast}
           onCalendarioMudou={setConflitosExternos}
         />
-      ) : (
+      ) : aba === 'plano' ? (
         <InventoryPlan
           ano={ano}
           mes={mes}
@@ -107,6 +109,8 @@ export function QualityPlanning() {
           showToast={showToast}
           conflitosExternos={conflitosExternos}
         />
+      ) : (
+        <EquipeInventarioManagement />
       )}
     </div>
   );

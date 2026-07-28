@@ -9,5 +9,7 @@ package portal.ti.queiroz.model;
  */
 public enum GrupoRecebimento {
     GRUPO_1,
-    GRUPO_2
+    GRUPO_2,
+    CD,
+    BV
 }
