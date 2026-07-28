@@ -51,3 +51,26 @@ export const STATUS_INVENTARIO = {
   REALIZADO: { label: 'Realizado', badge: 'badge-success' },
   CANCELADO: { label: 'Cancelado', badge: 'badge-danger' },
 };
+
+export const TIPOS_DIA_EQUIPE = {
+  DSR: {
+    label: 'DSR',
+    badge: 'badge-info',
+    celula: 'bg-blue-500/15 border-blue-500/40 text-blue-200',
+  },
+  FOLGA: {
+    label: 'Folga',
+    badge: 'badge-success',
+    celula: 'bg-primary-500/15 border-primary-500/40 text-primary-200',
+  },
+  REUNIAO: {
+    label: 'Reunião',
+    badge: 'badge-warning',
+    celula: 'bg-amber-500/15 border-amber-500/40 text-amber-200',
+  },
+  FERIADO: {
+    label: 'Feriado',
+    badge: 'badge-danger',
+    celula: 'bg-red-500/15 border-red-500/40 text-red-200',
+  },
+};

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { ReceivingCalendar } from './ReceivingCalendar.jsx';
 import { InventoryPlan } from './InventoryPlan.jsx';
 import { EquipeInventarioManagement } from './EquipeInventarioManagement.jsx';
+import { EquipeCalendarManagement } from './EquipeCalendarManagement.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 
@@ -11,6 +12,7 @@ const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
   { id: 'plano', label: 'Plano de Inventário' },
   { id: 'equipes', label: 'Equipes' },
+  { id: 'equipe-calendario', label: 'Calendário da Equipe' },
 ];
 
 export function QualityPlanning() {
@@ -109,9 +111,16 @@ export function QualityPlanning() {
           showToast={showToast}
           conflitosExternos={conflitosExternos}
         />
-      ) : (
+      ) : aba === 'equipes' ? (
         <EquipeInventarioManagement />
-      )}
+      ) : (
+        <EquipeCalendarManagement
+              ano={ano}
+              mes={mes}
+              canWrite={canWriteQualidade}
+              showToast={showToast}
+            />
+          )}
     </div>
   );
 }

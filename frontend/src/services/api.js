@@ -162,3 +162,9 @@ export const listarEquipesInventario = () => apiGet('/api/qualidade/equipes');
 export const salvarEquipeInventario = (equipeData) => apiPost('/api/qualidade/equipes', equipeData);
 export const atualizarEquipeInventario = (id, equipeData) => apiPut(`/api/qualidade/equipes/${id}`, equipeData);
 export const deletarEquipeInventario = (id) => apiDelete(`/api/qualidade/equipes/${id}`);
+
+// --- ROTAS DE CALENDÁRIO DA EQUIPE (DSR/FOLGA/REUNIÃO/FERIADO) ---
+export const listarDiasEquipe = (inicio, fim) =>
+  apiGet(`/api/qualidade/equipe-calendario?inicio=${inicio}&fim=${fim}`);
+export const alternarDiaEquipe = (diaData) =>
+  apiPut('/api/qualidade/equipe-calendario/dia', diaData);

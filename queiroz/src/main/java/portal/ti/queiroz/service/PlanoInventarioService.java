@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import portal.ti.queiroz.dto.*;
 import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.*;
+import portal.ti.queiroz.repository.DiaEquipeRepository;
 import portal.ti.queiroz.repository.DiaRecebimentoRepository;
 import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
@@ -20,7 +21,8 @@ import java.util.stream.Collectors;
  * Gera a proposta de plano mensal de inventários.
  *
  * Critério definido pelo setor de Qualidade: repetir o mesmo dia do mês anterior,
- * deslocando apenas quando a data bater com um dia de recebimento do grupo da filial.
+ * deslocando apenas quando a data bater com um dia de recebimento do grupo da filial
+ * ou com um dia marcado no Calendário da Equipe (DSR/Folga/Reunião/Feriado).
  */
 @Service
 public class PlanoInventarioService {
@@ -36,6 +38,9 @@ public class PlanoInventarioService {
     @Autowired
     private DiaRecebimentoRepository diaRecebimentoRepository;
 
+    @Autowired
+    private DiaEquipeRepository diaEquipeRepository;
+
     // ------------------------------------------------------------------
     // Geração da proposta (nada é persistido aqui)
     // ------------------------------------------------------------------
@@ -45,6 +50,7 @@ public class PlanoInventarioService {
         YearMonth anterior = alvo.minusMonths(1);
 
         Map<LocalDate, TipoDiaRecebimento> calendario = calendarioDe(alvo);
+        Set<LocalDate> diasEquipe = diasBloqueadosPelaEquipe(alvo);
         List<String> avisos = new ArrayList<>();
 
         if (calendario.isEmpty()) {
@@ -87,12 +93,12 @@ public class PlanoInventarioService {
                 continue;
             }
 
-            List<LocalDate> validos = diasValidos(alvo, filial.getGrupoRecebimento(), calendario);
+            List<LocalDate> validos = diasValidos(alvo, filial.getGrupoRecebimento(), calendario, diasEquipe);
 
             if (validos.isEmpty()) {
                 itens.add(new PropostaInventario(filial.getId(), filial.getNumeroFilial(), filial.getNome(),
                         filial.getGrupoRecebimento(), null, dataAtual, null, MotivoProposta.SEM_DIA_VALIDO,
-                        "Nenhum dia de %02d/%d está livre para o %s — revise o padrão de recebimento."
+                        "Nenhum dia de %02d/%d está livre para o %s — revise o padrão de recebimento ou o Calendário da Equipe."
                                 .formatted(alvo.getMonthValue(), alvo.getYear(),
                                         RecebimentoService.rotulo(filial.getGrupoRecebimento())),
                         false));
@@ -103,7 +109,7 @@ public class PlanoInventarioService {
 
             PropostaInventario proposta = (ancora == null)
                     ? semear(filial, alvo, validos, carga, dataAtual)
-                    : repetirAncora(filial, alvo, ancora, validos, calendario, dataAtual);
+                    : repetirAncora(filial, alvo, ancora, validos, calendario, diasEquipe, dataAtual);
 
             if (proposta.dataSugerida() != null) {
                 carga.merge(proposta.dataSugerida(), 1, Integer::sum);
@@ -150,12 +156,13 @@ public class PlanoInventarioService {
     private PropostaInventario repetirAncora(Filiais filial, YearMonth alvo, int ancora,
                                              List<LocalDate> validos,
                                              Map<LocalDate, TipoDiaRecebimento> calendario,
+                                             Set<LocalDate> diasEquipe,
                                              LocalDate dataAtual) {
         int ultimoDia = alvo.lengthOfMonth();
         boolean mesCurto = ancora > ultimoDia;
         LocalDate candidata = alvo.atDay(Math.min(ancora, ultimoDia));
 
-        if (diaLivre(candidata, filial.getGrupoRecebimento(), calendario)) {
+        if (diaLivre(candidata, filial.getGrupoRecebimento(), calendario, diasEquipe)) {
             MotivoProposta motivo = mesCurto ? MotivoProposta.AJUSTADO_MES_CURTO : MotivoProposta.MANTIDO;
             String descricao = mesCurto
                     ? "Dia %d não existe em %02d/%d — ajustado para o último dia do mês."
@@ -166,7 +173,7 @@ public class PlanoInventarioService {
                     filial.getGrupoRecebimento(), candidata, dataAtual, ancora, motivo, descricao, true);
         }
 
-        LocalDate encontrada = buscarMaisProxima(candidata, alvo, filial.getGrupoRecebimento(), calendario);
+        LocalDate encontrada = buscarMaisProxima(candidata, alvo, filial.getGrupoRecebimento(), calendario, diasEquipe);
 
         if (encontrada == null) {
             // A lista de dias válidos não é vazia (já checado), então isto é defensivo.
@@ -175,20 +182,18 @@ public class PlanoInventarioService {
 
         return new PropostaInventario(filial.getId(), filial.getNumeroFilial(), filial.getNome(),
                 filial.getGrupoRecebimento(), encontrada, dataAtual, ancora, MotivoProposta.DESLOCADO,
-                "Dia %d é recebimento do %s — movido para %s."
-                        .formatted(candidata.getDayOfMonth(),
-                                RecebimentoService.rotulo(filial.getGrupoRecebimento()),
-                                encontrada.format(BR)),
+                "Dia %d é recebimento do grupo ou está marcado no Calendário da Equipe — movido para %s."
+                        .formatted(candidata.getDayOfMonth(), encontrada.format(BR)),
                 true);
     }
 
     /** Busca em espiral a partir da candidata: +1, -1, +2, -2… sem sair do mês. */
     private LocalDate buscarMaisProxima(LocalDate candidata, YearMonth alvo, GrupoRecebimento grupo,
-                                        Map<LocalDate, TipoDiaRecebimento> calendario) {
+                                        Map<LocalDate, TipoDiaRecebimento> calendario, Set<LocalDate> diasEquipe) {
         for (int offset = 1; offset <= alvo.lengthOfMonth(); offset++) {
             for (int sinal : new int[]{1, -1}) {
                 LocalDate tentativa = candidata.plusDays((long) offset * sinal);
-                if (YearMonth.from(tentativa).equals(alvo) && diaLivre(tentativa, grupo, calendario)) {
+                if (YearMonth.from(tentativa).equals(alvo) && diaLivre(tentativa, grupo, calendario, diasEquipe)) {
                     return tentativa;
                 }
             }
@@ -215,6 +220,7 @@ public class PlanoInventarioService {
         }
 
         Map<LocalDate, TipoDiaRecebimento> calendario = calendarioDe(alvo);
+        Set<LocalDate> diasEquipe = diasBloqueadosPelaEquipe(alvo);
         Map<Long, Inventario> existentes = porFilial(alvo);
         Map<Long, Filiais> filiais = filiaisRepository.findAll().stream()
                 .collect(Collectors.toMap(Filiais::getId, f -> f));
@@ -252,9 +258,9 @@ public class PlanoInventarioService {
                 continue;
             }
 
-            if (!diaLivre(item.data(), filial.getGrupoRecebimento(), calendario)) {
+            if (!diaLivre(item.data(), filial.getGrupoRecebimento(), calendario, diasEquipe)) {
                 throw new RegraDeNegocioException(
-                        "A filial %s - %s pertence ao %s e recebe material em %s. Ajuste a data antes de salvar o plano."
+                        "A filial %s - %s pertence ao %s ou o dia está marcado no Calendário da Equipe (%s). Ajuste a data antes de salvar o plano."
                                 .formatted(filial.getNumeroFilial(), filial.getNome(),
                                         RecebimentoService.rotulo(filial.getGrupoRecebimento()),
                                         item.data().format(BR)));
@@ -333,19 +339,35 @@ public class PlanoInventarioService {
                 : anterior.getData().getDayOfMonth();
     }
 
-    /** Um dia sem linha no calendário é tratado como sem restrição conhecida. */
+    /**
+     * Datas do mês marcadas no Calendário da Equipe (DSR, Folga, Reunião ou Feriado) —
+     * qualquer marcação bloqueia o dia igualmente, não importa o tipo.
+     */
+    private Set<LocalDate> diasBloqueadosPelaEquipe(YearMonth mes) {
+        return diaEquipeRepository.findByDataBetween(mes.atDay(1), mes.atEndOfMonth())
+                .stream()
+                .map(DiaEquipe::getData)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Um dia é livre quando não é dia de recebimento do grupo da filial E não está
+     * marcado no Calendário da Equipe.
+     */
     private boolean diaLivre(LocalDate data, GrupoRecebimento grupo,
-                             Map<LocalDate, TipoDiaRecebimento> calendario) {
+                             Map<LocalDate, TipoDiaRecebimento> calendario, Set<LocalDate> diasEquipe) {
         TipoDiaRecebimento tipo = calendario.get(data);
-        return tipo == null || !tipo.name().equals(grupo.name());
+        boolean livreRecebimento = tipo == null || !tipo.name().equals(grupo.name());
+        boolean livreEquipe = !diasEquipe.contains(data);
+        return livreRecebimento && livreEquipe;
     }
 
     private List<LocalDate> diasValidos(YearMonth mes, GrupoRecebimento grupo,
-                                        Map<LocalDate, TipoDiaRecebimento> calendario) {
+                                        Map<LocalDate, TipoDiaRecebimento> calendario, Set<LocalDate> diasEquipe) {
         List<LocalDate> dias = new ArrayList<>();
         for (int d = 1; d <= mes.lengthOfMonth(); d++) {
             LocalDate data = mes.atDay(d);
-            if (diaLivre(data, grupo, calendario)) {
+            if (diaLivre(data, grupo, calendario, diasEquipe)) {
                 dias.add(data);
             }
         }
