@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight, Package, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight, Package, CheckCircle2, AlertCircle, X, Laptop, Smartphone, KeyRound } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { StockDispatch } from './StockDispatch.jsx';
 import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
@@ -10,6 +10,9 @@ const categoryInfo = {
   peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
   storage: { label: 'Armazenamento e Memória', icon: HardDrive, bgClass: 'bg-accent-500/20', textClass: 'text-accent-400' },
   consumables: { label: 'Consumíveis de Impressão', icon: Printer, bgClass: 'bg-brand-500/20', textClass: 'text-brand-400' },
+  notebooks: { label: 'Notebooks', icon: Laptop, bgClass: 'bg-blue-500/20', textClass: 'text-blue-400' },
+  celulares: { label: 'Celulares Corporativos', icon: Smartphone, bgClass: 'bg-emerald-500/20', textClass: 'text-emerald-400' },
+  licencas: { label: 'Licenças de Software', icon: KeyRound, bgClass: 'bg-amber-500/20', textClass: 'text-amber-400' },
 };
 
 const emptyForm = {
@@ -19,9 +22,11 @@ const emptyForm = {
   quantity: 0,
   minQuantity: 5,
   location: '',
+  serialNumber: '',
+  responsavel: '',
 };
 
-export function StockDashboard({ movements, setMovements }) {
+export function StockDashboard() {
   const { canWrite } = useAuth();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +82,8 @@ export function StockDashboard({ movements, setMovements }) {
         quantity: item.quantity || 0,
         minQuantity: item.minQuantity || 0,
         location: item.location || '',
+        serialNumber: item.serialNumber || '',
+        responsavel: item.responsavel || '',
       });
     } else {
       setEditingItem(null);
@@ -121,17 +128,22 @@ export function StockDashboard({ movements, setMovements }) {
     }
   };
 
+  // Os steppers +/- passam pelo mesmo fluxo do "Ajuste Rápido" (salvarMovimento) em vez de
+  // atualizar a quantidade direto -- assim toda mudança de estoque gera um registro de
+  // movimentação, sem um segundo caminho "silencioso" de alterar a quantidade sem rastro.
   const adjustQuantity = async (item, delta) => {
-    const newQuantity = Math.max(0, item.quantity + delta);
-    
-    // Otimista (atualiza na tela na hora)
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, quantity: newQuantity } : i)));
-
     try {
-      await atualizarEstoqueItem(item.id, { ...item, quantity: newQuantity });
+      await salvarMovimento({
+        itemId: item.id.toString(),
+        itemName: item.name,
+        type: delta > 0 ? 'IN' : 'OUT',
+        quantity: 1,
+        destination: delta > 0 ? 'Ajuste rápido (+)' : 'Ajuste rápido (-)',
+        date: new Date().toISOString().substring(0, 19),
+      });
+      await carregarEstoque();
     } catch (error) {
-      showToast('Erro ao atualizar quantidade no banco.', 'error');
-      carregarEstoque(); // Reverte caso dê erro
+      showToast(error.message || 'Erro ao ajustar quantidade.', 'error');
     }
   };
 
@@ -158,13 +170,9 @@ export function StockDashboard({ movements, setMovements }) {
       return;
     }
 
-    const newQuantity = adjustData.type === 'IN' ? adjustItem.quantity + qty : adjustItem.quantity - qty;
-
     try {
-      // 1. Atualiza a quantidade no banco
-      await atualizarEstoqueItem(adjustItem.id, { ...adjustItem, quantity: newQuantity });
-
-      // 2. Dispara o POST salvando o histórico real de movimentação
+      // Uma única chamada: o backend decrementa/incrementa o item E grava o movimento
+      // na mesma transação -- não precisamos mais chamar atualizarEstoqueItem à parte.
       const movement = {
         itemId: adjustItem.id.toString(),
         itemName: adjustItem.name,
@@ -174,14 +182,14 @@ export function StockDashboard({ movements, setMovements }) {
         date: new Date().toISOString().substring(0, 19),
         notes: adjustData.notes.trim() || null,
       };
-      
+
       await salvarMovimento(movement);
 
       showToast('Ajuste de estoque realizado e registrado com sucesso!');
       await carregarEstoque();
       setShowAdjustModal(false);
     } catch (error) {
-      setAdjustError('Erro de comunicação com o servidor ao salvar o ajuste.');
+      setAdjustError(error.message || 'Erro de comunicação com o servidor ao salvar o ajuste.');
     }
   };
 
@@ -248,11 +256,7 @@ export function StockDashboard({ movements, setMovements }) {
       </div>
 
       {activeTab === 'dispatch' ? (
-        <StockDispatch
-          items={items}
-          movements={movements}
-          setMovements={setMovements}
-        />
+        <StockDispatch items={items} onAtualizado={carregarEstoque} />
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -498,6 +502,26 @@ export function StockDashboard({ movements, setMovements }) {
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               className="input-field"
               placeholder="Ex: Prateleira A1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Número de Série (opcional)</label>
+            <input
+              type="text"
+              value={formData.serialNumber}
+              onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+              className="input-field"
+              placeholder="Ex: SN-A1B2C3D4"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Responsável (opcional)</label>
+            <input
+              type="text"
+              value={formData.responsavel}
+              onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
+              className="input-field"
+              placeholder="Ex: João Silva"
             />
           </div>
         </div>

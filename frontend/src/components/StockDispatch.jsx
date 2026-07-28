@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
-import { listarMovimentos, salvarMovimento, atualizarEstoqueItem } from '../services/api.js';
+import { listarMovimentos, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 function SearchableSelect({ items, value, onChange }) {
@@ -85,7 +85,7 @@ function SearchableSelect({ items, value, onChange }) {
   );
 }
 
-export function StockDispatch({ items }) {
+export function StockDispatch({ items, onAtualizado }) {
   const { canWrite } = useAuth();
   const [movements, setMovements] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -143,7 +143,8 @@ export function StockDispatch({ items }) {
     try {
       setIsSubmitting(true);
 
-      // 1. Registra a saída no banco de Movimentações
+      // Uma única chamada: o backend decrementa o item e grava o movimento na mesma
+      // transação -- nada fica gravado pela metade se algo falhar no meio do caminho.
       const movement = {
         itemId: selectedItem.id.toString(),
         itemName: selectedItem.name,
@@ -153,24 +154,17 @@ export function StockDispatch({ items }) {
         date: new Date().toISOString().substring(0, 19), // ISO compatível com o LocalDateTime do Java
         notes: form.notes.trim() || null,
       };
-      
+
       await salvarMovimento(movement);
 
-      // 2. Atualiza a quantidade do item principal na API de Estoque
-      const novaQuantidade = selectedItem.quantity - qty;
-      await atualizarEstoqueItem(selectedItem.id, { ...selectedItem, quantity: novaQuantidade });
-      
-      // Atualiza a visualização local instantaneamente
-      selectedItem.quantity = novaQuantidade; 
-
-      // 3. Atualiza a tabela na tela e limpa os campos
       setSuccess(`${qty} un. de "${selectedItem.name}" enviadas para ${form.destination.trim()}.`);
       setForm({ itemId: '', quantity: 1, destination: '', notes: '' });
       await carregarMovimentos();
-      
+      await onAtualizado?.();
+
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError('Falha na comunicação com o servidor. A transação foi abortada.');
+      setError(err.message || 'Falha na comunicação com o servidor. A transação foi abortada.');
     } finally {
       setIsSubmitting(false);
     }

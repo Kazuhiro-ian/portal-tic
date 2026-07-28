@@ -21,6 +21,6 @@ public class EstoqueMovimentoController {
 
     @PostMapping
     public EstoqueMovimento criar(@RequestBody EstoqueMovimento movimento) {
-        return service.salvar(movimento);
+        return service.registrar(movimento);
     }
 }

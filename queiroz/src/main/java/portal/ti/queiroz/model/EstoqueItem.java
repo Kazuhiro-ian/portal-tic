@@ -32,4 +32,11 @@ public class EstoqueItem {
 
     @Column(name = "categoria_zebra")
     private String categoriaZebra;
+
+    // Opcionais -- suportam ativos além de consumíveis (notebooks, celulares, licenças).
+    @Column(name = "serial_number")
+    private String serialNumber;
+
+    @Column
+    private String responsavel;
 }

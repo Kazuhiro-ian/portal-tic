@@ -34,6 +34,8 @@ public class EstoqueItemService {
             item.setQuantity(itemAtualizado.getQuantity());
             item.setMinQuantity(itemAtualizado.getMinQuantity());
             item.setLocation(itemAtualizado.getLocation());
+            item.setSerialNumber(itemAtualizado.getSerialNumber());
+            item.setResponsavel(itemAtualizado.getResponsavel());
 
             return repository.save(item);
         }
