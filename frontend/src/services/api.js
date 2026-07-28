@@ -115,6 +115,9 @@ export const listarCredenciais = () => apiGet('/api/credenciais');
 export const salvarCredencial = (credData) => apiPost('/api/credenciais', credData);
 export const atualizarCredencial = (id, credData) => apiPut(`/api/credenciais/${id}`, credData);
 export const deletarCredencial = (id) => apiDelete(`/api/credenciais/${id}`);
+export const revelarSenhaCredencial = (id, acao) =>
+  apiGet(`/api/credenciais/${id}/revelar${acao ? `?acao=${acao}` : ''}`);
+export const listarAuditoriaCredenciais = () => apiGet('/api/credenciais/auditoria');
 
 // --- ROTAS DE COTAS ZEBRA ---
 export const listarZebraCotas = () => apiGet('/api/zebra-cotas');

@@ -2,8 +2,10 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.dto.CredencialResponse;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Credencial;
+import portal.ti.queiroz.model.TipoAcaoCredencial;
 import portal.ti.queiroz.repository.CredencialRepository;
 
 import java.util.List;
@@ -15,12 +17,17 @@ public class CredencialService {
     @Autowired
     private CredencialRepository repository;
 
-    public List<Credencial> listarTodas() {
-        return repository.findAll();
+    @Autowired
+    private CredencialAcessoLogService logService;
+
+    public List<CredencialResponse> listarTodas() {
+        return repository.findAll().stream().map(CredencialResponse::fromEntity).toList();
     }
 
     public Credencial salvar(Credencial credencial) {
-        return repository.save(credencial);
+        Credencial salva = repository.save(credencial);
+        logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.CRIAR);
+        return salva;
     }
 
     public Credencial atualizar(Long id, Credencial credencialAtualizada) {
@@ -29,17 +36,31 @@ public class CredencialService {
             Credencial c = existente.get();
             c.setName(credencialAtualizada.getName());
             c.setUsername(credencialAtualizada.getUsername());
-            c.setPassword(credencialAtualizada.getPassword());
+            // Só sobrescreve a senha se vier preenchida -- a listagem não traz mais a
+            // senha atual, então o formulário de edição não pode pré-carregá-la; se
+            // salvássemos sempre, um PUT de "só mudei o nome" apagaria a senha existente.
+            if (credencialAtualizada.getPassword() != null && !credencialAtualizada.getPassword().isBlank()) {
+                c.setPassword(credencialAtualizada.getPassword());
+            }
             c.setNotes(credencialAtualizada.getNotes());
-            return repository.save(c);
+            Credencial salva = repository.save(c);
+            logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.EDITAR);
+            return salva;
         }
         throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
     }
 
     public void deletar(Long id) {
-        if (!repository.existsById(id)) {
-            throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
-        }
+        Credencial credencial = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Credencial não encontrada: " + id));
         repository.deleteById(id);
+        logService.registrar(id, credencial.getName(), TipoAcaoCredencial.EXCLUIR);
+    }
+
+    public String revelarSenha(Long id, TipoAcaoCredencial acao) {
+        Credencial credencial = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Credencial não encontrada: " + id));
+        logService.registrar(id, credencial.getName(), acao != null ? acao : TipoAcaoCredencial.VISUALIZAR);
+        return credencial.getPassword();
     }
 }

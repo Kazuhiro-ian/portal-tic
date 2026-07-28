@@ -75,6 +75,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
+                        // Auditoria do cofre de credenciais: só ADMIN, mesmo que TECNICO tenha
+                        // acesso de escrita às credenciais em si. Precisa vir ANTES do matcher
+                        // genérico de /api/credenciais/** logo abaixo, senão cairia nele.
+                        .requestMatchers(HttpMethod.GET, "/api/credenciais/auditoria").hasRole("ADMIN")
                         .requestMatchers("/api/credenciais/**").hasAnyRole("ADMIN", "TECNICO")
                         // GET de leitura no módulo Qualidade segue a mesma regra do resto do sistema
                         // (LEITURA também pode ver, ex.: os cards de inventário/recebimento do Dashboard).

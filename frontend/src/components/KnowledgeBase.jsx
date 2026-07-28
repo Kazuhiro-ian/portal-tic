@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, CheckCircle2, AlertCircle, X, ArrowRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, CheckCircle2, AlertCircle, X, ArrowRight, Loader2, History } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import {
   listarArtigos, salvarArtigo, atualizarArtigo, deletarArtigo,
-  listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial
+  listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial,
+  revelarSenhaCredencial, listarAuditoriaCredenciais
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -18,7 +19,7 @@ const emptyArticleForm = { title: '', category: 'networks', summary: '', content
 const emptyCredForm = { name: '', username: '', password: '', notes: '' };
 
 export function KnowledgeBase() {
-  const { canWrite, hasRole } = useAuth();
+  const { canWrite, hasRole, isAdmin } = useAuth();
   const podeVerCredenciais = hasRole('ADMIN', 'TECNICO');
 
   const [articles, setArticles] = useState([]);
@@ -39,7 +40,13 @@ export function KnowledgeBase() {
   const [viewingArticle, setViewingArticle] = useState(null);
 
   const [visiblePasswords, setVisiblePasswords] = useState(new Set());
+  const [revealedPasswords, setRevealedPasswords] = useState({});
+  const [revealingId, setRevealingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditLog, setAuditLog] = useState([]);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false);
 
   const [articleForm, setArticleForm] = useState(emptyArticleForm);
   const [credForm, setCredForm] = useState(emptyCredForm);
@@ -82,18 +89,64 @@ export function KnowledgeBase() {
     (c.notes && c.notes.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const togglePasswordVisibility = (id) => {
-    const newVisible = new Set(visiblePasswords);
-    if (newVisible.has(id)) newVisible.delete(id);
-    else newVisible.add(id);
-    setVisiblePasswords(newVisible);
-  };
-
   const copyToClipboard = async (text, id) => {
     await navigator.clipboard.writeText(text);
     setCopiedId(id);
     showToast('Copiado para a área de transferência!');
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // A listagem não traz mais a senha (cofre seguro) -- "mostrar" busca sob demanda,
+  // e cada revelação fica registrada no log de auditoria do backend.
+  const handleTogglePassword = async (cred) => {
+    const newVisible = new Set(visiblePasswords);
+    if (newVisible.has(cred.id)) {
+      newVisible.delete(cred.id);
+      setVisiblePasswords(newVisible);
+      // Limpa o cache: a próxima vez que revelar, gera um novo registro de auditoria.
+      setRevealedPasswords((prev) => {
+        // eslint-disable-next-line no-unused-vars
+        const { [cred.id]: _removida, ...resto } = prev;
+        return resto;
+      });
+      return;
+    }
+
+    try {
+      setRevealingId(cred.id);
+      const { senha } = await revelarSenhaCredencial(cred.id);
+      setRevealedPasswords((prev) => ({ ...prev, [cred.id]: senha }));
+      newVisible.add(cred.id);
+      setVisiblePasswords(newVisible);
+    } catch (error) {
+      showToast(error.message || 'Erro ao revelar a senha.', 'error');
+    } finally {
+      setRevealingId(null);
+    }
+  };
+
+  const handleCopyPassword = async (cred) => {
+    try {
+      // Sempre revela de novo (mesmo se já visível) -- toda cópia precisa do seu próprio
+      // registro de auditoria, não só a primeira visualização.
+      const { senha } = await revelarSenhaCredencial(cred.id, 'COPIAR');
+      await copyToClipboard(senha, `${cred.id}-pass`);
+    } catch (error) {
+      showToast(error.message || 'Erro ao copiar a senha.', 'error');
+    }
+  };
+
+  const handleVerAuditoria = async () => {
+    setShowAuditModal(true);
+    try {
+      setIsLoadingAudit(true);
+      const data = await listarAuditoriaCredenciais();
+      setAuditLog(data);
+    } catch (error) {
+      showToast(error.message || 'Erro ao carregar o log de auditoria.', 'error');
+    } finally {
+      setIsLoadingAudit(false);
+    }
   };
 
   // --- Ações de Artigos ---
@@ -166,7 +219,9 @@ export function KnowledgeBase() {
       setCredForm({
         name: cred.name || '',
         username: cred.username || '',
-        password: cred.password || '',
+        // A listagem não traz mais a senha -- fica em branco; se o usuário não digitar
+        // nada, o backend preserva a senha atual (não sobrescreve com string vazia).
+        password: '',
         notes: cred.notes || '',
       });
     } else {
@@ -177,8 +232,13 @@ export function KnowledgeBase() {
   };
 
   const handleSaveCred = async () => {
-    if (!credForm.name.trim() || !credForm.username.trim() || !credForm.password.trim()) {
-      showToast('Nome, Usuário e Senha são obrigatórios.', 'error');
+    if (!credForm.name.trim() || !credForm.username.trim()) {
+      showToast('Nome e Usuário são obrigatórios.', 'error');
+      return;
+    }
+    // Senha só é obrigatória ao criar -- na edição, em branco significa "manter a atual".
+    if (!editingCred && !credForm.password.trim()) {
+      showToast('Senha é obrigatória para uma nova credencial.', 'error');
       return;
     }
 
@@ -367,7 +427,13 @@ export function KnowledgeBase() {
         <div className="card">
           <div className="flex items-center gap-2 mb-6 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
             <Lock className="w-5 h-5 text-yellow-400 shrink-0" />
-            <p className="text-sm text-yellow-200">Cofre seguro de credenciais de acesso para switches, servidores e roteadores da infraestrutura.</p>
+            <p className="text-sm text-yellow-200 flex-1">Cofre seguro de credenciais de acesso para switches, servidores e roteadores da infraestrutura. Toda visualização ou cópia de senha fica registrada.</p>
+            {isAdmin && (
+              <button onClick={handleVerAuditoria} className="btn-secondary text-xs shrink-0">
+                <History className="w-4 h-4" />
+                Ver auditoria
+              </button>
+            )}
           </div>
 
           <div className="relative mb-6">
@@ -430,17 +496,24 @@ export function KnowledgeBase() {
                       <p className="text-xs text-dark-400 mb-1">Senha</p>
                       <div className="flex items-center gap-2">
                         <code className="text-dark-300 bg-dark-600 px-2.5 py-1 rounded text-sm font-mono">
-                          {visiblePasswords.has(cred.id) ? cred.password : '••••••••••••'}
+                          {visiblePasswords.has(cred.id) ? (revealedPasswords[cred.id] ?? '···') : '••••••••••••'}
                         </code>
                         <button
-                          onClick={() => togglePasswordVisibility(cred.id)}
+                          onClick={() => handleTogglePassword(cred)}
+                          disabled={revealingId === cred.id}
                           className="btn-secondary px-2 py-1"
                           title="Exibir/Ocultar"
                         >
-                          {visiblePasswords.has(cred.id) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {revealingId === cred.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : visiblePasswords.has(cred.id) ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                         <button
-                          onClick={() => copyToClipboard(cred.password, `${cred.id}-pass`)}
+                          onClick={() => handleCopyPassword(cred)}
                           className="btn-secondary px-2 py-1"
                           title="Copiar Senha"
                         >
@@ -613,13 +686,15 @@ export function KnowledgeBase() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Senha *</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Senha {editingCred ? '(deixe em branco para manter a atual)' : '*'}
+            </label>
             <input
-              type="text"
+              type="password"
               value={credForm.password}
               onChange={(e) => setCredForm({ ...credForm, password: e.target.value })}
               className="input-field font-mono"
-              placeholder="Digite a senha"
+              placeholder={editingCred ? '••••••••••••' : 'Digite a senha'}
             />
           </div>
           <div>
@@ -638,6 +713,49 @@ export function KnowledgeBase() {
               {editingCred ? 'Salvar Alterações' : 'Adicionar Credencial'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* MODAL 4: LOG DE AUDITORIA DO COFRE (só ADMIN) */}
+      <Modal
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+        title="Auditoria do Cofre de Credenciais"
+        size="lg"
+      >
+        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="table-header">Quando</th>
+                <th className="table-header">Usuário</th>
+                <th className="table-header">Ação</th>
+                <th className="table-header">Credencial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoadingAudit ? (
+                <tr><td colSpan={4} className="text-center py-8 text-dark-400">Carregando...</td></tr>
+              ) : auditLog.length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-8 text-dark-400">Nenhum acesso registrado ainda.</td></tr>
+              ) : (
+                auditLog.map((log) => (
+                  <tr key={log.id} className="hover:bg-dark-700/30 transition-colors">
+                    <td className="table-cell text-dark-300 text-sm">
+                      {new Date(log.dataHora).toLocaleString('pt-BR')}
+                    </td>
+                    <td className="table-cell font-mono text-primary-400 text-sm">{log.usuario}</td>
+                    <td className="table-cell">
+                      <span className={`badge ${log.acao === 'EXCLUIR' ? 'badge-danger' : log.acao === 'CRIAR' ? 'badge-success' : 'badge-info'}`}>
+                        {log.acao}
+                      </span>
+                    </td>
+                    <td className="table-cell text-white">{log.credencialNome}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Modal>
     </div>

@@ -3,7 +3,10 @@ package portal.ti.queiroz.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import portal.ti.queiroz.dto.CredencialResponse;
+import portal.ti.queiroz.dto.RevelarSenhaResponse;
 import portal.ti.queiroz.model.Credencial;
+import portal.ti.queiroz.model.TipoAcaoCredencial;
 import portal.ti.queiroz.service.CredencialService;
 
 import java.util.List;
@@ -16,8 +19,14 @@ public class CredencialController {
     private CredencialService service;
 
     @GetMapping
-    public List<Credencial> listar() {
+    public List<CredencialResponse> listar() {
         return service.listarTodas();
+    }
+
+    @GetMapping("/{id}/revelar")
+    public RevelarSenhaResponse revelar(@PathVariable Long id,
+                                         @RequestParam(required = false) TipoAcaoCredencial acao) {
+        return new RevelarSenhaResponse(service.revelarSenha(id, acao));
     }
 
     @PostMapping
