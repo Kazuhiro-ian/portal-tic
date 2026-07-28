@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
-import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento } from '../services/api.js';
+import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso } from '../services/api.js';
 import { toISO } from '../utils/datas.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export function Dashboard() {
+  const { canWrite } = useAuth();
   const [printers, setPrinters] = useState([]);
   const [stock, setStock] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -16,11 +18,12 @@ export function Dashboard() {
   const [qualidadeInventarios, setQualidadeInventarios] = useState([]);
   const [qualidadeDiasRecebimento, setQualidadeDiasRecebimento] = useState([]);
 
-  // "Avisos" ainda não tem entidade própria no backend — permanece no localStorage por enquanto.
+  // "Links Mais Utilizados" ainda não tem entidade própria no backend -- fora de escopo
+  // desta rodada, permanece no localStorage.
   const [links] = useLocalStorage('ithub_links', []);
-  const [notices, setNotices] = useLocalStorage('ithub_notices', []);
+  const [notices, setNotices] = useState([]);
   const [showAddNotice, setShowAddNotice] = useState(false);
-  const [newNotice, setNewNotice] = useState({ message: '', priority: 'medium' });
+  const [newNotice, setNewNotice] = useState({ mensagem: '', prioridade: 'MEDIA' });
 
   useEffect(() => {
     carregarDados();
@@ -35,7 +38,7 @@ export function Dashboard() {
       const amanhaISO = toISO(amanha);
 
       setIsLoading(true);
-      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData] = await Promise.all([
+      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData] = await Promise.all([
         listarImpressoras(),
         listarEstoqueItens(),
         listarColaboradores(),
@@ -44,6 +47,7 @@ export function Dashboard() {
         listarZebraEnvios(),
         listarInventarios(hojeISO, amanhaISO),
         listarDiasRecebimento(hojeISO, amanhaISO),
+        listarAvisos(),
       ]);
       setPrinters(impressorasData);
       setStock(estoqueData);
@@ -53,6 +57,7 @@ export function Dashboard() {
       setZebraDistributions(enviosData);
       setQualidadeInventarios(inventariosData);
       setQualidadeDiasRecebimento(diasRecebimentoData);
+      setNotices(avisosData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -159,22 +164,25 @@ export function Dashboard() {
     return b ? `Loja ${b.numeroFilial} - ${b.nome}` : filialId;
   };
 
-  const handleAddNotice = () => {
-    if (!newNotice.message.trim()) return;
-    const notice = {
-      id: Date.now().toString(),
-      message: newNotice.message,
-      author: 'Admin TI',
-      createdAt: new Date().toISOString(),
-      priority: newNotice.priority,
-    };
-    setNotices([notice, ...notices]);
-    setNewNotice({ message: '', priority: 'medium' });
-    setShowAddNotice(false);
+  const handleAddNotice = async () => {
+    if (!newNotice.mensagem.trim()) return;
+    try {
+      await salvarAviso(newNotice);
+      setNewNotice({ mensagem: '', prioridade: 'MEDIA' });
+      setShowAddNotice(false);
+      await carregarDados();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const handleDeleteNotice = (id) => {
-    setNotices(notices.filter((n) => n.id !== id));
+  const handleDeleteNotice = async (id) => {
+    try {
+      await deletarAviso(id);
+      setNotices((prev) => prev.filter((n) => n.id !== id));
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const getCategoryIcon = (category) => {
@@ -257,7 +265,7 @@ export function Dashboard() {
               <p className="text-sm text-dark-400">Avisos Ativos</p>
             </div>
           </div>
-          <p className="text-xs text-dark-400 mt-2">{notices.filter((n) => n.priority === 'high').length} urgentes</p>
+          <p className="text-xs text-dark-400 mt-2">{notices.filter((n) => n.prioridade === 'ALTA').length} urgentes</p>
         </div>
 
         <div className={`metric-card ${zebraPendingBranches.length > 0 ? 'border-accent-500/40 bg-accent-500/5' : ''}`}>
@@ -343,10 +351,12 @@ export function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Avisos da Equipe</h2>
-            <button onClick={() => setShowAddNotice(true)} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" />
-              Novo
-            </button>
+            {canWrite && (
+              <button onClick={() => setShowAddNotice(true)} className="btn-primary text-sm">
+                <Plus className="w-4 h-4" />
+                Novo
+              </button>
+            )}
           </div>
           <div className="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
             {notices.length === 0 ? (
@@ -356,24 +366,26 @@ export function Dashboard() {
                 <div
                   key={notice.id}
                   className={`p-3 rounded-lg border ${
-                    notice.priority === 'high'
+                    notice.prioridade === 'ALTA'
                       ? 'bg-red-500/10 border-red-500/30'
-                      : notice.priority === 'medium'
+                      : notice.prioridade === 'MEDIA'
                         ? 'bg-yellow-500/10 border-yellow-500/30'
                         : 'bg-dark-700/50 border-dark-600'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-dark-100">{notice.message}</p>
-                    <button
-                      onClick={() => handleDeleteNotice(notice.id)}
-                      className="text-dark-400 hover:text-red-400 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <p className="text-sm text-dark-100">{notice.mensagem}</p>
+                    {canWrite && (
+                      <button
+                        onClick={() => handleDeleteNotice(notice.id)}
+                        className="text-dark-400 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-dark-400 mt-2">
-                    {notice.author} - {new Date(notice.createdAt).toLocaleDateString('pt-BR')}
+                    {notice.autor} - {new Date(notice.createdAt).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               ))
@@ -431,8 +443,8 @@ export function Dashboard() {
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">Mensagem</label>
             <textarea
-              value={newNotice.message}
-              onChange={(e) => setNewNotice({ ...newNotice, message: e.target.value })}
+              value={newNotice.mensagem}
+              onChange={(e) => setNewNotice({ ...newNotice, mensagem: e.target.value })}
               className="input-field min-h-[100px] resize-none"
               placeholder="Digite a mensagem do aviso..."
             />
@@ -440,13 +452,13 @@ export function Dashboard() {
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">Prioridade</label>
             <select
-              value={newNotice.priority}
-              onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value })}
+              value={newNotice.prioridade}
+              onChange={(e) => setNewNotice({ ...newNotice, prioridade: e.target.value })}
               className="select-field"
             >
-              <option value="low">Baixa</option>
-              <option value="medium">Media</option>
-              <option value="high">Alta</option>
+              <option value="BAIXA">Baixa</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
             </select>
           </div>
           <div className="flex justify-end gap-3 mt-6">

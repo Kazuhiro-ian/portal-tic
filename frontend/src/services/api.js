@@ -130,6 +130,12 @@ export const listarZebraEnvios = () => apiGet('/api/zebra-envios');
 export const salvarZebraEnvio = (envioData) => apiPost('/api/zebra-envios', envioData);
 export const deletarZebraEnvio = (id) => apiDelete(`/api/zebra-envios/${id}`);
 
+// --- ROTAS DE AVISOS DA EQUIPE ---
+export const listarAvisos = () => apiGet('/api/avisos');
+export const salvarAviso = (avisoData) => apiPost('/api/avisos', avisoData);
+export const atualizarAviso = (id, avisoData) => apiPut(`/api/avisos/${id}`, avisoData);
+export const deletarAviso = (id) => apiDelete(`/api/avisos/${id}`);
+
 // --- ROTAS DE QUALIDADE: CALENDÁRIO DE RECEBIMENTO ---
 export const listarDiasRecebimento = (inicio, fim) =>
   apiGet(`/api/qualidade/recebimentos?inicio=${inicio}&fim=${fim}`);

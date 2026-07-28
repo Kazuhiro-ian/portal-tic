@@ -8,6 +8,7 @@ import {
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { renderMarkdownSeguro } from '../utils/markdown.js';
 
 const categoryInfo = {
   networks: { label: 'Redes', icon: Network, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -548,11 +549,12 @@ export function KnowledgeBase() {
               </p>
             </div>
 
-            {/* Conteúdo do Artigo Formatado com Barra de Rolagem Suave */}
+            {/* Conteúdo do artigo, com suporte a markdown (negrito, listas, links) */}
             <div className="bg-dark-900/60 p-4 rounded-xl border border-dark-700 max-h-[60vh] overflow-y-auto">
-              <pre className="text-sm text-dark-200 whitespace-pre-wrap font-sans leading-relaxed">
-                {viewingArticle.content}
-              </pre>
+              <div
+                className="text-sm text-dark-200 leading-relaxed [&_a]:text-primary-400 [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:font-semibold [&_strong]:text-white"
+                dangerouslySetInnerHTML={{ __html: renderMarkdownSeguro(viewingArticle.content) }}
+              />
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -648,6 +650,9 @@ export function KnowledgeBase() {
               className="input-field min-h-[220px] resize-none font-sans leading-relaxed"
               placeholder="1. Acesse o IP 192.168.1.1&#10;2. Insira as credenciais padrão&#10;3. Selecione a opção..."
             />
+            <p className="text-xs text-dark-400 mt-1.5">
+              Suporta **negrito**, listas (linhas começando com &quot;- &quot;), e [links](https://exemplo.com).
+            </p>
           </div>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={() => setShowArticleModal(false)} className="btn-secondary">Cancelar</button>
