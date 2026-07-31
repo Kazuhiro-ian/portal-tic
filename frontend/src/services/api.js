@@ -63,12 +63,12 @@ export const salvarFilial = (filialData) => apiPost('/api/filiais', filialData);
 export const atualizarFilial = (id, filialData) => apiPut(`/api/filiais/${id}`, filialData);
 export const deletarFilial = (id) => apiDelete(`/api/filiais/${id}`);
 
-// --- ROTAS DE IMPRESSORAS ---
-export const listarImpressoras = () => apiGet('/api/impressoras');
-export const salvarImpressora = (printerData) => apiPost('/api/impressoras', printerData);
-export const atualizarImpressora = (id, printerData) => apiPut(`/api/impressoras/${id}`, printerData);
-export const deletarImpressora = (id) => apiDelete(`/api/impressoras/${id}`);
-export const pingImpressora = (id) => apiPost(`/api/impressoras/${id}/ping`, {});
+// --- ROTAS DE ATIVOS ---
+export const listarAtivos = () => apiGet('/api/ativos');
+export const salvarAtivo = (ativoData) => apiPost('/api/ativos', ativoData);
+export const atualizarAtivo = (id, ativoData) => apiPut(`/api/ativos/${id}`, ativoData);
+export const deletarAtivo = (id) => apiDelete(`/api/ativos/${id}`);
+export const pingAtivo = (id) => apiPost(`/api/ativos/${id}/ping`, {});
 
 // --- ROTAS DE LINKS UTEIS ---
 export const listarLinks = () => apiGet('/api/links');

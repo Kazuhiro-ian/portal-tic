@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
-import { listarImpressoras, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso } from '../services/api.js';
+import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso } from '../services/api.js';
 import { toISO } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -38,8 +38,8 @@ export function Dashboard() {
       const amanhaISO = toISO(amanha);
 
       setIsLoading(true);
-      const [impressorasData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData] = await Promise.all([
-        listarImpressoras(),
+      const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData] = await Promise.all([
+        listarAtivos(),
         listarEstoqueItens(),
         listarColaboradores(),
         listarFiliais(),
@@ -49,7 +49,7 @@ export function Dashboard() {
         listarDiasRecebimento(hojeISO, amanhaISO),
         listarAvisos(),
       ]);
-      setPrinters(impressorasData);
+      setPrinters(ativosData.filter((a) => a.tipo === 'IMPRESSORA' || a.tipo === 'IMPRESSORA_ZEBRA'));
       setStock(estoqueData);
       setEmployees(colaboradoresData);
       setBranches(filiaisData);

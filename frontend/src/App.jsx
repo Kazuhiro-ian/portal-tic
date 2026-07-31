@@ -5,7 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { Sidebar } from './components/Sidebar.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { LinksManager } from './components/LinksManager.jsx';
-import { PrinterInventory } from './components/PrinterInventory.jsx';
+import { AssetInventory } from './components/AssetInventory.jsx';
 import { StockDashboard } from './components/StockDashboard.jsx';
 import { EmployeeSchedule } from './components/EmployeeSchedule.jsx';
 import { KnowledgeBase } from './components/KnowledgeBase.jsx';
@@ -32,8 +32,8 @@ function App() {
         return <Dashboard />;
       case 'links':
         return <LinksManager />;
-      case 'printers':
-        return <PrinterInventory />;
+      case 'ativos':
+        return <AssetInventory />;
       case 'stock':
         return <StockDashboard />;
       case 'schedule':

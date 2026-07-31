@@ -1,10 +1,10 @@
-import { LayoutDashboard, Link, Printer, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Link, HardDrive, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'links', label: 'Links Uteis', icon: Link },
-  { id: 'printers', label: 'Impressoras', icon: Printer },
+  { id: 'ativos', label: 'Ativos', icon: HardDrive },
   { id: 'stock', label: 'Estoque', icon: Package },
   { id: 'schedule', label: 'Escala', icon: Calendar },
   { id: 'knowledge', label: 'Conhecimento', icon: BookOpen },

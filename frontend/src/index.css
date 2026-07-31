@@ -120,3 +120,10 @@
     @apply bg-dark-600 rounded-full hover:bg-dark-500;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

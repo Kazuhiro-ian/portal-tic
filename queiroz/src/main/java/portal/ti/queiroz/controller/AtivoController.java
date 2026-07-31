@@ -4,31 +4,31 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import portal.ti.queiroz.dto.TesteConexaoResponse;
-import portal.ti.queiroz.model.Impressora;
-import portal.ti.queiroz.service.ImpressoraService;
+import portal.ti.queiroz.model.Ativo;
+import portal.ti.queiroz.service.AtivoService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/impressoras")
-public class ImpressoraController {
+@RequestMapping("/api/ativos")
+public class AtivoController {
 
     @Autowired
-    private ImpressoraService service;
+    private AtivoService service;
 
     @GetMapping
-    public List<Impressora> listar() {
-        return service.listarTodas();
+    public List<Ativo> listar() {
+        return service.listarTodos();
     }
 
     @PostMapping
-    public Impressora criar(@RequestBody Impressora impressora) {
-        return service.salvar(impressora);
+    public Ativo criar(@RequestBody Ativo ativo) {
+        return service.salvar(ativo);
     }
 
     @PutMapping("/{id}")
-    public Impressora atualizar(@PathVariable Long id, @RequestBody Impressora impressoraAtualizada) {
-        return service.atualizar(id, impressoraAtualizada);
+    public Ativo atualizar(@PathVariable Long id, @RequestBody Ativo ativoAtualizado) {
+        return service.atualizar(id, ativoAtualizado);
     }
 
     @DeleteMapping("/{id}")
@@ -37,7 +37,6 @@ public class ImpressoraController {
         return ResponseEntity.noContent().build();
     }
 
-    // POST: testa a conexão real com o IP cadastrado e atualiza o status no banco
     @PostMapping("/{id}/ping")
     public TesteConexaoResponse ping(@PathVariable Long id) {
         return service.testarConexao(id);

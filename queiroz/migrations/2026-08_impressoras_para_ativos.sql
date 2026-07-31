@@ -1,0 +1,24 @@
+BEGIN;
+
+ALTER TABLE impressoras RENAME TO ativos;
+ALTER TABLE ativos RENAME COLUMN serial_number TO numero_serie;
+ALTER TABLE ativos RENAME COLUMN location TO setor;
+ALTER TABLE ativos RENAME COLUMN brand TO marca;
+ALTER TABLE ativos RENAME COLUMN model TO modelo;
+
+ALTER TABLE ativos ALTER COLUMN ip DROP NOT NULL;
+ALTER TABLE ativos ALTER COLUMN numero_serie DROP NOT NULL;
+ALTER TABLE ativos ALTER COLUMN setor DROP NOT NULL;
+
+ALTER TABLE ativos
+  ADD COLUMN tipo VARCHAR(30) NOT NULL DEFAULT 'IMPRESSORA',
+  ADD COLUMN etiqueta VARCHAR(60),
+  ADD COLUMN mac_address VARCHAR(17),
+  ADD COLUMN imei VARCHAR(20),
+  ADD COLUMN filial_id BIGINT,
+  ADD COLUMN responsavel_atual VARCHAR(255),
+  ADD COLUMN observacoes TEXT;
+
+ALTER TABLE ativos ALTER COLUMN tipo DROP DEFAULT;
+
+COMMIT;
