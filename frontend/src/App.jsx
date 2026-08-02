@@ -90,7 +90,7 @@ function App() {
                 <p className="text-white font-black text-base tracking-tight leading-none">
                   Queiroz<span className="text-brand-500">.</span>
                 </p>
-                <p className="text-dark-400 text-[10px] uppercase tracking-widest">IT-Hub Central</p>
+                <p className="text-dark-400 text-[10px] uppercase tracking-widest">TI  Queiroz</p>
               </div>
             </div>
 
