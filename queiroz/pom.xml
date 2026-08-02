@@ -90,6 +90,13 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Banco em memória usado só pelo perfil "test": permite que a suíte (e a CI)
+		     rode sem depender de um PostgreSQL instalado na máquina. -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
