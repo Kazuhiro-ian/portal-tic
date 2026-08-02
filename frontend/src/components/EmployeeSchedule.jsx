@@ -8,17 +8,9 @@ import {
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
-
-const TURNOS_OPCOES = [
-  { label: '07:00 - 16:48 (Abertura)', value: '07:00 - 16:48' },
-  { label: '08:00 - 17:48 (Comercial)', value: '08:00 - 17:48' },
-  { label: '11:30 - 21:18 (Fechamento)', value: '11:30 - 21:18' },
-  { label: 'Plantão Fim de Semana', value: 'Plantão' },
-  { label: 'Folga / Descanso', value: 'Folga' },
-  { label: 'Férias', value: 'Ferias' }
-];
 
 const emptyForm = { name: '', role: '', isOnCall: false };
 
@@ -62,11 +54,7 @@ export function EmployeeSchedule() {
 
       const listaEscalas = await listarEscalasPorPeriodo(inicioStr, fimStr);
       
-      const mapaEscalas = {};
-      listaEscalas.forEach((e) => {
-        mapaEscalas[`${e.colaboradorId}_${e.data}`] = e.turno;
-      });
-      setEscalas(mapaEscalas);
+      setEscalas(indexarEscalasPorColaboradorEData(listaEscalas));
 
       // Carrega as tarefas do dia de hoje
       const tarefas = await listarTarefasPorData(todayStr);
@@ -210,15 +198,8 @@ export function EmployeeSchedule() {
     }
   };
 
-  const workingToday = employees.filter((e) => {
-    const turnoHoje = escalas[`${e.id}_${todayStr}`];
-    return turnoHoje && turnoHoje !== 'Folga' && turnoHoje !== 'Ferias' && turnoHoje !== '-';
-  });
-
-  const offToday = employees.filter((e) => {
-    const turnoHoje = escalas[`${e.id}_${todayStr}`];
-    return !turnoHoje || turnoHoje === 'Folga' || turnoHoje === 'Ferias' || turnoHoje === '-';
-  });
+  const workingToday = employees.filter((e) => estaTrabalhando(escalas[`${e.id}_${todayStr}`]));
+  const offToday = employees.filter((e) => !estaTrabalhando(escalas[`${e.id}_${todayStr}`]));
 
   return (
     <div className="space-y-6 relative">

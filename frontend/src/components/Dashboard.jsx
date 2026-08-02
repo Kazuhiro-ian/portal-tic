@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
-import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso } from '../services/api.js';
+import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso, listarEscalasPorPeriodo } from '../services/api.js';
 import { toISO } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 
 export function Dashboard() {
   const { canWrite } = useAuth();
@@ -17,6 +18,7 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [qualidadeInventarios, setQualidadeInventarios] = useState([]);
   const [qualidadeDiasRecebimento, setQualidadeDiasRecebimento] = useState([]);
+  const [escalasHoje, setEscalasHoje] = useState({});
 
   // "Links Mais Utilizados" ainda não tem entidade própria no backend -- fora de escopo
   // desta rodada, permanece no localStorage.
@@ -38,7 +40,7 @@ export function Dashboard() {
       const amanhaISO = toISO(amanha);
 
       setIsLoading(true);
-      const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData] = await Promise.all([
+      const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData, escalasData] = await Promise.all([
         listarAtivos(),
         listarEstoqueItens(),
         listarColaboradores(),
@@ -48,6 +50,7 @@ export function Dashboard() {
         listarInventarios(hojeISO, amanhaISO),
         listarDiasRecebimento(hojeISO, amanhaISO),
         listarAvisos(),
+        listarEscalasPorPeriodo(hojeISO, hojeISO),
       ]);
       setPrinters(ativosData.filter((a) => a.tipo === 'IMPRESSORA' || a.tipo === 'IMPRESSORA_ZEBRA'));
       setStock(estoqueData);
@@ -58,6 +61,7 @@ export function Dashboard() {
       setQualidadeInventarios(inventariosData);
       setQualidadeDiasRecebimento(diasRecebimentoData);
       setNotices(avisosData);
+      setEscalasHoje(indexarEscalasPorColaboradorEData(escalasData));
     } catch (error) {
       console.error(error);
     } finally {
@@ -69,11 +73,12 @@ export function Dashboard() {
   const lowStockItems = stock.filter((s) => s.quantity <= s.minQuantity);
   const todayName = new Date().toLocaleDateString('pt-BR', { weekday: 'long' });
   const capitalizedToday = todayName.charAt(0).toUpperCase() + todayName.slice(1);
-  const todayEmployees = employees.filter((e) =>
-    (e.workingDays || []).some((d) => d.toLowerCase() === todayName.toLowerCase())
-  );
 
   const hojeISO = toISO(new Date());
+
+  // Quem está escalado hoje vem da escala real gravada no banco (/api/escalas), e não de um
+  // campo no cadastro do colaborador — o backend não guarda "dias da semana" por pessoa.
+  const todayEmployees = employees.filter((e) => estaTrabalhando(escalasHoje[`${e.id}_${hojeISO}`]));
   const amanhaData = new Date();
   amanhaData.setDate(amanhaData.getDate() + 1);
   const amanhaISO = toISO(amanhaData);
