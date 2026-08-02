@@ -16,7 +16,8 @@ const TURNOS_OPCOES = [
   { label: '08:00 - 17:48 (Comercial)', value: '08:00 - 17:48' },
   { label: '11:30 - 21:18 (Fechamento)', value: '11:30 - 21:18' },
   { label: 'Plantão Fim de Semana', value: 'Plantão' },
-  { label: 'Folga / Descanso', value: 'Folga' }
+  { label: 'Folga / Descanso', value: 'Folga' },
+  { label: 'Férias', value: 'Ferias' }
 ];
 
 const emptyForm = { name: '', role: '', isOnCall: false };
@@ -211,12 +212,12 @@ export function EmployeeSchedule() {
 
   const workingToday = employees.filter((e) => {
     const turnoHoje = escalas[`${e.id}_${todayStr}`];
-    return turnoHoje && turnoHoje !== 'Folga' && turnoHoje !== '-';
+    return turnoHoje && turnoHoje !== 'Folga' && turnoHoje !== 'Ferias' && turnoHoje !== '-';
   });
 
   const offToday = employees.filter((e) => {
     const turnoHoje = escalas[`${e.id}_${todayStr}`];
-    return !turnoHoje || turnoHoje === 'Folga' || turnoHoje === '-';
+    return !turnoHoje || turnoHoje === 'Folga' || turnoHoje === 'Ferias' || turnoHoje === '-';
   });
 
   return (
@@ -343,6 +344,7 @@ export function EmployeeSchedule() {
                           else if (turnoAtual.includes('08:00')) badgeStyle = "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
                           else if (turnoAtual.includes('11:30')) badgeStyle = "bg-purple-500/15 text-purple-300 border border-purple-500/30";
                           else if (turnoAtual === 'Plantão') badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+                          else if (turnoAtual === 'Ferias') badgeStyle = "bg-pink-500/15 text-pink-300 border border-pink-500/30";
 
                           const isLastRows = empIndex >= employees.length - 2 && employees.length > 2;
                           const isRightColumns = dayIndex >= 4;
