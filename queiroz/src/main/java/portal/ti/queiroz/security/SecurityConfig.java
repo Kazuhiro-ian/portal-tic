@@ -74,6 +74,10 @@ public class SecurityConfig {
                         .accessDeniedHandler(this::responderAcessoNegado))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        // Healthcheck da plataforma de deploy (Railway) roda sem token. Só o /health
+                        // está exposto (ver management.endpoints.web.exposure.include) e sem detalhes,
+                        // então isso não revela configuração interna.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                         // Auditoria do cofre de credenciais: só ADMIN, mesmo que TECNICO tenha
                         // acesso de escrita às credenciais em si. Precisa vir ANTES do matcher
