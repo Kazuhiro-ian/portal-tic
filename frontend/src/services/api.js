@@ -69,6 +69,7 @@ export const salvarAtivo = (ativoData) => apiPost('/api/ativos', ativoData);
 export const atualizarAtivo = (id, ativoData) => apiPut(`/api/ativos/${id}`, ativoData);
 export const deletarAtivo = (id) => apiDelete(`/api/ativos/${id}`);
 export const pingAtivo = (id) => apiPost(`/api/ativos/${id}/ping`, {});
+export const consultarPingHabilitado = () => apiGet('/api/ativos/ping-habilitado');
 
 // --- ROTAS DE LINKS UTEIS ---
 export const listarLinks = () => apiGet('/api/links');

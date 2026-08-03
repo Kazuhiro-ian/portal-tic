@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { AssetFormPanel } from './AssetFormPanel.jsx';
 import { AssetDetailPanel } from './AssetDetailPanel.jsx';
-import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais } from '../services/api.js';
+import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais, consultarPingHabilitado } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 
@@ -80,6 +80,8 @@ export function AssetList({ tipo, tipoLabel }) {
   const [panelMode, setPanelMode] = useState(null); // null | 'view' | 'edit'
   const [activeAtivo, setActiveAtivo] = useState(null);
   const [pinging, setPinging] = useState(null);
+  // Fica falso em produção: o backend na nuvem não alcança os IPs internos dos equipamentos.
+  const [pingHabilitado, setPingHabilitado] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const { toast, showToast, hideToast } = useToast();
@@ -91,9 +93,14 @@ export function AssetList({ tipo, tipoLabel }) {
   const carregarDados = async () => {
     try {
       setIsLoading(true);
-      const [dadosAtivos, dadosFiliais] = await Promise.all([listarAtivos(), listarFiliais()]);
+      const [dadosAtivos, dadosFiliais, disponibilidadePing] = await Promise.all([
+        listarAtivos(),
+        listarFiliais(),
+        consultarPingHabilitado(),
+      ]);
       setAtivos(dadosAtivos);
       setFiliais(dadosFiliais);
+      setPingHabilitado(disponibilidadePing.habilitado);
     } catch (error) {
       console.error(error);
       showToast('Erro ao carregar ativos do servidor.', 'error');
@@ -277,19 +284,21 @@ export function AssetList({ tipo, tipoLabel }) {
                       <td className="table-cell" onClick={(e) => e.stopPropagation()}>
                         {canWrite && (
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handlePing(ativo)}
-                              disabled={pinging === ativo.id}
-                              className="btn-secondary px-3 py-1.5 text-sm"
-                              title="Atualizar status da rede"
-                            >
-                              {pinging === ativo.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Wifi className="w-4 h-4" />
-                              )}
-                              {pinging === ativo.id ? 'Testando...' : 'Ping'}
-                            </button>
+                            {pingHabilitado && (
+                              <button
+                                onClick={() => handlePing(ativo)}
+                                disabled={pinging === ativo.id}
+                                className="btn-secondary px-3 py-1.5 text-sm"
+                                title="Atualizar status da rede"
+                              >
+                                {pinging === ativo.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Wifi className="w-4 h-4" />
+                                )}
+                                {pinging === ativo.id ? 'Testando...' : 'Ping'}
+                              </button>
+                            )}
                             <button
                               onClick={() => handleEditar(ativo)}
                               className="btn-secondary px-3 py-1.5"

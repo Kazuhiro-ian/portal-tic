@@ -3,6 +3,7 @@ package portal.ti.queiroz.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import portal.ti.queiroz.dto.PingDisponibilidadeResponse;
 import portal.ti.queiroz.dto.TesteConexaoResponse;
 import portal.ti.queiroz.model.Ativo;
 import portal.ti.queiroz.service.AtivoService;
@@ -40,5 +41,12 @@ public class AtivoController {
     @PostMapping("/{id}/ping")
     public TesteConexaoResponse ping(@PathVariable Long id) {
         return service.testarConexao(id);
+    }
+
+    /** Consultado pelo frontend na abertura da tela para decidir se mostra o botão de teste. */
+    @GetMapping("/ping-habilitado")
+    public PingDisponibilidadeResponse pingHabilitado() {
+        boolean habilitado = service.isPingHabilitado();
+        return new PingDisponibilidadeResponse(habilitado, habilitado ? null : AtivoService.MOTIVO_PING_DESABILITADO);
     }
 }

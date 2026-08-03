@@ -1,6 +1,7 @@
 package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import portal.ti.queiroz.dto.TesteConexaoResponse;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
@@ -25,8 +26,24 @@ public class AtivoService {
     private static final int TIMEOUT_ICMP_MS = 1000;
     private static final int TIMEOUT_TCP_MS = 700;
 
+    public static final String MOTIVO_PING_DESABILITADO =
+            "O teste de conexão está desabilitado neste ambiente: o servidor da aplicação está " +
+            "hospedado fora da rede da empresa e não enxerga os IPs internos dos equipamentos.";
+
     @Autowired
     private AtivoRepository repository;
+
+    /**
+     * Desligado em produção porque o backend roda na nuvem (Railway) e não alcança a rede interna:
+     * todo teste falharia e — pior — gravaria "Offline" no cadastro de equipamentos que estão no ar.
+     * Fica ligado por padrão para não mudar o comportamento em execução local, dentro da rede.
+     */
+    @Value("${ativos.ping.enabled:true}")
+    private boolean pingHabilitado;
+
+    public boolean isPingHabilitado() {
+        return pingHabilitado;
+    }
 
     public List<Ativo> listarTodos() {
         return repository.findAll();
@@ -72,6 +89,10 @@ public class AtivoService {
     }
 
     public TesteConexaoResponse testarConexao(Long id) {
+        if (!pingHabilitado) {
+            throw new RegraDeNegocioException(MOTIVO_PING_DESABILITADO);
+        }
+
         Ativo ativo = repository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Ativo não encontrado com o ID: " + id));
 
