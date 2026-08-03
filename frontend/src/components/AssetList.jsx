@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 
 // Cada coluna sabe desenhar a si mesma a partir de um ativo (e, no caso de "filial",
 // de uma função auxiliar pra achar o nome). Isso evita reescrever a estrutura da
@@ -128,6 +130,8 @@ export function AssetList({ tipo, tipoLabel }) {
     const matchStatus = filterStatus === 'all' || a.status === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  const paginacao = usePaginacao(filteredAtivos);
 
   const panelAberto = panelMode !== null;
   const colunas = panelAberto
@@ -260,14 +264,14 @@ export function AssetList({ tipo, tipoLabel }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredAtivos.length === 0 ? (
+                {paginacao.itensPagina.length === 0 ? (
                   <tr>
                     <td colSpan={colunas.length + 1} className="text-center py-12 text-dark-400">
                       {isLoading ? 'Conectando ao banco de dados...' : 'Nenhum ativo encontrado.'}
                     </td>
                   </tr>
                 ) : (
-                  filteredAtivos.map((ativo) => (
+                  paginacao.itensPagina.map((ativo) => (
                     <tr
                       key={ativo.id}
                       onClick={() => handleVisualizar(ativo)}
@@ -317,6 +321,8 @@ export function AssetList({ tipo, tipoLabel }) {
               </tbody>
             </table>
           </div>
+
+          <Paginacao {...paginacao} rotulo="ativos" />
         </div>
 
         <AssetDetailPanel

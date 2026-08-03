@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 
 const categoryInfo = {
   peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -75,6 +77,8 @@ export function StockDashboard() {
     const matchCritical = !showCriticalOnly || item.quantity <= item.minQuantity;
     return matchSearch && matchCategory && matchCritical;
   });
+
+  const paginacao = usePaginacao(filteredItems);
 
   const criticalCount = items.filter((i) => i.quantity <= i.minQuantity).length;
 
@@ -330,14 +334,14 @@ export function StockDashboard() {
                         Conectando ao banco de dados...
                       </td>
                     </tr>
-                  ) : filteredItems.length === 0 ? (
+                  ) : paginacao.itensPagina.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-12 text-dark-400">
                         Nenhum item encontrado
                       </td>
                     </tr>
                   ) : (
-                    filteredItems.map((item) => {
+                    paginacao.itensPagina.map((item) => {
                       const isCritical = item.quantity <= item.minQuantity;
                       const info = categoryInfo[item.category] || categoryInfo.peripherals;
                       return (
@@ -429,6 +433,8 @@ export function StockDashboard() {
                 </tbody>
               </table>
             </div>
+
+            <Paginacao {...paginacao} rotulo="itens" />
           </div>
         </>
       )}
