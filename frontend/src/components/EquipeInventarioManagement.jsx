@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { listarEquipesInventario, salvarEquipeInventario, atualizarEquipeInventario, deletarEquipeInventario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 const emptyForm = { nome: '' };
 
@@ -16,6 +17,7 @@ export function EquipeInventarioManagement() {
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarEquipes();
@@ -75,19 +77,25 @@ export function EquipeInventarioManagement() {
   };
 
   const handleDelete = async (equipe) => {
-    if (confirm(`Deseja realmente excluir a equipe "${equipe.nome}"?`)) {
-      try {
-        await deletarEquipeInventario(equipe.id);
-        showToast('Equipe excluída com sucesso.');
-        await carregarEquipes();
-      } catch (error) {
-        showToast('Erro ao excluir a equipe no servidor.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir equipe',
+      mensagem: `Deseja realmente excluir a equipe "${equipe.nome}"?`,
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarEquipeInventario(equipe.id);
+      showToast('Equipe excluída com sucesso.');
+      await carregarEquipes();
+    } catch (error) {
+      showToast('Erro ao excluir a equipe no servidor.', 'error');
     }
   };
 
   return (
     <div className="space-y-6 relative">
+
+      {dialogoConfirmacao}
 
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">

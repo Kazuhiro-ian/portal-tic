@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { listarUsuarios, salvarUsuario, atualizarUsuario, desativarUsuario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 const roleLabels = {
   ADMIN: 'Administrador',
@@ -24,6 +25,7 @@ export function UsuarioManagement() {
   const [formError, setFormError] = useState('');
 
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarUsuarios();
@@ -86,19 +88,26 @@ export function UsuarioManagement() {
       showToast('Você não pode desativar o próprio usuário.', 'error');
       return;
     }
-    if (confirm(`Desativar o usuário "${usuario.username}"? Ele perderá o acesso imediatamente.`)) {
-      try {
-        await desativarUsuario(usuario.id);
-        showToast('Usuário desativado.');
-        await carregarUsuarios();
-      } catch (error) {
-        showToast('Erro ao desativar usuário.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Desativar usuário',
+      mensagem: `Desativar o usuário "${usuario.username}"? Ele perderá o acesso imediatamente.`,
+      textoConfirmar: 'Desativar',
+    });
+    if (!confirmado) return;
+
+    try {
+      await desativarUsuario(usuario.id);
+      showToast('Usuário desativado.');
+      await carregarUsuarios();
+    } catch (error) {
+      showToast('Erro ao desativar usuário.', 'error');
     }
   };
 
   return (
     <div className="space-y-6 relative">
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (

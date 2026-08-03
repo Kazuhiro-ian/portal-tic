@@ -11,6 +11,7 @@ import {
   listarZebraEnvios, salvarZebraEnvio, deletarZebraEnvio
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 // Retorna com segurança o número da filial baseado na coluna real do banco (numero_filial)
 function getBranchNumber(b) {
@@ -30,6 +31,7 @@ function branchLabel(branches, branchNum) {
 
 export function ZebraSupplies() {
   const { canWrite } = useAuth();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
   const [branches, setBranches] = useState([]);
   const [quotas, setQuotas] = useState([]);
   const [distributions, setDistributions] = useState([]);
@@ -204,13 +206,17 @@ export function ZebraSupplies() {
   };
 
   const handleDeleteDistribution = async (id) => {
-    if (confirm('Excluir este registro de envio?\n\nAtenção: O estoque NÃO será restaurado automaticamente.')) {
-      try {
-        await deletarZebraEnvio(id);
-        await carregarDados();
-      } catch (error) {
-        setFormError('Erro ao excluir registro.');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir registro de envio',
+      mensagem: 'Excluir este registro de envio?\n\nAtenção: o estoque NÃO será restaurado automaticamente.',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarZebraEnvio(id);
+      await carregarDados();
+    } catch (error) {
+      setFormError('Erro ao excluir registro.');
     }
   };
 
@@ -237,13 +243,17 @@ export function ZebraSupplies() {
   };
 
   const handleDeleteQuota = async (id) => {
-    if (confirm('Excluir esta cota de filial?')) {
-      try {
-        await deletarZebraCota(id);
-        await carregarDados();
-      } catch (error) {
-        alert('Erro ao excluir cota.');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir cota',
+      mensagem: 'Excluir esta cota de filial?',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarZebraCota(id);
+      await carregarDados();
+    } catch (error) {
+      alert('Erro ao excluir cota.');
     }
   };
 
@@ -258,6 +268,8 @@ export function ZebraSupplies() {
 
   return (
     <div className="space-y-6">
+      {dialogoConfirmacao}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Logística de Insumos Zebra</h1>

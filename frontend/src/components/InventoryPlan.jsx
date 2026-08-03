@@ -10,10 +10,12 @@ import {
 } from '../services/api.js';
 import { toISO, formatarBR, limitesDoMes, diasNoMes } from '../utils/datas.js';
 import { grupoLabels, grupoBadge, MOTIVOS, STATUS_INVENTARIO as STATUS } from '../utils/qualidade.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 const emptyForm = { filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO', responsavel: '', observacao: '' };
 
 export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos }) {
+  const { confirmar, dialogoConfirmacao } = useConfirm();
   const [filiais, setFiliais] = useState([]);
   const [inventarios, setInventarios] = useState([]);
   const [conflitos, setConflitos] = useState([]);
@@ -191,9 +193,12 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   };
 
   const handleDelete = async (inv) => {
-    if (!confirm(`Excluir o inventário da filial "${nomeFilial(inv.filialId)}" em ${formatarBR(inv.data)}?`)) {
-      return;
-    }
+    const confirmado = await confirmar({
+      titulo: 'Excluir inventário',
+      mensagem: `Excluir o inventário da filial "${nomeFilial(inv.filialId)}" em ${formatarBR(inv.data)}?`,
+    });
+    if (!confirmado) return;
+
     try {
       await deletarInventario(inv.id);
       showToast('Inventário excluído.');
@@ -226,6 +231,8 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
 
   return (
     <div className="space-y-6">
+      {dialogoConfirmacao}
+
       {/* Avisos */}
       {semGrupo.length > 0 && (
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">

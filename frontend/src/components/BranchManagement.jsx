@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { listarFiliais, salvarFilial, atualizarFilial, deletarFilial } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 import { grupoLabels, grupoBadge } from '../utils/qualidade.js';
 
 function formatCnpj(value) {
@@ -28,6 +29,7 @@ export function BranchManagement() {
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarFiliais();
@@ -117,21 +119,27 @@ export function BranchManagement() {
   };
 
   const handleDelete = async (branch) => {
-    if (confirm(`Deseja realmente excluir a filial "${branch.nome}"?`)) {
-      try {
-        // Dispara o DELETE para remover do banco
-        await deletarFilial(branch.id);
-        showToast('Filial excluída com sucesso.');
-        await carregarFiliais();
-      } catch (error) {
-        showToast('Erro ao excluir a filial no servidor.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir filial',
+      mensagem: `Deseja realmente excluir a filial "${branch.nome}"?`,
+    });
+    if (!confirmado) return;
+
+    try {
+      // Dispara o DELETE para remover do banco
+      await deletarFilial(branch.id);
+      showToast('Filial excluída com sucesso.');
+      await carregarFiliais();
+    } catch (error) {
+      showToast('Erro ao excluir a filial no servidor.', 'error');
     }
   };
 
   return (
     <div className="space-y-6 relative">
       
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (

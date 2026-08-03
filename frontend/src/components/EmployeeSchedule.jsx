@@ -8,6 +8,7 @@ import {
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
@@ -34,6 +35,7 @@ export function EmployeeSchedule() {
   const [isSavingTarefa, setIsSavingTarefa] = useState(false);
 
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarDadosIniciais();
@@ -187,14 +189,18 @@ export function EmployeeSchedule() {
   };
 
   const handleDeleteColaborador = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este colaborador?')) {
-      try {
-        await deletarColaborador(id);
-        showToast('Colaborador excluído.');
-        await carregarDadosIniciais();
-      } catch (error) {
-        showToast('Erro ao excluir colaborador.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir colaborador',
+      mensagem: 'Tem certeza que deseja excluir este colaborador? A escala já lançada para ele deixará de aparecer.',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarColaborador(id);
+      showToast('Colaborador excluído.');
+      await carregarDadosIniciais();
+    } catch (error) {
+      showToast('Erro ao excluir colaborador.', 'error');
     }
   };
 
@@ -204,6 +210,8 @@ export function EmployeeSchedule() {
   return (
     <div className="space-y-6 relative">
       
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (

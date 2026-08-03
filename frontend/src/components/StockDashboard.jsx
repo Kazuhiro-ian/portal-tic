@@ -5,6 +5,7 @@ import { StockDispatch } from './StockDispatch.jsx';
 import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 const categoryInfo = {
   peripherals: { label: 'Periféricos e Cabos', icon: Cpu, bgClass: 'bg-primary-500/20', textClass: 'text-primary-400' },
@@ -44,7 +45,8 @@ export function StockDashboard() {
   const [adjustData, setAdjustData] = useState({ type: 'IN', quantity: 1, destination: '', notes: '' });
   const [adjustError, setAdjustError] = useState('');
 
-  const { toast, showToast, hideToast } = useToast();  
+  const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();  
 
   useEffect(() => {
     carregarEstoque();
@@ -117,14 +119,18 @@ export function StockDashboard() {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este item?')) {
-      try {
-        await deletarEstoqueItem(id);
-        showToast('Item excluído com sucesso.');
-        await carregarEstoque();
-      } catch (error) {
-        showToast('Erro ao excluir item.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir item do estoque',
+      mensagem: 'Tem certeza que deseja excluir este item? O histórico de movimentações dele deixará de ser exibido.',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarEstoqueItem(id);
+      showToast('Item excluído com sucesso.');
+      await carregarEstoque();
+    } catch (error) {
+      showToast('Erro ao excluir item.', 'error');
     }
   };
 
@@ -196,6 +202,8 @@ export function StockDashboard() {
   return (
     <div className="space-y-6 relative">
       
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (

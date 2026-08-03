@@ -5,6 +5,7 @@ import { AssetDetailPanel } from './AssetDetailPanel.jsx';
 import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais, consultarPingHabilitado } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 // Cada coluna sabe desenhar a si mesma a partir de um ativo (e, no caso de "filial",
 // de uma função auxiliar pra achar o nome). Isso evita reescrever a estrutura da
@@ -85,6 +86,7 @@ export function AssetList({ tipo, tipoLabel }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarDados();
@@ -166,14 +168,18 @@ export function AssetList({ tipo, tipoLabel }) {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este ativo?')) {
-      try {
-        await deletarAtivo(id);
-        showToast('Ativo excluído com sucesso.');
-        await carregarDados();
-      } catch (error) {
-        showToast('Erro ao excluir o ativo.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: `Excluir ${tipoLabel.toLowerCase()}`,
+      mensagem: 'Tem certeza que deseja excluir este ativo? Esta ação não pode ser desfeita.',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarAtivo(id);
+      showToast('Ativo excluído com sucesso.');
+      await carregarDados();
+    } catch (error) {
+      showToast('Erro ao excluir o ativo.', 'error');
     }
   };
 
@@ -196,6 +202,8 @@ export function AssetList({ tipo, tipoLabel }) {
 
   return (
     <div className="space-y-6 relative">
+
+      {dialogoConfirmacao}
 
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">

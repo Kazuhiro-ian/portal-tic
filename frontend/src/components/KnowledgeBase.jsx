@@ -8,6 +8,7 @@ import {
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 import { renderMarkdownSeguro } from '../utils/markdown.js';
 
 const categoryInfo = {
@@ -53,6 +54,7 @@ export function KnowledgeBase() {
   const [credForm, setCredForm] = useState(emptyCredForm);
 
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarDados();
@@ -201,15 +203,19 @@ export function KnowledgeBase() {
 
   const handleDeleteArticle = async (id, e) => {
     if (e) e.stopPropagation(); // Evita abrir o modal de leitura ao clicar em deletar
-    if (confirm('Tem certeza que deseja excluir este artigo?')) {
-      try {
-        await deletarArtigo(id);
-        showToast('Artigo excluído com sucesso.');
-        if (viewingArticle && viewingArticle.id === id) setViewingArticle(null);
-        await carregarDados();
-      } catch (error) {
-        showToast('Erro ao excluir artigo.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir artigo',
+      mensagem: 'Tem certeza que deseja excluir este artigo da base de conhecimento?',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarArtigo(id);
+      showToast('Artigo excluído com sucesso.');
+      if (viewingArticle && viewingArticle.id === id) setViewingArticle(null);
+      await carregarDados();
+    } catch (error) {
+      showToast('Erro ao excluir artigo.', 'error');
     }
   };
 
@@ -262,20 +268,26 @@ export function KnowledgeBase() {
   };
 
   const handleDeleteCred = async (id) => {
-    if (confirm('Tem certeza que deseja excluir esta credencial?')) {
-      try {
-        await deletarCredencial(id);
-        showToast('Credencial excluída.');
-        await carregarDados();
-      } catch (error) {
-        showToast('Erro ao excluir credencial.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir credencial',
+      mensagem: 'Tem certeza que deseja excluir esta credencial do cofre? A senha guardada será perdida.',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarCredencial(id);
+      showToast('Credencial excluída.');
+      await carregarDados();
+    } catch (error) {
+      showToast('Erro ao excluir credencial.', 'error');
     }
   };
 
   return (
     <div className="space-y-6 relative">
       
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (

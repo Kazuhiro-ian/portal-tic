@@ -4,6 +4,7 @@ import { Modal } from './Modal.jsx';
 import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { useConfirm } from '../hooks/useConfirm.jsx';
 
 const categoryLabels = {
   internal: 'Sistemas Internos',
@@ -30,6 +31,7 @@ export function LinksManager() {
   const [isLoading, setIsLoading] = useState(true);
 
   const { toast, showToast, hideToast } = useToast();
+  const { confirmar, dialogoConfirmacao } = useConfirm();
 
   useEffect(() => {
     carregarDados();
@@ -115,14 +117,18 @@ export function LinksManager() {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este link?')) {
-      try {
-        await deletarLink(id);
-        showToast('Link excluído com sucesso.');
-        await carregarDados();
-      } catch (error) {
-        showToast('Erro ao excluir o link.', 'error');
-      }
+    const confirmado = await confirmar({
+      titulo: 'Excluir link',
+      mensagem: 'Tem certeza que deseja excluir este link?',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarLink(id);
+      showToast('Link excluído com sucesso.');
+      await carregarDados();
+    } catch (error) {
+      showToast('Erro ao excluir o link.', 'error');
     }
   };
 
@@ -130,6 +136,8 @@ export function LinksManager() {
     <div className="space-y-6 relative">
       
       {/* Sistema de Notificação Toast */}
+      {dialogoConfirmacao}
+
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
           {toast.type === 'success' ? (
