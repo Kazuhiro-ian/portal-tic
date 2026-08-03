@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  AlertTriangle, Send, Tag, Layers, Settings, Plus, Edit, Trash2, History,
+  AlertTriangle, Send, Tag, Layers, Settings, Edit, Trash2, History,
   Building2, CheckCircle2, Store, FileText, Info
 } from 'lucide-react';
 import { Modal } from './Modal.jsx';

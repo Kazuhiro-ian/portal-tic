@@ -69,7 +69,7 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
 
       {canWrite && (
         <p className="text-xs text-dark-400 mb-4">
-          Clique num dia do calendário para marcar/desmarcar "{TIPOS_DIA_EQUIPE[tipoSelecionado].label}" nele.
+          Clique num dia do calendário para marcar/desmarcar &quot;{TIPOS_DIA_EQUIPE[tipoSelecionado].label}&quot; nele.
         </p>
       )}
 
