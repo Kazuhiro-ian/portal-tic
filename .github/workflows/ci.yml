@@ -1,0 +1,56 @@
+name: CI
+
+# Roda a cada push na main e em todo pull request. O objetivo é simples: nada chega em
+# produção sem antes compilar, passar nos testes e passar no lint.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (Java 25 / Spring Boot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+
+      # Não precisa de PostgreSQL: a suíte usa o perfil "test" com H2 em memória.
+      - name: Rodar os testes
+        working-directory: queiroz
+        run: ./mvnw test -B
+
+      - name: Verificar que o jar empacota
+        working-directory: queiroz
+        run: ./mvnw package -DskipTests -B
+
+  frontend:
+    name: Frontend (React / Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build de produção
+        working-directory: frontend
+        run: npm run build
