@@ -1,0 +1,22 @@
+# Ignora na raiz o que nao pertence ao repositorio, independente da subpasta em que apareca.
+# frontend/ e queiroz/ tem .gitignore proprios com as regras especificas de cada stack.
+
+# Variaveis de ambiente: contem segredos (senha do banco, JWT_SECRET, chave do cofre).
+# O .env.example, versionado, e quem documenta as chaves esperadas.
+.env
+.env.local
+.env.*.local
+
+# Sistema operacional
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs e dumps
+*.log
+*.dump
+npm-debug.log*
+
+# Backups de banco: nunca devem entrar no repositorio.
+*.sql.gz
+backup-*.sql
