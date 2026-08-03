@@ -161,6 +161,7 @@ export function LinksManager() {
             <input
               type="text"
               placeholder="Buscar por nome ou tag..."
+              aria-label="Buscar por nome ou tag"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field pl-10"

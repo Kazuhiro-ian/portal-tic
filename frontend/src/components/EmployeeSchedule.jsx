@@ -275,7 +275,7 @@ export function EmployeeSchedule() {
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr>
-                    <th className="table-header w-40">Colaborador</th>
+                    <th scope="col" className="table-header w-40">Colaborador</th>
                     {weekDays.map((day, index) => {
                       const isToday = weekDates[index].toDateString() === today.toDateString();
                       const isFimDeSemana = day === 'Sabado' || day === 'Domingo';
@@ -565,7 +565,7 @@ export function EmployeeSchedule() {
                           type="button"
                           onClick={() => handleDeleteTarefa(tarefa.id)}
                           className="text-dark-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Excluir missão"
+                          title="Excluir missão" aria-label="Excluir missão"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

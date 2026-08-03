@@ -553,12 +553,12 @@ export function ZebraSupplies() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header">Data</th>
-                <th className="table-header">Tipo</th>
-                <th className="table-header">Filial</th>
-                <th className="table-header text-center">Etiquetas</th>
-                <th className="table-header text-center">Ribbons</th>
-                <th className="table-header text-right">Ação</th>
+                <th scope="col" className="table-header">Data</th>
+                <th scope="col" className="table-header">Tipo</th>
+                <th scope="col" className="table-header">Filial</th>
+                <th scope="col" className="table-header text-center">Etiquetas</th>
+                <th scope="col" className="table-header text-center">Ribbons</th>
+                <th scope="col" className="table-header text-right">Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -607,7 +607,7 @@ export function ZebraSupplies() {
                       </td>
                       <td className="table-cell text-right">
                         {canWrite && (
-                          <button onClick={() => handleDeleteDistribution(d.id)} className="btn-danger px-3 py-1.5" title="Excluir">
+                          <button onClick={() => handleDeleteDistribution(d.id)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}

@@ -89,7 +89,7 @@ export function Sidebar({ onNavigate }) {
           </div>
           <button
             onClick={logout}
-            title="Sair"
+            title="Sair" aria-label="Sair"
             className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-dark-400 transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />

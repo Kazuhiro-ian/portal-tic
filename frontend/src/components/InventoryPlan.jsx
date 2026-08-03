@@ -304,11 +304,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                 <table className="w-full">
                   <thead>
                     <tr>
-                      <th className="table-header">Filial</th>
-                      <th className="table-header">Grupo</th>
-                      <th className="table-header">Data atual</th>
-                      <th className="table-header">Data sugerida</th>
-                      <th className="table-header">Motivo</th>
+                      <th scope="col" className="table-header">Filial</th>
+                      <th scope="col" className="table-header">Grupo</th>
+                      <th scope="col" className="table-header">Data atual</th>
+                      <th scope="col" className="table-header">Data sugerida</th>
+                      <th scope="col" className="table-header">Motivo</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -389,11 +389,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header">Filial</th>
-                <th className="table-header">Data</th>
-                <th className="table-header">Status</th>
-                <th className="table-header">Responsável</th>
-                {canWrite && <th className="table-header text-right">Ações</th>}
+                <th scope="col" className="table-header">Filial</th>
+                <th scope="col" className="table-header">Data</th>
+                <th scope="col" className="table-header">Status</th>
+                <th scope="col" className="table-header">Responsável</th>
+                {canWrite && <th scope="col" className="table-header text-right">Ações</th>}
               </tr>
             </thead>
             <tbody>
@@ -419,10 +419,10 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                       {canWrite && (
                         <td className="table-cell text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar">
+                            <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleDelete(inv)} className="btn-danger px-3 py-1.5" title="Excluir">
+                            <button onClick={() => handleDelete(inv)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>

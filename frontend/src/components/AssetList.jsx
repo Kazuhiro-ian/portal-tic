@@ -235,6 +235,7 @@ export function AssetList({ tipo, tipoLabel }) {
               <input
                 type="text"
                 placeholder="Buscar por IP, setor, modelo ou etiqueta..."
+              aria-label="Buscar por IP, setor, modelo ou etiqueta"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-field pl-10"
@@ -260,7 +261,7 @@ export function AssetList({ tipo, tipoLabel }) {
                       {COLUNA_DEFS[chave].header}
                     </th>
                   ))}
-                  <th className="table-header text-right">Ações</th>
+                  <th scope="col" className="table-header text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>

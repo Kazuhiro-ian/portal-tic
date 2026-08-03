@@ -152,11 +152,11 @@ export function UsuarioManagement() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header"><Users className="inline w-3.5 h-3.5" /> Usuário</th>
-                <th className="table-header">Nome</th>
-                <th className="table-header">Papel</th>
-                <th className="table-header text-center">Status</th>
-                <th className="table-header text-right">Ações</th>
+                <th scope="col" className="table-header"><Users className="inline w-3.5 h-3.5" /> Usuário</th>
+                <th scope="col" className="table-header">Nome</th>
+                <th scope="col" className="table-header">Papel</th>
+                <th scope="col" className="table-header text-center">Status</th>
+                <th scope="col" className="table-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -188,10 +188,10 @@ export function UsuarioManagement() {
                     </td>
                     <td className="table-cell text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEdit(u)} className="btn-secondary px-3 py-1.5" title="Editar">
+                        <button onClick={() => openEdit(u)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDesativar(u)} className="btn-danger px-3 py-1.5" title="Desativar">
+                        <button onClick={() => handleDesativar(u)} className="btn-danger px-3 py-1.5" title="Desativar" aria-label="Desativar">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

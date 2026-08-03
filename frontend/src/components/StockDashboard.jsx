@@ -298,6 +298,7 @@ export function StockDashboard() {
                 <input
                   type="text"
                   placeholder="Buscar item..."
+              aria-label="Buscar item"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="input-field pl-10"
@@ -319,12 +320,12 @@ export function StockDashboard() {
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="table-header">Item</th>
-                    <th className="table-header">Categoria</th>
-                    <th className="table-header text-center">Quantidade</th>
-                    <th className="table-header text-center">Mínimo</th>
-                    <th className="table-header">Localização</th>
-                    <th className="table-header text-right">Ações</th>
+                    <th scope="col" className="table-header">Item</th>
+                    <th scope="col" className="table-header">Categoria</th>
+                    <th scope="col" className="table-header text-center">Quantidade</th>
+                    <th scope="col" className="table-header text-center">Mínimo</th>
+                    <th scope="col" className="table-header">Localização</th>
+                    <th scope="col" className="table-header text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -406,7 +407,7 @@ export function StockDashboard() {
                                   <button
                                     onClick={() => openAdjustModal(item)}
                                     className="btn-secondary px-3 py-1.5"
-                                    title="Movimentar / Ajuste rápido"
+                                    title="Movimentar / Ajuste rápido" aria-label="Movimentar / Ajuste rápido"
                                   >
                                     <ArrowLeftRight className="w-4 h-4" />
                                   </button>

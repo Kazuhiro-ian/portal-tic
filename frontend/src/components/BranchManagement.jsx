@@ -170,6 +170,7 @@ export function BranchManagement() {
             <input
               type="text"
               placeholder="Buscar filial..."
+              aria-label="Buscar filial"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field pl-9"
@@ -181,12 +182,12 @@ export function BranchManagement() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header w-20"><Hash className="inline w-3.5 h-3.5"/> Núm.</th>
-                <th className="table-header">Nome da Filial</th>
-                <th className="table-header">CNPJ</th>
-                <th className="table-header">Endereço</th>
-                <th className="table-header">Grupo Receb.</th>
-                <th className="table-header text-right">Ações</th>
+                <th scope="col" className="table-header w-20"><Hash className="inline w-3.5 h-3.5"/> Núm.</th>
+                <th scope="col" className="table-header">Nome da Filial</th>
+                <th scope="col" className="table-header">CNPJ</th>
+                <th scope="col" className="table-header">Endereço</th>
+                <th scope="col" className="table-header">Grupo Receb.</th>
+                <th scope="col" className="table-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -219,10 +220,10 @@ export function BranchManagement() {
                     <td className="table-cell text-right">
                       {canWrite && (
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar">
+                          <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir">
+                          <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>

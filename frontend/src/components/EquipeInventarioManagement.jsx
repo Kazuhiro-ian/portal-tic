@@ -123,8 +123,8 @@ export function EquipeInventarioManagement() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header">Nome</th>
-                <th className="table-header text-right">Ações</th>
+                <th scope="col" className="table-header">Nome</th>
+                <th scope="col" className="table-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -141,10 +141,10 @@ export function EquipeInventarioManagement() {
                     <td className="table-cell text-right">
                       {canWriteQualidade && (
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEdit(equipe)} className="btn-secondary px-3 py-1.5" title="Editar">
+                          <button onClick={() => openEdit(equipe)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(equipe)} className="btn-danger px-3 py-1.5" title="Excluir">
+                          <button onClick={() => handleDelete(equipe)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>

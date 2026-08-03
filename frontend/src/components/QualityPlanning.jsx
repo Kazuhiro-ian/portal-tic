@@ -68,13 +68,13 @@ export function QualityPlanning() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={() => mudarMes(-1)} className="btn-secondary px-3 py-2" title="Mês anterior">
+          <button onClick={() => mudarMes(-1)} className="btn-secondary px-3 py-2" title="Mês anterior" aria-label="Mês anterior">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="px-4 py-2 rounded-lg bg-dark-800 border border-dark-700 min-w-44 text-center">
             <span className="text-white font-semibold">{MESES[mes - 1]} {ano}</span>
           </div>
-          <button onClick={() => mudarMes(1)} className="btn-secondary px-3 py-2" title="Próximo mês">
+          <button onClick={() => mudarMes(1)} className="btn-secondary px-3 py-2" title="Próximo mês" aria-label="Próximo mês">
             <ChevronRight className="w-4 h-4" />
           </button>
           <button onClick={irParaHoje} className="btn-secondary px-3 py-2 text-sm">Hoje</button>

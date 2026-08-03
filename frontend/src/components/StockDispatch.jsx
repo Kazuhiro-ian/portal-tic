@@ -287,12 +287,12 @@ export function StockDispatch({ items, onAtualizado }) {
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="table-header">Data</th>
-                  <th className="table-header">Tipo</th>
-                  <th className="table-header">Item</th>
-                  <th className="table-header text-center">Qtd</th>
-                  <th className="table-header">Destino</th>
-                  <th className="table-header">Obs</th>
+                  <th scope="col" className="table-header">Data</th>
+                  <th scope="col" className="table-header">Tipo</th>
+                  <th scope="col" className="table-header">Item</th>
+                  <th scope="col" className="table-header text-center">Qtd</th>
+                  <th scope="col" className="table-header">Destino</th>
+                  <th scope="col" className="table-header">Obs</th>
                 </tr>
               </thead>
               <tbody>

@@ -342,6 +342,7 @@ export function KnowledgeBase() {
               <input
                 type="text"
                 placeholder="Buscar por título ou conteúdo do artigo..."
+              aria-label="Buscar por título ou conteúdo do artigo"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-field pl-10"
@@ -392,14 +393,14 @@ export function KnowledgeBase() {
                             <button
                               onClick={() => handleOpenArticleModal(article)}
                               className="btn-secondary px-2 py-1"
-                              title="Editar"
+                              title="Editar" aria-label="Editar"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={(e) => handleDeleteArticle(article.id, e)}
                               className="btn-danger px-2 py-1"
-                              title="Excluir"
+                              title="Excluir" aria-label="Excluir"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -446,6 +447,7 @@ export function KnowledgeBase() {
             <input
               type="text"
               placeholder="Buscar por nome do equipamento, usuário ou notas..."
+              aria-label="Buscar por nome do equipamento, usuário ou notas"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field pl-10"
@@ -491,7 +493,7 @@ export function KnowledgeBase() {
                         <button
                           onClick={() => copyToClipboard(cred.username, `${cred.id}-user`)}
                           className="btn-secondary px-2 py-1"
-                          title="Copiar Usuário"
+                          title="Copiar Usuário" aria-label="Copiar Usuário"
                         >
                           {copiedId === `${cred.id}-user` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                         </button>
@@ -507,7 +509,7 @@ export function KnowledgeBase() {
                           onClick={() => handleTogglePassword(cred)}
                           disabled={revealingId === cred.id}
                           className="btn-secondary px-2 py-1"
-                          title="Exibir/Ocultar"
+                          title="Exibir/Ocultar" aria-label="Exibir/Ocultar"
                         >
                           {revealingId === cred.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -520,7 +522,7 @@ export function KnowledgeBase() {
                         <button
                           onClick={() => handleCopyPassword(cred)}
                           className="btn-secondary px-2 py-1"
-                          title="Copiar Senha"
+                          title="Copiar Senha" aria-label="Copiar Senha"
                         >
                           {copiedId === `${cred.id}-pass` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                         </button>
@@ -736,10 +738,10 @@ export function KnowledgeBase() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="table-header">Quando</th>
-                <th className="table-header">Usuário</th>
-                <th className="table-header">Ação</th>
-                <th className="table-header">Credencial</th>
+                <th scope="col" className="table-header">Quando</th>
+                <th scope="col" className="table-header">Usuário</th>
+                <th scope="col" className="table-header">Ação</th>
+                <th scope="col" className="table-header">Credencial</th>
               </tr>
             </thead>
             <tbody>
