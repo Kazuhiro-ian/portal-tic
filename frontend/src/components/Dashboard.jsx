@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
-import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { Modal } from './Modal.jsx';
-import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso, listarEscalasPorPeriodo } from '../services/api.js';
+import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso, listarEscalasPorPeriodo, listarLinks } from '../services/api.js';
 import { toISO } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
@@ -20,9 +19,7 @@ export function Dashboard() {
   const [qualidadeDiasRecebimento, setQualidadeDiasRecebimento] = useState([]);
   const [escalasHoje, setEscalasHoje] = useState({});
 
-  // "Links Mais Utilizados" ainda não tem entidade própria no backend -- fora de escopo
-  // desta rodada, permanece no localStorage.
-  const [links] = useLocalStorage('ithub_links', []);
+  const [links, setLinks] = useState([]);
   const [notices, setNotices] = useState([]);
   const [showAddNotice, setShowAddNotice] = useState(false);
   const [newNotice, setNewNotice] = useState({ mensagem: '', prioridade: 'MEDIA' });
@@ -40,7 +37,7 @@ export function Dashboard() {
       const amanhaISO = toISO(amanha);
 
       setIsLoading(true);
-      const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData, escalasData] = await Promise.all([
+      const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData, escalasData, linksData] = await Promise.all([
         listarAtivos(),
         listarEstoqueItens(),
         listarColaboradores(),
@@ -51,6 +48,7 @@ export function Dashboard() {
         listarDiasRecebimento(hojeISO, amanhaISO),
         listarAvisos(),
         listarEscalasPorPeriodo(hojeISO, hojeISO),
+        listarLinks(),
       ]);
       setPrinters(ativosData.filter((a) => a.tipo === 'IMPRESSORA' || a.tipo === 'IMPRESSORA_ZEBRA'));
       setStock(estoqueData);
@@ -62,6 +60,7 @@ export function Dashboard() {
       setQualidadeDiasRecebimento(diasRecebimentoData);
       setNotices(avisosData);
       setEscalasHoje(indexarEscalasPorColaboradorEData(escalasData));
+      setLinks(linksData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -400,6 +399,11 @@ export function Dashboard() {
 
         <div className="card">
           <h2 className="text-lg font-semibold text-white mb-4">Links Mais Utilizados</h2>
+          {!isLoading && links.length === 0 && (
+            <p className="text-dark-400 text-sm text-center py-8">
+              Nenhum link cadastrado ainda. Cadastre em &quot;Links Uteis&quot;.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto scrollbar-thin">
             {links.slice(0, 8).map((link) => {
               const Icon = getCategoryIcon(link.category);
