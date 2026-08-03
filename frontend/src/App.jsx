@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Importação dos Componentes
 import { Sidebar } from './components/Sidebar.jsx';
@@ -19,39 +20,13 @@ import { useAuth } from './context/AuthContext.jsx';
 function App() {
   const { isAuthenticated, isAdmin } = useAuth();
 
-  const [currentView, setCurrentView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Fecha o menu lateral a cada navegação no mobile, onde ele cobre a tela inteira.
+  const location = useLocation();
 
   if (!isAuthenticated) {
     return <LoginPage />;
   }
-
-  const renderContent = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'links':
-        return <LinksManager />;
-      case 'ativos':
-        return <AssetInventory />;
-      case 'stock':
-        return <StockDashboard />;
-      case 'schedule':
-        return <EmployeeSchedule />;
-      case 'knowledge':
-        return <KnowledgeBase />;
-      case 'zebra':
-        return <ZebraSupplies />;
-      case 'branches':
-        return <BranchManagement />;
-      case 'qualidade':
-        return <QualityPlanning />;
-      case 'usuarios':
-        return isAdmin ? <UsuarioManagement /> : <Dashboard />;
-      default:
-        return <Dashboard />;
-    }
-  };
 
   return (
     <div className="h-screen bg-dark-900 flex overflow-hidden">
@@ -59,6 +34,7 @@ function App() {
       <div
         className={`fixed inset-0 bg-black/50 z-40 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
         onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
       />
 
       {/* Sidebar Lateral */}
@@ -67,13 +43,7 @@ function App() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
       >
-        <Sidebar
-          currentView={currentView}
-          onViewChange={(view) => {
-            setCurrentView(view);
-            setSidebarOpen(false);
-          }}
-        />
+        <Sidebar onNavigate={() => setSidebarOpen(false)} />
       </div>
 
       {/* Conteúdo Principal */}
@@ -97,6 +67,8 @@ function App() {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center"
+              aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={sidebarOpen}
             >
               {sidebarOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
             </button>
@@ -104,8 +76,27 @@ function App() {
         </header>
 
         {/* Área de Renderização dos Componentes */}
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin">
-          {renderContent()}
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin" key={location.pathname}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/links" element={<LinksManager />} />
+            <Route path="/ativos" element={<AssetInventory />} />
+            <Route path="/estoque" element={<StockDashboard />} />
+            <Route path="/escala" element={<EmployeeSchedule />} />
+            <Route path="/conhecimento" element={<KnowledgeBase />} />
+            <Route path="/filiais" element={<BranchManagement />} />
+            <Route path="/zebra" element={<ZebraSupplies />} />
+            <Route path="/qualidade" element={<QualityPlanning />} />
+            {/* A rota de usuários só existe para ADMIN. Quem não for cai no dashboard, e o
+                backend recusa /api/usuarios de qualquer forma. */}
+            <Route
+              path="/usuarios"
+              element={isAdmin ? <UsuarioManagement /> : <Navigate to="/dashboard" replace />}
+            />
+            {/* URL desconhecida volta para o dashboard em vez de deixar a tela em branco. */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
 
       </div>

@@ -1,16 +1,17 @@
 import { LayoutDashboard, Link, HardDrive, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut, ClipboardCheck } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'links', label: 'Links Uteis', icon: Link },
-  { id: 'ativos', label: 'Ativos', icon: HardDrive },
-  { id: 'stock', label: 'Estoque', icon: Package },
-  { id: 'schedule', label: 'Escala', icon: Calendar },
-  { id: 'knowledge', label: 'Conhecimento', icon: BookOpen },
-  { id: 'branches', label: 'Gest. Filiais', icon: Store },
-  { id: 'zebra', label: 'Insumos Zebra', icon: Tag },
-  { id: 'qualidade', label: 'Qualidade', icon: ClipboardCheck },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/links', label: 'Links Uteis', icon: Link },
+  { to: '/ativos', label: 'Ativos', icon: HardDrive },
+  { to: '/estoque', label: 'Estoque', icon: Package },
+  { to: '/escala', label: 'Escala', icon: Calendar },
+  { to: '/conhecimento', label: 'Conhecimento', icon: BookOpen },
+  { to: '/filiais', label: 'Gest. Filiais', icon: Store },
+  { to: '/zebra', label: 'Insumos Zebra', icon: Tag },
+  { to: '/qualidade', label: 'Qualidade', icon: ClipboardCheck },
 ];
 
 const roleLabels = {
@@ -20,11 +21,11 @@ const roleLabels = {
   QUALIDADE: 'Qualidade',
 };
 
-export function Sidebar({ currentView, onViewChange }) {
+export function Sidebar({ onNavigate }) {
   const { user, logout, isAdmin } = useAuth();
 
   const items = isAdmin
-    ? [...menuItems, { id: 'usuarios', label: 'Usuários', icon: Users }]
+    ? [...menuItems, { to: '/usuarios', label: 'Usuários', icon: Users }]
     : menuItems;
 
   return (
@@ -49,20 +50,28 @@ export function Sidebar({ currentView, onViewChange }) {
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4" aria-label="Menu principal">
         <ul className="space-y-1">
           {items.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
             return (
-              <li key={item.id}>
-                <button
-                  onClick={() => onViewChange(item.id)}
-                  className={`sidebar-item w-full ${isActive ? 'active' : ''}`}
+              <li key={item.to}>
+                {/* NavLink resolve o estado "ativo" pela URL, então recarregar a página mantém
+                    o item certo destacado — o que o antigo currentView em memória não fazia. */}
+                <NavLink
+                  to={item.to}
+                  onClick={onNavigate}
+                  className={({ isActive }) => `sidebar-item w-full ${isActive ? 'active' : ''}`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-primary-400' : 'text-dark-400'}`} />
-                  <span className={`flex-1 text-sm font-medium text-left ${isActive ? 'text-white' : 'text-dark-300'}`}>{item.label}</span>
-                </button>
+                  {({ isActive }) => (
+                    <>
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary-400' : 'text-dark-400'}`} />
+                      <span className={`flex-1 text-sm font-medium text-left ${isActive ? 'text-white' : 'text-dark-300'}`}>
+                        {item.label}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
               </li>
             );
           })}
