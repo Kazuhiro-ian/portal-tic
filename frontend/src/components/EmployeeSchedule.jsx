@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import {
-  useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, Coffee, CheckSquare, ListTodo, Circle, PlayCircle
+  Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, Coffee, CheckSquare,
+  ListTodo, Circle, PlayCircle, Search
 } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import {
@@ -31,6 +32,7 @@ export function EmployeeSchedule() {
 
   const [activeCellMenu, setActiveCellMenu] = useState(null); 
   const [viewModeToday, setViewModeToday] = useState('trabalhando');
+  const [buscaColaborador, setBuscaColaborador] = useState('');
 
   // Estados das Tarefas do Plantão
   const [tarefasHoje, setTarefasHoje] = useState([]);
@@ -209,6 +211,17 @@ export function EmployeeSchedule() {
 
   const workingToday = employees.filter((e) => estaTrabalhando(escalas[`${e.id}_${todayStr}`]));
   const offToday = employees.filter((e) => !estaTrabalhando(escalas[`${e.id}_${todayStr}`]));
+
+  // A busca vale só para o card de gerenciamento embaixo; a grade da escala continua
+  // mostrando todo mundo, senão a visão da semana ficaria incompleta.
+  const colaboradoresFiltrados = employees.filter((e) => {
+    const termo = buscaColaborador.trim().toLowerCase();
+    if (!termo) return true;
+    return (
+      (e.name && e.name.toLowerCase().includes(termo)) ||
+      (e.role && e.role.toLowerCase().includes(termo))
+    );
+  });
 
   return (
     <div className="space-y-6 relative">
@@ -572,14 +585,29 @@ export function EmployeeSchedule() {
 
       {/* CARD DE GERENCIAMENTO DE COLABORADORES */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-white mb-4">Gerenciar Colaboradores Cadastrados</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-semibold text-white">Gerenciar Colaboradores Cadastrados</h2>
+          <div className="relative sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+            <input
+              type="search"
+              placeholder="Buscar por nome ou cargo..."
+              value={buscaColaborador}
+              onChange={(e) => setBuscaColaborador(e.target.value)}
+              className="input-field pl-9"
+              aria-label="Buscar colaboradores"
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading ? (
              <p className="text-dark-400 col-span-full text-center py-12">Carregando...</p>
-          ) : employees.length === 0 ? (
-             <p className="text-dark-400 col-span-full text-center py-12">Nenhum colaborador cadastrado.</p>
+          ) : colaboradoresFiltrados.length === 0 ? (
+             <p className="text-dark-400 col-span-full text-center py-12">
+               {buscaColaborador.trim() ? 'Nenhum colaborador encontrado para essa busca.' : 'Nenhum colaborador cadastrado.'}
+             </p>
           ) : (
-            employees.map((employee) => (
+            colaboradoresFiltrados.map((employee) => (
               <div
                 key={employee.id}
                 className="p-4 rounded-lg bg-dark-700/50 border border-dark-600 flex flex-col justify-between"

@@ -1,7 +1,5 @@
-import {
-  useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, ShieldCheck
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Users, ShieldCheck, Search } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarUsuarios, salvarUsuario, atualizarUsuario, desativarUsuario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -26,6 +24,7 @@ export function UsuarioManagement() {
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
+  const [search, setSearch] = useState('');
 
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
@@ -33,6 +32,16 @@ export function UsuarioManagement() {
   useEffect(() => {
     carregarUsuarios();
   }, []);
+
+  const filtrados = usuarios.filter((u) => {
+    const termo = search.trim().toLowerCase();
+    if (!termo) return true;
+    return (
+      (u.username && u.username.toLowerCase().includes(termo)) ||
+      (u.nomeCompleto && u.nomeCompleto.toLowerCase().includes(termo)) ||
+      (u.role && u.role.toLowerCase().includes(termo))
+    );
+  });
 
   const carregarUsuarios = async () => {
     try {
@@ -127,6 +136,18 @@ export function UsuarioManagement() {
       </div>
 
       <div className="card">
+        <div className="relative sm:w-80 mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+          <input
+            type="search"
+            placeholder="Buscar por usuário, nome ou papel..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-field pl-9"
+            aria-label="Buscar usuários"
+          />
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -139,14 +160,18 @@ export function UsuarioManagement() {
               </tr>
             </thead>
             <tbody>
-              {usuarios.length === 0 ? (
+              {filtrados.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-16 text-dark-400">
-                    {isLoading ? 'Carregando...' : 'Nenhum usuário cadastrado.'}
+                    {isLoading
+                      ? 'Carregando...'
+                      : search.trim()
+                        ? 'Nenhum usuário encontrado para essa busca.'
+                        : 'Nenhum usuário cadastrado.'}
                   </td>
                 </tr>
               ) : (
-                usuarios.map((u) => (
+                filtrados.map((u) => (
                   <tr key={u.id} className="hover:bg-dark-700/30 transition-colors">
                     <td className="table-cell font-mono text-primary-400">{u.username}</td>
                     <td className="table-cell font-medium text-white">{u.nomeCompleto}</td>

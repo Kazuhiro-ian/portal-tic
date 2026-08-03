@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import {
-  useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight, Package, Laptop, Smartphone, KeyRound
+  Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight,
+  Package, Laptop, Smartphone, KeyRound
 } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { StockDispatch } from './StockDispatch.jsx';

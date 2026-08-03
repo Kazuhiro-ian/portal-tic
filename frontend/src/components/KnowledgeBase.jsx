@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import {
-  useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen, Key, ArrowRight, Loader2, History
+  Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen,
+  Key, ArrowRight, Loader2, History
 } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import {

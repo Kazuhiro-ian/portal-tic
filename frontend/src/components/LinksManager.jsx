@@ -1,7 +1,5 @@
-import {
-  useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';

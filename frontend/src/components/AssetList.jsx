@@ -1,7 +1,5 @@
-import {
-  useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { AssetFormPanel } from './AssetFormPanel.jsx';
 import { AssetDetailPanel } from './AssetDetailPanel.jsx';
 import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais, consultarPingHabilitado } from '../services/api.js';
