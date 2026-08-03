@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import {
+  useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2
+} from 'lucide-react';
 import { AssetFormPanel } from './AssetFormPanel.jsx';
 import { AssetDetailPanel } from './AssetDetailPanel.jsx';
 import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais, consultarPingHabilitado } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
+import { Toast } from './Toast.jsx';
 
 // Cada coluna sabe desenhar a si mesma a partir de um ativo (e, no caso de "filial",
 // de uma função auxiliar pra achar o nome). Isso evita reescrever a estrutura da
@@ -205,19 +208,7 @@ export function AssetList({ tipo, tipoLabel }) {
 
       {dialogoConfirmacao}
 
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          )}
-          <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={hideToast} />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

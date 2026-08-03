@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, CheckCircle2, AlertCircle, X, Coffee, CheckSquare, ListTodo, Circle, PlayCircle } from 'lucide-react';
+import {
+  useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, Coffee, CheckSquare, ListTodo, Circle, PlayCircle
+} from 'lucide-react';
 import { Modal } from './Modal.jsx';
 import {
   listarColaboradores, salvarColaborador, atualizarColaborador, deletarColaborador,
@@ -9,6 +11,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
+import { Toast } from './Toast.jsx';
 import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
@@ -212,19 +215,7 @@ export function EmployeeSchedule() {
       
       {dialogoConfirmacao}
 
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all">
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          )}
-          <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={hideToast} />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

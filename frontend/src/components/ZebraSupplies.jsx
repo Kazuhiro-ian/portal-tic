@@ -12,6 +12,8 @@ import {
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useConfirm } from '../hooks/useConfirm.jsx';
+import { useToast } from '../hooks/useToast.js';
+import { Toast } from './Toast.jsx';
 
 // Retorna com segurança o número da filial baseado na coluna real do banco (numero_filial)
 function getBranchNumber(b) {
@@ -32,6 +34,7 @@ function branchLabel(branches, branchNum) {
 export function ZebraSupplies() {
   const { canWrite } = useAuth();
   const { confirmar, dialogoConfirmacao } = useConfirm();
+  const { toast, showToast, hideToast } = useToast();
   const [branches, setBranches] = useState([]);
   const [quotas, setQuotas] = useState([]);
   const [distributions, setDistributions] = useState([]);
@@ -238,7 +241,7 @@ export function ZebraSupplies() {
       await carregarDados();
       setShowQuotaModal(false);
     } catch (error) {
-      alert(error.message || 'Erro ao salvar cota.');
+      showToast(error.message || 'Erro ao salvar cota.', 'error');
     }
   };
 
@@ -253,7 +256,7 @@ export function ZebraSupplies() {
       await deletarZebraCota(id);
       await carregarDados();
     } catch (error) {
-      alert('Erro ao excluir cota.');
+      showToast('Erro ao excluir cota.', 'error');
     }
   };
 
@@ -269,6 +272,8 @@ export function ZebraSupplies() {
   return (
     <div className="space-y-6">
       {dialogoConfirmacao}
+
+      <Toast toast={toast} onClose={hideToast} />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
