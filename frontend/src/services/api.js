@@ -28,13 +28,17 @@ async function apiFetch(path, options = {}) {
 
   if (!response.ok) {
     let mensagem = `Erro ${response.status} ao comunicar com o servidor.`;
+    let codigo = null;
     try {
       const body = await response.json();
       if (body && body.mensagem) mensagem = body.mensagem;
+      if (body && body.codigo) codigo = body.codigo;
     } catch {
       // resposta sem corpo JSON, mantém mensagem genérica
     }
-    throw new Error(mensagem);
+    const erro = new Error(mensagem);
+    erro.codigo = codigo;
+    throw erro;
   }
 
   if (response.status === 204) return null;

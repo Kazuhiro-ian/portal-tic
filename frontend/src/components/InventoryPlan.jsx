@@ -12,7 +12,10 @@ import { toISO, formatarBR, limitesDoMes, diasNoMes } from '../utils/datas.js';
 import { grupoLabels, grupoBadge, MOTIVOS, STATUS_INVENTARIO as STATUS } from '../utils/qualidade.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 
-const emptyForm = { filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO', responsavel: '', observacao: '' };
+const emptyForm = {
+  filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO',
+  responsavel: '', observacao: '', cienteConflitoRecebimento: false,
+};
 
 export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos }) {
   const { confirmar, dialogoConfirmacao } = useConfirm();
@@ -29,6 +32,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
+  const [conflitoPendente, setConflitoPendente] = useState(false);
 
   const filialPorId = useMemo(
     () => new Map(filiais.map((f) => [f.id, f])),
@@ -137,6 +141,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     setEditando(null);
     setForm({ ...emptyForm, data: toISO(new Date(ano, mes - 1, 1)) });
     setFormError('');
+    setConflitoPendente(false);
     setShowModal(true);
   };
 
@@ -150,9 +155,18 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       status: inv.status,
       responsavel: inv.responsavel || '',
       observacao: inv.observacao || '',
+      cienteConflitoRecebimento: Boolean(inv.cienteConflitoRecebimento),
     });
     setFormError('');
+    setConflitoPendente(Boolean(inv.cienteConflitoRecebimento));
     setShowModal(true);
+  };
+
+  // Filial ou data mudaram: a ciência dada para a combinação anterior não vale mais.
+  const alterarFilialOuData = (campo, valor) => {
+    setForm((atual) => ({ ...atual, [campo]: valor, cienteConflitoRecebimento: false }));
+    setConflitoPendente(false);
+    setFormError('');
   };
 
   const handleSave = async () => {
@@ -162,6 +176,10 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     }
     if (!form.data) {
       setFormError('Informe a data do inventário.');
+      return;
+    }
+    if (conflitoPendente && (!form.cienteConflitoRecebimento || !form.observacao.trim())) {
+      setFormError('Marque "Estou ciente do conflito" e informe uma observação para confirmar o agendamento mesmo assim.');
       return;
     }
 
@@ -174,6 +192,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
         status: form.status,
         responsavel: form.responsavel.trim() || null,
         observacao: form.observacao.trim() || null,
+        cienteConflitoRecebimento: form.cienteConflitoRecebimento,
       };
 
       if (editando) {
@@ -189,6 +208,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     } catch (error) {
       // O backend devolve a regra violada em texto claro — mostrar tal e qual.
       setFormError(error.message || 'Erro ao salvar o inventário.');
+      if (error.codigo === 'CONFLITO_RECEBIMENTO') {
+        setConflitoPendente(true);
+      }
     }
   };
 
@@ -498,7 +520,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
             <label className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
             <select
               value={form.filialId}
-              onChange={(e) => { setForm({ ...form, filialId: e.target.value }); setFormError(''); }}
+              onChange={(e) => alterarFilialOuData('filialId', e.target.value)}
               className="select-field"
             >
               <option value="">Selecione a filial...</option>
@@ -516,7 +538,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
             <input
               type="date"
               value={form.data}
-              onChange={(e) => { setForm({ ...form, data: e.target.value }); setFormError(''); }}
+              onChange={(e) => alterarFilialOuData('data', e.target.value)}
               className="input-field"
             />
           </div>
@@ -567,15 +589,40 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Observação</label>
+            <label className="block text-sm font-medium text-dark-300 mb-2">
+              Observação{conflitoPendente ? ' *' : ''}
+            </label>
             <input
               type="text"
               value={form.observacao}
-              onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+              onChange={(e) => { setForm({ ...form, observacao: e.target.value }); if (formError) setFormError(''); }}
               className="input-field"
-              placeholder="Opcional"
+              placeholder={conflitoPendente ? 'Justifique o inventário no mesmo dia do recebimento' : 'Opcional'}
             />
           </div>
+
+          {conflitoPendente && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-200 flex-1">
+                <p>
+                  Essa filial recebe material nessa data. O cadastro não é mais bloqueado, mas
+                  é preciso confirmar ciência e justificar na observação acima.
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer mt-3">
+                  <input
+                    type="checkbox"
+                    checked={form.cienteConflitoRecebimento}
+                    onChange={(e) => { setForm({ ...form, cienteConflitoRecebimento: e.target.checked }); if (formError) setFormError(''); }}
+                    className="w-5 h-5 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
+                  />
+                  <span className="text-amber-100">
+                    Estou ciente do conflito e confirmo o agendamento mesmo assim.
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
 
           {formError && (
             <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">

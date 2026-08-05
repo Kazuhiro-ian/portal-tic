@@ -36,4 +36,7 @@ public class Inventario {
     private String responsavel;
 
     private String observacao;
+
+    @Column(name = "ciente_conflito_recebimento")
+    private Boolean cienteConflitoRecebimento;
 }

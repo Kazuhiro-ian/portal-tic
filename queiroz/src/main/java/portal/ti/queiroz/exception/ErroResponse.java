@@ -9,13 +9,18 @@ public record ErroResponse(
         String erro,
         String mensagem,
         String path,
-        List<String> detalhes
+        List<String> detalhes,
+        String codigo
 ) {
     public ErroResponse(int status, String erro, String mensagem, String path) {
-        this(LocalDateTime.now(), status, erro, mensagem, path, null);
+        this(LocalDateTime.now(), status, erro, mensagem, path, null, null);
     }
 
     public ErroResponse(int status, String erro, String mensagem, String path, List<String> detalhes) {
-        this(LocalDateTime.now(), status, erro, mensagem, path, detalhes);
+        this(LocalDateTime.now(), status, erro, mensagem, path, detalhes, null);
+    }
+
+    public ErroResponse(int status, String erro, String mensagem, String path, List<String> detalhes, String codigo) {
+        this(LocalDateTime.now(), status, erro, mensagem, path, detalhes, codigo);
     }
 }

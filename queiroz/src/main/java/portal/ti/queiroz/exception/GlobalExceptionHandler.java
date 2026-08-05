@@ -27,7 +27,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RegraDeNegocioException.class)
     public ResponseEntity<ErroResponse> handleRegraDeNegocio(RegraDeNegocioException e, HttpServletRequest request) {
-        return construir(HttpStatus.BAD_REQUEST, "Regra de negócio violada", e.getMessage(), request);
+        ErroResponse body = new ErroResponse(HttpStatus.BAD_REQUEST.value(), "Regra de negócio violada",
+                e.getMessage(), request.getRequestURI(), null, e.getCodigo());
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

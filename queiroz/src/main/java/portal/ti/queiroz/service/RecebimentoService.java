@@ -141,6 +141,9 @@ public class RecebimentoService {
             if (inv.getStatus() != StatusInventario.PLANEJADO) {
                 continue;
             }
+            if (Boolean.TRUE.equals(inv.getCienteConflitoRecebimento())) {
+                continue; // usuário já confirmou ciência deste conflito ao salvar
+            }
             Filiais filial = filiais.get(inv.getFilialId());
             if (filial == null || filial.getGrupoRecebimento() == null) {
                 continue;

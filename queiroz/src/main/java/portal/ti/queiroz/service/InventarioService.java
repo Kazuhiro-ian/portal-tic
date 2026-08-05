@@ -47,6 +47,7 @@ public class InventarioService {
         inventario.setStatus(atualizado.getStatus());
         inventario.setResponsavel(atualizado.getResponsavel());
         inventario.setObservacao(atualizado.getObservacao());
+        inventario.setCienteConflitoRecebimento(atualizado.getCienteConflitoRecebimento());
         inventario.setDiaPreferencial(atualizado.getDiaPreferencial());
         inventario.setHorarioInicio(atualizado.getHorarioInicio());
         inventario.setHorarioFim(atualizado.getHorarioFim());
@@ -111,24 +112,39 @@ public class InventarioService {
                                     mes.getMonthValue(), mes.getYear()));
         }
 
-        validarConflitoRecebimento(filial, inventario.getData());
+        validarConflitoRecebimento(inventario, filial);
     }
 
     /**
-     * O dia é inválido quando o calendário marca recebimento para o grupo da própria filial.
+     * O dia conflita quando o calendário marca recebimento para o grupo da própria filial.
      * Um dia sem linha no calendário é tratado como sem restrição conhecida.
+     *
+     * O conflito não bloqueia mais o cadastro: exige que o usuário marque ciência
+     * e registre uma observação justificando o inventário no mesmo dia do recebimento.
      */
-    private void validarConflitoRecebimento(Filiais filial, LocalDate data) {
-        Optional<DiaRecebimento> dia = diaRecebimentoRepository.findByData(data);
+    private void validarConflitoRecebimento(Inventario inventario, Filiais filial) {
+        Optional<DiaRecebimento> dia = diaRecebimentoRepository.findByData(inventario.getData());
         if (dia.isEmpty()) {
             return;
         }
-        if (dia.get().getTipo().name().equals(filial.getGrupoRecebimento().name())) {
+        if (!dia.get().getTipo().name().equals(filial.getGrupoRecebimento().name())) {
+            return;
+        }
+
+        String aviso = "A filial %s - %s pertence ao %s e recebe material em %s."
+                .formatted(filial.getNumeroFilial(), filial.getNome(),
+                        RecebimentoService.rotulo(filial.getGrupoRecebimento()),
+                        inventario.getData().format(BR));
+
+        if (!Boolean.TRUE.equals(inventario.getCienteConflitoRecebimento())) {
             throw new RegraDeNegocioException(
-                    "A filial %s - %s pertence ao %s e recebe material em %s. Escolha outra data para o inventário."
-                            .formatted(filial.getNumeroFilial(), filial.getNome(),
-                                    RecebimentoService.rotulo(filial.getGrupoRecebimento()),
-                                    data.format(BR)));
+                    aviso + " Marque ciência do conflito e informe uma observação para confirmar mesmo assim.",
+                    "CONFLITO_RECEBIMENTO");
+        }
+        if (inventario.getObservacao() == null || inventario.getObservacao().isBlank()) {
+            throw new RegraDeNegocioException(
+                    "Informe uma observação justificando o inventário no mesmo dia do recebimento.",
+                    "CONFLITO_RECEBIMENTO");
         }
     }
 }
