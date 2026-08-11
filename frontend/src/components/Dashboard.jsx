@@ -344,7 +344,7 @@ export function Dashboard() {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{isLoading ? '—' : todayEmployees.length}</p>
-              <p className="text-sm text-dark-400">No Plantao Hoje</p>
+              <p className="text-sm text-dark-400">Trabalhando Hoje</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{employees.length} colaboradores</p>
