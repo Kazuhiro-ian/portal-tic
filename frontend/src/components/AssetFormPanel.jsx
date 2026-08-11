@@ -45,6 +45,70 @@ function formFromAtivo(ativo) {
   };
 }
 
+// Metadados de exibição de cada campo possível. O que aparece no formulário e em que
+// ordem é decidido por tipo em CAMPOS_POR_TIPO, não aqui.
+const CAMPOS = {
+  marca: { label: 'Marca', placeholder: 'Ex: Dell, Zebra, Samsung' },
+  modelo: { label: 'Modelo', placeholder: 'Ex: Latitude 5420' },
+  etiqueta: { label: 'Etiqueta (patrimônio)', placeholder: 'Ex: PAT-00123' },
+  status: { label: 'Status Inicial', tipoCampo: 'status' },
+  ip: { label: 'Endereço IP', placeholder: '192.168.1.100' },
+  numeroSerie: { label: 'Número de Série' },
+  macAddress: { label: 'MAC Address', placeholder: '00:1A:2B:3C:4D:5E' },
+  imei: { label: 'IMEI' },
+  processador: { label: 'Processador', placeholder: 'Ex: Intel i5 11ª geração' },
+  memoria: { label: 'Memória', placeholder: 'Ex: 16GB' },
+  armazenamento: { label: 'Armazenamento', placeholder: 'Ex: 512GB SSD' },
+  filialId: { label: 'Filial', tipoCampo: 'filial' },
+  setor: { label: 'Setor', placeholder: 'Ex: Financeiro' },
+  responsavelAtual: { label: 'Responsável Atual' },
+  lastMaintenance: { label: 'Última Manutenção', tipoCampo: 'data' },
+  observacoes: { label: 'Observações', tipoCampo: 'textarea' },
+};
+
+// Campos padrão usados por Coletor e as duas impressoras -- nenhum deles tem um recorte
+// específico ainda, então mantêm o formulário completo que a tela sempre teve.
+const CAMPOS_PADRAO = [
+  { chave: 'marca', obrigatorio: true },
+  { chave: 'modelo', obrigatorio: true },
+  'etiqueta', 'status', 'ip', 'numeroSerie', 'macAddress',
+  'filialId', 'setor', 'responsavelAtual', 'lastMaintenance', 'observacoes',
+];
+
+// Lista (e obrigatoriedade) dos campos do formulário, por tipo de ativo. Um tipo sem
+// entrada aqui cai no CAMPOS_PADRAO.
+const CAMPOS_POR_TIPO = {
+  // Recorte pedido para a aba Desktops: só o que o time realmente usa no dia a dia.
+  DESKTOP: [
+    'etiqueta',
+    { chave: 'ip', obrigatorio: true },
+    'processador', 'memoria', 'armazenamento',
+    { chave: 'filialId', obrigatorio: true },
+    'setor', 'observacoes',
+  ],
+  NOTEBOOK: [
+    { chave: 'marca', obrigatorio: true },
+    { chave: 'modelo', obrigatorio: true },
+    'macAddress', 'processador', 'memoria', 'armazenamento',
+    'filialId', 'responsavelAtual',
+  ],
+  CELULAR: [
+    { chave: 'marca', obrigatorio: true },
+    { chave: 'modelo', obrigatorio: true },
+    'macAddress', 'imei', 'filialId',
+  ],
+  COLETOR: [
+    { chave: 'modelo', obrigatorio: true },
+    'ip', 'macAddress', 'filialId',
+  ],
+  IMPRESSORA: [
+    { chave: 'marca', obrigatorio: true },
+    { chave: 'modelo', obrigatorio: true },
+    'ip', 'numeroSerie', 'filialId', 'observacoes',
+  ],
+  IMPRESSORA_ZEBRA: CAMPOS_PADRAO,
+};
+
 export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, onClose, showToast }) {
   const { mounted, visible } = useSlidePanel(open);
   const [formData, setFormData] = useState(() => formFromAtivo(ativo));
@@ -57,11 +121,16 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
 
   if (!mounted) return null;
 
-  const mostraHardware = tipo === 'DESKTOP' || tipo === 'NOTEBOOK';
+  const campos = (CAMPOS_POR_TIPO[tipo] || CAMPOS_PADRAO).map((c) =>
+    typeof c === 'string' ? { chave: c, obrigatorio: false } : c
+  );
+
+  const handleChange = (chave, valor) => setFormData((prev) => ({ ...prev, [chave]: valor }));
 
   const handleSubmit = () => {
-    if (!formData.marca.trim() || !formData.modelo.trim()) {
-      showToast('Preencha marca e modelo.', 'error');
+    const faltando = campos.find(({ chave, obrigatorio }) => obrigatorio && !String(formData[chave] ?? '').trim());
+    if (faltando) {
+      showToast(`Preencha o campo "${CAMPOS[faltando.chave].label}".`, 'error');
       return;
     }
 
@@ -73,6 +142,80 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     };
 
     onSave(payload);
+  };
+
+  const renderCampo = ({ chave, obrigatorio }) => {
+    const def = CAMPOS[chave];
+    const label = `${def.label}${obrigatorio ? ' *' : ''}`;
+
+    if (def.tipoCampo === 'status') {
+      return (
+        <div key={chave}>
+          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <select value={formData.status} onChange={(e) => handleChange('status', e.target.value)} className="select-field">
+            <option value="Online">Online</option>
+            <option value="Offline">Offline</option>
+          </select>
+        </div>
+      );
+    }
+
+    if (def.tipoCampo === 'filial') {
+      return (
+        <div key={chave}>
+          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <select value={formData.filialId} onChange={(e) => handleChange('filialId', e.target.value)} className="select-field">
+            <option value="">{obrigatorio ? 'Selecione a filial' : 'Sem filial'}</option>
+            {filiais.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.numeroFilial} - {f.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (def.tipoCampo === 'data') {
+      return (
+        <div key={chave}>
+          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <input
+            type="date"
+            value={formData.lastMaintenance}
+            onChange={(e) => handleChange('lastMaintenance', e.target.value)}
+            className="input-field"
+          />
+        </div>
+      );
+    }
+
+    if (def.tipoCampo === 'textarea') {
+      return (
+        <div key={chave}>
+          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <textarea
+            value={formData.observacoes}
+            onChange={(e) => handleChange('observacoes', e.target.value)}
+            className="input-field"
+            rows={3}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div key={chave}>
+        <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+        <input
+          type="text"
+          value={formData[chave]}
+          onChange={(e) => handleChange(chave, e.target.value)}
+          className="input-field"
+          placeholder={def.placeholder}
+        />
+      </div>
+    );
   };
 
   return (
@@ -99,173 +242,7 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Marca *</label>
-            <input
-              type="text"
-              value={formData.marca}
-              onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
-              className="input-field"
-              placeholder="Ex: Dell, Zebra, Samsung"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Modelo *</label>
-            <input
-              type="text"
-              value={formData.modelo}
-              onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
-              className="input-field"
-              placeholder="Ex: Latitude 5420"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Etiqueta (patrimônio)</label>
-            <input
-              type="text"
-              value={formData.etiqueta}
-              onChange={(e) => setFormData({ ...formData, etiqueta: e.target.value })}
-              className="input-field"
-              placeholder="Ex: PAT-00123"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Status Inicial</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="select-field"
-            >
-              <option value="Online">Online</option>
-              <option value="Offline">Offline</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Endereço IP</label>
-            <input
-              type="text"
-              value={formData.ip}
-              onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-              className="input-field"
-              placeholder="192.168.1.100"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Número de Série</label>
-            <input
-              type="text"
-              value={formData.numeroSerie}
-              onChange={(e) => setFormData({ ...formData, numeroSerie: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">MAC Address</label>
-            <input
-              type="text"
-              value={formData.macAddress}
-              onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })}
-              className="input-field"
-              placeholder="00:1A:2B:3C:4D:5E"
-            />
-          </div>
-          {tipo === 'CELULAR' && (
-            <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">IMEI</label>
-              <input
-                type="text"
-                value={formData.imei}
-                onChange={(e) => setFormData({ ...formData, imei: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          )}
-          {mostraHardware && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Processador</label>
-                <input
-                  type="text"
-                  value={formData.processador}
-                  onChange={(e) => setFormData({ ...formData, processador: e.target.value })}
-                  className="input-field"
-                  placeholder="Ex: Intel i5 11ª geração"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Memória</label>
-                <input
-                  type="text"
-                  value={formData.memoria}
-                  onChange={(e) => setFormData({ ...formData, memoria: e.target.value })}
-                  className="input-field"
-                  placeholder="Ex: 16GB"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Armazenamento</label>
-                <input
-                  type="text"
-                  value={formData.armazenamento}
-                  onChange={(e) => setFormData({ ...formData, armazenamento: e.target.value })}
-                  className="input-field"
-                  placeholder="Ex: 512GB SSD"
-                />
-              </div>
-            </>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Filial</label>
-            <select
-              value={formData.filialId}
-              onChange={(e) => setFormData({ ...formData, filialId: e.target.value })}
-              className="select-field"
-            >
-              <option value="">Sem filial</option>
-              {filiais.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.numeroFilial} - {f.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Setor</label>
-            <input
-              type="text"
-              value={formData.setor}
-              onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
-              className="input-field"
-              placeholder="Ex: Financeiro"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Responsável Atual</label>
-            <input
-              type="text"
-              value={formData.responsavelAtual}
-              onChange={(e) => setFormData({ ...formData, responsavelAtual: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Última Manutenção</label>
-            <input
-              type="date"
-              value={formData.lastMaintenance}
-              onChange={(e) => setFormData({ ...formData, lastMaintenance: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Observações</label>
-            <textarea
-              value={formData.observacoes}
-              onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-              className="input-field"
-              rows={3}
-            />
-          </div>
+          {campos.map(renderCampo)}
         </div>
 
         <div className="flex justify-end gap-3 p-5 border-t border-dark-700">

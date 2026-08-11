@@ -37,6 +37,10 @@ const COLUNA_DEFS = {
     header: 'Modelo',
     render: (ativo) => <span className="text-dark-100">{ativo.modelo}</span>,
   },
+  etiqueta: {
+    header: 'Etiqueta',
+    render: (ativo) => <span className="text-dark-300 text-sm">{ativo.etiqueta || '—'}</span>,
+  },
   ip: {
     header: 'IP',
     render: (ativo) =>
@@ -62,16 +66,24 @@ const COLUNA_DEFS = {
     header: 'Responsável',
     render: (ativo) => <span className="text-dark-300 text-sm">{ativo.responsavelAtual || '—'}</span>,
   },
+  imei: {
+    header: 'IMEI',
+    render: (ativo) => <span className="text-dark-300 text-sm">{ativo.imei || '—'}</span>,
+  },
+  macAddress: {
+    header: 'MAC Address',
+    render: (ativo) => <span className="text-dark-300 text-sm">{ativo.macAddress || '—'}</span>,
+  },
 };
 
 // Ordem de prioridade (mais importante primeiro) -- quando um painel está aberto,
 // só as 4 primeiras colunas de dados aparecem, pra tabela caber no espaço menor.
 const COLUNAS_POR_TIPO = {
-  DESKTOP: ['status', 'marca', 'modelo', 'setor', 'filial'],
+  DESKTOP: ['status', 'etiqueta', 'ip', 'setor', 'filial'],
   NOTEBOOK: ['status', 'marca', 'modelo', 'responsavelAtual', 'filial'],
-  CELULAR: ['status', 'marca', 'modelo', 'responsavelAtual', 'filial'],
-  COLETOR: ['status', 'marca', 'modelo', 'ip', 'setor'],
-  IMPRESSORA: ['status', 'marca', 'modelo', 'ip', 'numeroSerie', 'setor'],
+  CELULAR: ['status', 'marca', 'modelo', 'imei', 'filial'],
+  COLETOR: ['status', 'modelo', 'ip', 'macAddress', 'filial'],
+  IMPRESSORA: ['status', 'marca', 'modelo', 'ip', 'numeroSerie', 'filial'],
   IMPRESSORA_ZEBRA: ['status', 'marca', 'modelo', 'ip', 'numeroSerie', 'setor'],
 };
 
