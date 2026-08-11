@@ -15,10 +15,10 @@ import { useConfirm } from '../hooks/useConfirm.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
 
-// Retorna com segurança o número da filial baseado na coluna real do banco (numero_filial)
+// Retorna com segurança o número da filial baseado na coluna real do banco (numeroFilial)
 function getBranchNumber(b) {
   if (!b) return null;
-  return b.numero_filial !== undefined && b.numero_filial !== null ? b.numero_filial : (b.numero_loja ?? b.branchNumber ?? b.number ?? b.numero ?? b.id);
+  return b.numeroFilial !== undefined && b.numeroFilial !== null ? b.numeroFilial : (b.numero_loja ?? b.branchNumber ?? b.number ?? b.numero ?? b.id);
 }
 
 // Formata o rótulo para exibição unificada: "Loja X - Nome"
