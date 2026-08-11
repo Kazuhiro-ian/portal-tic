@@ -592,7 +592,7 @@ export function ZebraSupplies() {
                       <td className="table-cell">
                         <div className="flex items-center gap-2">
                           <Building2 className="w-4 h-4 text-dark-400 shrink-0" />
-                          <span className="font-medium text-white">{branchLabel(branches, d.filialId)}</span>
+                          <span className="font-medium text-white">{branchLabel(branches, d.numeroFilial)}</span>
                         </div>
                       </td>
                       <td className="table-cell text-center">
