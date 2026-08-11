@@ -5,12 +5,14 @@ import { ReceivingCalendar } from './ReceivingCalendar.jsx';
 import { InventoryPlan } from './InventoryPlan.jsx';
 import { EquipeInventarioManagement } from './EquipeInventarioManagement.jsx';
 import { EquipeCalendarManagement } from './EquipeCalendarManagement.jsx';
+import { AccuracyReport } from './AccuracyReport.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 
 const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
   { id: 'plano', label: 'Plano de Inventário' },
+  { id: 'acuracidade', label: 'Acuracidade' },
   { id: 'equipes', label: 'Equipes' },
   { id: 'equipe-calendario', label: 'Calendário da Equipe' },
 ];
@@ -111,6 +113,8 @@ export function QualityPlanning() {
           showToast={showToast}
           conflitosExternos={conflitosExternos}
         />
+      ) : aba === 'acuracidade' ? (
+        <AccuracyReport ano={ano} mes={mes} showToast={showToast} />
       ) : aba === 'equipes' ? (
         <EquipeInventarioManagement />
       ) : (

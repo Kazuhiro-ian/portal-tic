@@ -35,4 +35,16 @@ public class Filiais {
     @Enumerated(EnumType.STRING)
     @Column(name = "grupo_recebimento")
     private GrupoRecebimento grupoRecebimento;
+
+    /**
+     * CD ou Loja, usado pelo relatório de acuracidade para montar os agregados
+     * "CDs", "Lojas" e "Geral".
+     *
+     * NULLABLE pelo mesmo motivo do grupoRecebimento acima: ddl-auto=update não
+     * adiciona coluna NOT NULL em tabela já populada. Filial sem tipo fica fora
+     * dos agregados e é sinalizada na tela de acuracidade.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_filial")
+    private TipoFilial tipoFilial;
 }

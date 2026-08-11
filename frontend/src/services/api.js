@@ -12,7 +12,9 @@ async function apiFetch(path, options = {}) {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   const headers = { ...(options.headers || {}) };
 
-  if (options.body !== undefined) {
+  // FormData fica de fora: quem define o Content-Type dela (com o boundary) é o
+  // próprio navegador, e sobrescrever aqui quebraria o upload.
+  if (options.body !== undefined && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
   if (token) {
@@ -44,6 +46,17 @@ async function apiFetch(path, options = {}) {
   if (response.status === 204) return null;
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+/**
+ * Envio de arquivo (multipart). Diferente do apiFetch, o Content-Type NÃO é
+ * definido aqui de propósito: o navegador precisa montá-lo sozinho para incluir
+ * o "boundary" que separa as partes do formulário.
+ */
+async function apiUpload(path, arquivo, campo = 'arquivo') {
+  const formData = new FormData();
+  formData.append(campo, arquivo);
+  return apiFetch(path, { method: 'POST', body: formData });
 }
 
 const apiGet = (path) => apiFetch(path);
@@ -161,6 +174,34 @@ export const gerarPlanoInventario = (ano, mes) =>
   apiPost(`/api/qualidade/inventarios/gerar-plano?ano=${ano}&mes=${mes}`, {});
 export const salvarPlanoInventario = (payload) =>
   apiPost('/api/qualidade/inventarios/salvar-plano', payload);
+
+// --- ROTAS DE QUALIDADE: RESULTADO DO INVENTÁRIO (ACURACIDADE) ---
+// O upload do relatório do Protheus é o que conclui o inventário: o backend
+// calcula os indicadores e marca o inventário como REALIZADO.
+export const importarResultadoInventario = (id, arquivo) =>
+  apiUpload(`/api/qualidade/inventarios/${id}/resultado`, arquivo);
+export const buscarResultadoInventario = (id) =>
+  apiGet(`/api/qualidade/inventarios/${id}/resultado`);
+export const listarItensInventario = (id) =>
+  apiGet(`/api/qualidade/inventarios/${id}/itens`);
+export const removerResultadoInventario = (id) =>
+  apiDelete(`/api/qualidade/inventarios/${id}/resultado`);
+
+// --- ROTAS DE QUALIDADE: CONFIGURAÇÃO (METAS) ---
+export const buscarConfiguracaoQualidade = () => apiGet('/api/qualidade/configuracao');
+export const salvarConfiguracaoQualidade = (payload) =>
+  apiPut('/api/qualidade/configuracao', payload);
+
+// --- ROTAS DE QUALIDADE: RELATÓRIO DE ACURACIDADE ---
+export const buscarRelatorioAcuracidade = (ano, mes) =>
+  apiGet(`/api/qualidade/acuracidade?ano=${ano}&mes=${mes}`);
+export const buscarRankingAcuracidade = (ano, mes, { tipoFilial, filialId, limite } = {}) => {
+  const params = new URLSearchParams({ ano, mes });
+  if (tipoFilial) params.set('tipoFilial', tipoFilial);
+  if (filialId) params.set('filialId', filialId);
+  if (limite) params.set('limite', limite);
+  return apiGet(`/api/qualidade/acuracidade/ranking?${params.toString()}`);
+};
 
 // --- ROTAS DE EQUIPES DE INVENTÁRIO ---
 export const listarEquipesInventario = () => apiGet('/api/qualidade/equipes');

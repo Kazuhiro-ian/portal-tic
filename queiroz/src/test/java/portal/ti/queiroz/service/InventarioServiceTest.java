@@ -11,6 +11,7 @@ import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.model.GrupoRecebimento;
 import portal.ti.queiroz.model.Inventario;
 import portal.ti.queiroz.model.TipoDiaRecebimento;
+import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.repository.DiaRecebimentoRepository;
 import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
@@ -52,6 +53,16 @@ class InventarioServiceTest {
     private void semOutroInventarioNoMes() {
         when(repository.findByFilialIdAndDataBetween(eq(1L), any(), any()))
                 .thenReturn(Collections.emptyList());
+    }
+
+    private Filiais filialCD() {
+        Filiais filial = new Filiais();
+        filial.setId(2L);
+        filial.setNumeroFilial(0);
+        filial.setNome("Centro de Distribuição");
+        filial.setGrupoRecebimento(GrupoRecebimento.CD);
+        filial.setTipoFilial(TipoFilial.CD);
+        return filial;
     }
 
     @Test
@@ -118,6 +129,27 @@ class InventarioServiceTest {
         assertThatThrownBy(() -> service.salvar(inventario))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("observação");
+    }
+
+    @Test
+    void devePermitirMaisDeUmInventarioNoMesParaFilialCD() {
+        // CD faz contagem parcial toda semana -- não pode cair na regra de "um por mês"
+        // que vale pra loja. A checagem de duplicidade nem deveria ser consultada.
+        Filiais filial = filialCD();
+        when(filiaisRepository.findById(2L)).thenReturn(Optional.of(filial));
+
+        Inventario segundoSabado = new Inventario();
+        segundoSabado.setFilialId(2L);
+        segundoSabado.setData(LocalDate.of(2026, 8, 15));
+
+        when(repository.save(segundoSabado)).thenReturn(segundoSabado);
+
+        Inventario salvo = service.salvar(segundoSabado);
+
+        assertThat(salvo).isSameAs(segundoSabado);
+        // A checagem de duplicidade por mês não deve nem ser consultada para CD.
+        org.mockito.Mockito.verify(repository, org.mockito.Mockito.never())
+                .findByFilialIdAndDataBetween(any(), any(), any());
     }
 
     @Test

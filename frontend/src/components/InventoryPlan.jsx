@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Plus, Edit, Trash2, Sparkles, Save, AlertTriangle, AlertCircle,
-  ClipboardList, CalendarDays, Lock,
+  ClipboardList, CalendarDays, Lock, FileSpreadsheet,
 } from 'lucide-react';
 import { Modal } from './Modal.jsx';
+import { InventoryResultPanel } from './InventoryResultPanel.jsx';
 import {
   listarFiliais, listarInventarios, salvarInventario, atualizarInventario,
   deletarInventario, gerarPlanoInventario, salvarPlanoInventario, listarConflitosRecebimento,
@@ -33,6 +34,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [conflitoPendente, setConflitoPendente] = useState(false);
+
+  // Inventário cujo resultado (relatório do Protheus) está aberto para importar/consultar.
+  const [inventarioResultado, setInventarioResultado] = useState(null);
 
   const filialPorId = useMemo(
     () => new Map(filiais.map((f) => [f.id, f])),
@@ -441,6 +445,14 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                       {canWrite && (
                         <td className="table-cell text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setInventarioResultado(inv)}
+                              className="btn-secondary px-3 py-1.5"
+                              title="Resultado do inventário"
+                              aria-label="Resultado do inventário"
+                            >
+                              <FileSpreadsheet className="w-4 h-4" />
+                            </button>
                             <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
                               <Edit className="w-4 h-4" />
                             </button>
@@ -638,6 +650,17 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
         </div>
       </Modal>
+
+      {inventarioResultado && (
+        <InventoryResultPanel
+          inventario={inventarioResultado}
+          nomeFilial={nomeFilial(inventarioResultado.filialId)}
+          canWrite={canWrite}
+          showToast={showToast}
+          onClose={() => setInventarioResultado(null)}
+          onImportado={carregar}
+        />
+      )}
     </div>
   );
 }

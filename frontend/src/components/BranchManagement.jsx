@@ -18,7 +18,7 @@ function formatCnpj(value) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
-const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '' };
+const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '' };
 
 export function BranchManagement() {
   const { canWrite } = useAuth();
@@ -74,6 +74,7 @@ export function BranchManagement() {
       cnpj: branch.cnpj || '',
       endereco: branch.endereco || '',
       grupoRecebimento: branch.grupoRecebimento || '',
+      tipoFilial: branch.tipoFilial || '',
     });
     setFormError('');
     setShowModal(true);
@@ -97,6 +98,7 @@ export function BranchManagement() {
         endereco: form.endereco.trim(),
         // string vazia no select significa "não definido" — o backend espera null
         grupoRecebimento: form.grupoRecebimento || null,
+        tipoFilial: form.tipoFilial || null,
       };
 
       if (editingBranch) {
@@ -184,6 +186,7 @@ export function BranchManagement() {
               <tr>
                 <th scope="col" className="table-header w-20"><Hash className="inline w-3.5 h-3.5"/> Núm.</th>
                 <th scope="col" className="table-header">Nome da Filial</th>
+                <th scope="col" className="table-header">Tipo</th>
                 <th scope="col" className="table-header">CNPJ</th>
                 <th scope="col" className="table-header">Endereço</th>
                 <th scope="col" className="table-header">Grupo Receb.</th>
@@ -193,7 +196,7 @@ export function BranchManagement() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16 text-dark-400">
+                  <td colSpan={7} className="text-center py-16 text-dark-400">
                     {isLoading ? 'Conectando ao banco de dados...' : 'Nenhuma filial encontrada.'}
                   </td>
                 </tr>
@@ -206,6 +209,15 @@ export function BranchManagement() {
                       </span>
                     </td>
                     <td className="table-cell font-semibold text-white">{branch.nome}</td>
+                    <td className="table-cell">
+                      {branch.tipoFilial ? (
+                        <span className={`badge ${branch.tipoFilial === 'CD' ? 'badge-info' : 'badge-success'}`}>
+                          {branch.tipoFilial === 'CD' ? 'CD' : 'Loja'}
+                        </span>
+                      ) : (
+                        <span className="badge">—</span>
+                      )}
+                    </td>
                     <td className="table-cell font-mono text-dark-300">{branch.cnpj || '—'}</td>
                     <td className="table-cell text-dark-300">{branch.endereco || '—'}</td>
                     <td className="table-cell">
@@ -289,6 +301,23 @@ export function BranchManagement() {
               className="input-field"
               placeholder="Ex: Av. Principal, 100"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-300 mb-2">Tipo</label>
+            <select
+              value={form.tipoFilial}
+              onChange={(e) => setForm({ ...form, tipoFilial: e.target.value })}
+              className="select-field"
+            >
+              <option value="">Não definido</option>
+              <option value="CD">Centro de Distribuição</option>
+              <option value="LOJA">Loja</option>
+            </select>
+            <p className="text-xs text-dark-400 mt-1.5">
+              Usado no relatório de acuracidade para agrupar CDs e Lojas separadamente. Sem
+              isso definido, a filial fica de fora dos agregados por tipo (mas entra no Geral).
+            </p>
           </div>
 
           <div>

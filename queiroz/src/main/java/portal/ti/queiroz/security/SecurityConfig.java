@@ -84,6 +84,10 @@ public class SecurityConfig {
                         // genérico de /api/credenciais/** logo abaixo, senão cairia nele.
                         .requestMatchers(HttpMethod.GET, "/api/credenciais/auditoria").hasRole("ADMIN")
                         .requestMatchers("/api/credenciais/**").hasAnyRole("ADMIN", "TECNICO")
+                        // Alterar as metas de acuracidade muda o número apresentado na reunião
+                        // mensal, então é só ADMIN. Precisa vir ANTES dos matchers genéricos de
+                        // /api/qualidade/** abaixo, senão QUALIDADE conseguiria editar.
+                        .requestMatchers(HttpMethod.PUT, "/api/qualidade/configuracao").hasRole("ADMIN")
                         // GET de leitura no módulo Qualidade segue a mesma regra do resto do sistema
                         // (LEITURA também pode ver, ex.: os cards de inventário/recebimento do Dashboard).
                         .requestMatchers(HttpMethod.GET, "/api/qualidade/**").hasAnyRole("ADMIN", "TECNICO", "LEITURA", "QUALIDADE")

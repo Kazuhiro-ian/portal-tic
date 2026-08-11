@@ -96,20 +96,24 @@ public class InventarioService {
                             .formatted(filial.getNumeroFilial(), filial.getNome()));
         }
 
-        // Um inventário por filial por mês (CANCELADO não conta).
-        YearMonth mes = YearMonth.from(inventario.getData());
-        List<Inventario> doMes = repository.findByFilialIdAndDataBetween(
-                filial.getId(), mes.atDay(1), mes.atEndOfMonth());
+        // Um inventário por filial por mês (CANCELADO não conta) -- exceto CD, que faz
+        // contagens parciais ao longo do mês (ex: um inventário por sábado no CD 00) e cujo
+        // resultado mensal é a soma dessas contagens, não um único relatório.
+        if (filial.getTipoFilial() != TipoFilial.CD) {
+            YearMonth mes = YearMonth.from(inventario.getData());
+            List<Inventario> doMes = repository.findByFilialIdAndDataBetween(
+                    filial.getId(), mes.atDay(1), mes.atEndOfMonth());
 
-        boolean jaExiste = doMes.stream()
-                .filter(i -> idIgnorado == null || !idIgnorado.equals(i.getId()))
-                .anyMatch(i -> i.getStatus() != StatusInventario.CANCELADO);
+            boolean jaExiste = doMes.stream()
+                    .filter(i -> idIgnorado == null || !idIgnorado.equals(i.getId()))
+                    .anyMatch(i -> i.getStatus() != StatusInventario.CANCELADO);
 
-        if (jaExiste) {
-            throw new RegraDeNegocioException(
-                    "A filial %s - %s já possui inventário agendado em %02d/%d. Cancele o existente antes de criar outro."
-                            .formatted(filial.getNumeroFilial(), filial.getNome(),
-                                    mes.getMonthValue(), mes.getYear()));
+            if (jaExiste) {
+                throw new RegraDeNegocioException(
+                        "A filial %s - %s já possui inventário agendado em %02d/%d. Cancele o existente antes de criar outro."
+                                .formatted(filial.getNumeroFilial(), filial.getNome(),
+                                        mes.getMonthValue(), mes.getYear()));
+            }
         }
 
         validarConflitoRecebimento(inventario, filial);
