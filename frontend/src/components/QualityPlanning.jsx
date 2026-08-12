@@ -69,7 +69,7 @@ export function QualityPlanning() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => mudarMes(-1)} className="btn-secondary px-3 py-2" title="Mês anterior" aria-label="Mês anterior">
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -83,7 +83,10 @@ export function QualityPlanning() {
         </div>
       </div>
 
-      <div className="flex gap-1 p-1 bg-dark-800 rounded-lg w-fit">
+      {/* flex-wrap evita que as 5 abas, mais largas que a tela no mobile, arrastem a página
+          inteira para o lado (main herda overflow-x: auto do overflow-y-auto — ver
+          PLANO-MOBILE.md §1.2). Mesmo padrão já usado em AssetInventory.jsx. */}
+      <div className="flex flex-wrap gap-1 p-1 bg-dark-800 rounded-lg w-fit">
         {ABAS.map((a) => (
           <button
             key={a.id}
