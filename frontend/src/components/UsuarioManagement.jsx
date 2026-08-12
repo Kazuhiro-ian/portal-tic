@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, ShieldCheck, Search } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { Plus, Edit, Trash2, ShieldCheck, Search } from 'lucide-react';
+import { SidePanel } from './SidePanel.jsx';
+import { DataTable } from './DataTable.jsx';
 import { listarUsuarios, salvarUsuario, atualizarUsuario, desativarUsuario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -15,6 +16,44 @@ const roleLabels = {
 };
 
 const emptyForm = { username: '', password: '', nomeCompleto: '', role: 'TECNICO', ativo: true };
+
+const COLUNAS = [
+  {
+    chave: 'username',
+    header: 'Usuário',
+    mobile: 'titulo',
+    tdClassName: 'font-mono text-primary-400',
+    render: (u) => u.username,
+  },
+  {
+    chave: 'nomeCompleto',
+    header: 'Nome',
+    mobile: 'subtitulo',
+    tdClassName: 'font-medium text-white',
+    render: (u) => u.nomeCompleto,
+  },
+  {
+    chave: 'role',
+    header: 'Papel',
+    mobile: 'badge',
+    render: (u) => (
+      <span className="badge badge-info">
+        {u.role === 'ADMIN' && <ShieldCheck className="w-3 h-3 mr-1" />}
+        {roleLabels[u.role] || u.role}
+      </span>
+    ),
+  },
+  {
+    chave: 'ativo',
+    header: 'Status',
+    mobile: 'badge',
+    render: (u) => (
+      <span className={`badge ${u.ativo ? 'badge-success' : 'badge-danger'}`}>
+        {u.ativo ? 'Ativo' : 'Inativo'}
+      </span>
+    ),
+  },
+];
 
 export function UsuarioManagement() {
   const { user: usuarioLogado } = useAuth();
@@ -148,67 +187,37 @@ export function UsuarioManagement() {
           />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header"><Users className="inline w-3.5 h-3.5" /> Usuário</th>
-                <th scope="col" className="table-header">Nome</th>
-                <th scope="col" className="table-header">Papel</th>
-                <th scope="col" className="table-header text-center">Status</th>
-                <th scope="col" className="table-header text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-16 text-dark-400">
-                    {isLoading
-                      ? 'Carregando...'
-                      : search.trim()
-                        ? 'Nenhum usuário encontrado para essa busca.'
-                        : 'Nenhum usuário cadastrado.'}
-                  </td>
-                </tr>
-              ) : (
-                filtrados.map((u) => (
-                  <tr key={u.id} className="hover:bg-dark-700/30 transition-colors">
-                    <td className="table-cell font-mono text-primary-400">{u.username}</td>
-                    <td className="table-cell font-medium text-white">{u.nomeCompleto}</td>
-                    <td className="table-cell">
-                      <span className="badge badge-info">
-                        {u.role === 'ADMIN' && <ShieldCheck className="w-3 h-3 mr-1" />}
-                        {roleLabels[u.role] || u.role}
-                      </span>
-                    </td>
-                    <td className="table-cell text-center">
-                      <span className={`badge ${u.ativo ? 'badge-success' : 'badge-danger'}`}>
-                        {u.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="table-cell text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEdit(u)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDesativar(u)} className="btn-danger px-3 py-1.5" title="Desativar" aria-label="Desativar">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={COLUNAS}
+          dados={filtrados}
+          carregando={isLoading}
+          vazio={search.trim() ? 'Nenhum usuário encontrado para essa busca.' : 'Nenhum usuário cadastrado.'}
+          acoes={(u) => (
+            <>
+              <button onClick={() => openEdit(u)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                <Edit className="w-4 h-4" />
+              </button>
+              <button onClick={() => handleDesativar(u)} className="btn-danger px-3 py-1.5" title="Desativar" aria-label="Desativar">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        />
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingUsuario ? `Editar Usuário — ${editingUsuario.username}` : 'Novo Usuário'}
         size="md"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSave} className="btn-primary">
+              {editingUsuario ? 'Salvar Alterações' : 'Criar Usuário'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -273,15 +282,8 @@ export function UsuarioManagement() {
               {formError}
             </p>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSave} className="btn-primary">
-              {editingUsuario ? 'Salvar Alterações' : 'Criar Usuário'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

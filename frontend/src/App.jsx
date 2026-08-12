@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useScrollLock } from './hooks/useScrollLock.js';
 
 // Importação dos Componentes
-import { Sidebar } from './components/Sidebar.jsx';
+import { Sidebar, menuItems, usuariosMenuItem } from './components/Sidebar.jsx';
+import { BottomNav } from './components/BottomNav.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { LinksManager } from './components/LinksManager.jsx';
 import { AssetInventory } from './components/AssetInventory.jsx';
@@ -24,21 +26,92 @@ function App() {
   // Fecha o menu lateral a cada navegação no mobile, onde ele cobre a tela inteira.
   const location = useLocation();
 
+  const sidebarWrapperRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const touchStartXRef = useRef(null);
+
+  // Sidebar mobile é um overlay sobre o <main>, que tem scroll próprio — sem isto, arrastar
+  // o menu rola o conteúdo atrás dele junto (scroll chaining). Ver PLANO-MOBILE.md §1.3/§4.2.
+  useScrollLock(sidebarOpen);
+
+  // Esc fecha o menu mobile e devolve o foco ao botão que o abriu.
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const aoTeclar = (evento) => {
+      if (evento.key === 'Escape') {
+        setSidebarOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', aoTeclar);
+    return () => document.removeEventListener('keydown', aoTeclar);
+  }, [sidebarOpen]);
+
+  // Foco preso dentro do menu enquanto aberto no mobile (Tab não escapa para o conteúdo atrás).
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const container = sidebarWrapperRef.current;
+    if (!container) return undefined;
+
+    const focaveis = container.querySelectorAll('a[href], button:not([disabled])');
+    focaveis[0]?.focus();
+
+    const aoTeclarTab = (evento) => {
+      if (evento.key !== 'Tab' || focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (evento.shiftKey && document.activeElement === primeiro) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primeiro.focus();
+      }
+    };
+    container.addEventListener('keydown', aoTeclarTab);
+    return () => container.removeEventListener('keydown', aoTeclarTab);
+  }, [sidebarOpen]);
+
+  // Arrastar o menu para a esquerda fecha, como o usuário espera de um painel deslizante.
+  const aoTocarInicio = (evento) => {
+    touchStartXRef.current = evento.touches[0].clientX;
+  };
+  const aoTocarMover = (evento) => {
+    if (touchStartXRef.current === null) return;
+    const deltaX = evento.touches[0].clientX - touchStartXRef.current;
+    if (deltaX < -60) {
+      setSidebarOpen(false);
+      touchStartXRef.current = null;
+    }
+  };
+  const aoTocarFim = () => {
+    touchStartXRef.current = null;
+  };
+
+  const todosMenuItems = isAdmin ? [...menuItems, usuariosMenuItem] : menuItems;
+  const moduloAtual = todosMenuItems.find((item) => location.pathname.startsWith(item.to));
+
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
   return (
-    <div className="h-screen bg-dark-900 flex overflow-hidden">
+    <div className="h-app bg-dark-900 flex overflow-hidden">
       {/* Overlay Escuro para Mobile */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}
+        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-200 ${
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={() => setSidebarOpen(false)}
         aria-hidden="true"
       />
 
       {/* Sidebar Lateral */}
       <div
+        ref={sidebarWrapperRef}
+        onTouchStart={aoTocarInicio}
+        onTouchMove={aoTocarMover}
+        onTouchEnd={aoTocarFim}
         className={`fixed lg:static inset-y-0 left-0 z-50 transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
@@ -50,7 +123,7 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Cabeçalho Mobile */}
-        <header className="lg:hidden bg-dark-800 border-b border-dark-700 px-4 py-3 sticky top-0 z-30">
+        <header className="lg:hidden bg-dark-800 border-b border-dark-700 px-4 py-3 pt-safe-top sticky top-0 z-30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center shadow-md shadow-primary-500/30">
@@ -60,13 +133,16 @@ function App() {
                 <p className="text-white font-black text-base tracking-tight leading-none">
                   Queiroz<span className="text-brand-500">.</span>
                 </p>
-                <p className="text-dark-400 text-[10px] uppercase tracking-widest">TI Queiroz</p>
+                <p className="text-dark-400 text-[10px] uppercase tracking-widest">
+                  {moduloAtual?.label || 'TI Queiroz'}
+                </p>
               </div>
             </div>
 
             <button
+              ref={menuButtonRef}
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-10 h-10 rounded-lg bg-dark-700 flex items-center justify-center"
+              className="w-11 h-11 rounded-lg bg-dark-700 flex items-center justify-center"
               aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
               aria-expanded={sidebarOpen}
             >
@@ -76,7 +152,13 @@ function App() {
         </header>
 
         {/* Área de Renderização dos Componentes */}
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin" key={location.pathname}>
+        {/* pb maior no mobile: espaço para o BottomNav (~56px) + safe-area não cobrir o
+            fim do conteúdo. */}
+        <main
+          id="main-scroll"
+          className="flex-1 p-4 lg:p-8 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8 overflow-y-auto overscroll-contain scrollbar-thin"
+          key={location.pathname}
+        >
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -100,6 +182,8 @@ function App() {
         </main>
 
       </div>
+
+      <BottomNav onAbrirMais={() => setSidebarOpen(true)} />
     </div>
   );
 }

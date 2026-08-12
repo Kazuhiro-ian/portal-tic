@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useSlidePanel } from '../hooks/useSlidePanel.js';
+import { useMediaQuery, BREAKPOINTS } from '../hooks/useMediaQuery.js';
+import { SidePanel } from './SidePanel.jsx';
 
 const PANEL_WIDTH = 420;
 
@@ -109,8 +111,12 @@ const CAMPOS_POR_TIPO = {
   IMPRESSORA_ZEBRA: CAMPOS_PADRAO,
 };
 
+// Abaixo de md, 420px inline não cabe na tela — vira um SidePanel em sobreposição
+// (tela cheia no mobile). No desktop mantém o painel inline que empurra a tabela.
+// Ver PLANO-MOBILE.md §4.5.
 export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, onClose, showToast }) {
   const { mounted, visible } = useSlidePanel(open);
+  const isDesktop = useMediaQuery(BREAKPOINTS.md);
   const [formData, setFormData] = useState(() => formFromAtivo(ativo));
 
   useEffect(() => {
@@ -118,8 +124,6 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
       setFormData(formFromAtivo(ativo));
     }
   }, [open, ativo]);
-
-  if (!mounted) return null;
 
   const campos = (CAMPOS_POR_TIPO[tipo] || CAMPOS_PADRAO).map((c) =>
     typeof c === 'string' ? { chave: c, obrigatorio: false } : c
@@ -218,6 +222,33 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     );
   };
 
+  const rodape = (
+    <>
+      <button onClick={onClose} className="btn-secondary">
+        Cancelar
+      </button>
+      <button onClick={handleSubmit} className="btn-primary">
+        {ativo ? 'Salvar Alterações' : 'Adicionar'}
+      </button>
+    </>
+  );
+
+  if (!isDesktop) {
+    return (
+      <SidePanel
+        isOpen={open}
+        onClose={onClose}
+        title={ativo ? `Editar ${tipoLabel}` : `Novo em ${tipoLabel}`}
+        size="md"
+        footer={rodape}
+      >
+        <div className="space-y-4">{campos.map(renderCampo)}</div>
+      </SidePanel>
+    );
+  }
+
+  if (!mounted) return null;
+
   return (
     <div
       className="shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
@@ -246,12 +277,7 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
         </div>
 
         <div className="flex justify-end gap-3 p-5 border-t border-dark-700">
-          <button onClick={onClose} className="btn-secondary">
-            Cancelar
-          </button>
-          <button onClick={handleSubmit} className="btn-primary">
-            {ativo ? 'Salvar Alterações' : 'Adicionar'}
-          </button>
+          {rodape}
         </div>
       </div>
     </div>

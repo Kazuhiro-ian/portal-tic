@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { AssetFormPanel } from './AssetFormPanel.jsx';
 import { AssetDetailPanel } from './AssetDetailPanel.jsx';
+import { DataTable } from './DataTable.jsx';
+import { FiltroBar } from './FiltroBar.jsx';
 import { listarAtivos, salvarAtivo, atualizarAtivo, deletarAtivo, pingAtivo, listarFiliais, consultarPingHabilitado } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -146,9 +148,31 @@ export function AssetList({ tipo, tipoLabel }) {
   const paginacao = usePaginacao(filteredAtivos);
 
   const panelAberto = panelMode !== null;
-  const colunas = panelAberto
+  const chavesColunas = panelAberto
     ? COLUNAS_POR_TIPO[tipo].slice(0, 4)
     : COLUNAS_POR_TIPO[tipo];
+
+  // No card mobile: "modelo" (ou "etiqueta" nos tipos sem marca/modelo, como Desktop) vira o
+  // título do card; "marca", quando existe, vira o subtítulo; "status" sempre um badge.
+  const chaveTitulo = chavesColunas.includes('modelo')
+    ? 'modelo'
+    : chavesColunas.includes('etiqueta')
+      ? 'etiqueta'
+      : chavesColunas[1];
+  const chaveSubtitulo = chavesColunas.includes('marca') ? 'marca' : undefined;
+
+  const colunas = chavesColunas.map((chave) => {
+    let mobile;
+    if (chave === 'status') mobile = 'badge';
+    else if (chave === chaveTitulo) mobile = 'titulo';
+    else if (chave === chaveSubtitulo) mobile = 'subtitulo';
+    return {
+      chave,
+      header: COLUNA_DEFS[chave].header,
+      mobile,
+      render: (ativo) => COLUNA_DEFS[chave].render(ativo, { nomeFilial }),
+    };
+  });
 
   const handleNovo = () => {
     setActiveAtivo(null);
@@ -241,99 +265,61 @@ export function AssetList({ tipo, tipoLabel }) {
 
       <div className="flex gap-4 items-start">
         <div className="card flex-1 min-w-0">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-              <input
-                type="text"
-                placeholder="Buscar por IP, setor, modelo ou etiqueta..."
-              aria-label="Buscar por IP, setor, modelo ou etiqueta"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field pl-10"
-              />
-            </div>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="select-field sm:w-40"
-            >
-              <option value="all">Todos Status</option>
-              <option value="Online">Online</option>
-              <option value="Offline">Offline</option>
-            </select>
-          </div>
+          <FiltroBar
+            busca={search}
+            onBuscaChange={setSearch}
+            placeholderBusca="Buscar por IP, setor, modelo ou etiqueta..."
+            filtros={[
+              {
+                chave: 'status',
+                label: 'Status',
+                tipo: 'select',
+                valor: filterStatus,
+                valorPadrao: 'all',
+                opcoes: [
+                  { value: 'all', label: 'Todos Status' },
+                  { value: 'Online', label: 'Online' },
+                  { value: 'Offline', label: 'Offline' },
+                ],
+                onChange: setFilterStatus,
+              },
+            ]}
+          />
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  {colunas.map((chave) => (
-                    <th key={chave} className="table-header">
-                      {COLUNA_DEFS[chave].header}
-                    </th>
-                  ))}
-                  <th scope="col" className="table-header text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginacao.itensPagina.length === 0 ? (
-                  <tr>
-                    <td colSpan={colunas.length + 1} className="text-center py-12 text-dark-400">
-                      {isLoading ? 'Conectando ao banco de dados...' : 'Nenhum ativo encontrado.'}
-                    </td>
-                  </tr>
-                ) : (
-                  paginacao.itensPagina.map((ativo) => (
-                    <tr
-                      key={ativo.id}
-                      onClick={() => handleVisualizar(ativo)}
-                      className="hover:bg-dark-700/30 transition-colors cursor-pointer"
+          <DataTable
+            colunas={colunas}
+            dados={paginacao.itensPagina}
+            carregando={isLoading}
+            vazio="Nenhum ativo encontrado."
+            aoClicarLinha={handleVisualizar}
+            acoes={(ativo) =>
+              canWrite && (
+                <>
+                  {pingHabilitado && (
+                    <button
+                      onClick={() => handlePing(ativo)}
+                      disabled={pinging === ativo.id}
+                      className="btn-secondary px-3 py-1.5 text-sm"
+                      title="Atualizar status da rede"
                     >
-                      {colunas.map((chave) => (
-                        <td key={chave} className="table-cell">
-                          {COLUNA_DEFS[chave].render(ativo, { nomeFilial })}
-                        </td>
-                      ))}
-                      <td className="table-cell" onClick={(e) => e.stopPropagation()}>
-                        {canWrite && (
-                          <div className="flex items-center justify-end gap-2">
-                            {pingHabilitado && (
-                              <button
-                                onClick={() => handlePing(ativo)}
-                                disabled={pinging === ativo.id}
-                                className="btn-secondary px-3 py-1.5 text-sm"
-                                title="Atualizar status da rede"
-                              >
-                                {pinging === ativo.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Wifi className="w-4 h-4" />
-                                )}
-                                {pinging === ativo.id ? 'Testando...' : 'Ping'}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleEditar(ativo)}
-                              className="btn-secondary px-3 py-1.5"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(ativo.id)}
-                              className="btn-danger px-3 py-1.5"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      {pinging === ativo.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Wifi className="w-4 h-4" />
+                      )}
+                      {pinging === ativo.id ? 'Testando...' : 'Ping'}
+                    </button>
+                  )}
+                  <button onClick={() => handleEditar(ativo)} className="btn-secondary px-3 py-1.5">
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(ativo.id)} className="btn-danger px-3 py-1.5">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )
+            }
+          />
 
           <Paginacao {...paginacao} rotulo="ativos" />
         </div>

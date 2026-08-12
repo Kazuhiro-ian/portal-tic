@@ -3,7 +3,9 @@ import {
   Plus, Search, Edit, Trash2, Eye, EyeOff, Copy, Check, Network, Server, Cpu, Lock, BookOpen,
   Key, ArrowRight, Loader2, History
 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
+import { FiltroBar } from './FiltroBar.jsx';
+import { DataTable } from './DataTable.jsx';
 import {
   listarArtigos, salvarArtigo, atualizarArtigo, deletarArtigo,
   listarCredenciais, salvarCredencial, atualizarCredencial, deletarCredencial,
@@ -23,6 +25,39 @@ const categoryInfo = {
 
 const emptyArticleForm = { title: '', category: 'networks', summary: '', content: '', author: 'Admin TI' };
 const emptyCredForm = { name: '', username: '', password: '', notes: '' };
+
+const COLUNAS_AUDITORIA = [
+  {
+    chave: 'credencialNome',
+    header: 'Credencial',
+    mobile: 'titulo',
+    tdClassName: 'text-white',
+    render: (log) => log.credencialNome,
+  },
+  {
+    chave: 'usuario',
+    header: 'Usuário',
+    mobile: 'subtitulo',
+    tdClassName: 'font-mono text-primary-400 text-sm',
+    render: (log) => log.usuario,
+  },
+  {
+    chave: 'acao',
+    header: 'Ação',
+    mobile: 'badge',
+    render: (log) => (
+      <span className={`badge ${log.acao === 'EXCLUIR' ? 'badge-danger' : log.acao === 'CRIAR' ? 'badge-success' : 'badge-info'}`}>
+        {log.acao}
+      </span>
+    ),
+  },
+  {
+    chave: 'dataHora',
+    header: 'Quando',
+    tdClassName: 'text-dark-300 text-sm',
+    render: (log) => new Date(log.dataHora).toLocaleString('pt-BR'),
+  },
+];
 
 export function KnowledgeBase() {
   const { canWrite, hasRole, isAdmin } = useAuth();
@@ -336,29 +371,25 @@ export function KnowledgeBase() {
       {/* ABA DE ARTIGOS */}
       {activeTab === 'articles' && (
         <div className="card">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-              <input
-                type="text"
-                placeholder="Buscar por título ou conteúdo do artigo..."
-              aria-label="Buscar por título ou conteúdo do artigo"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field pl-10"
-              />
-            </div>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="select-field sm:w-48"
-            >
-              <option value="all">Todas Categorias</option>
-              {Object.entries(categoryInfo).map(([key, info]) => (
-                <option key={key} value={key}>{info.label}</option>
-              ))}
-            </select>
-          </div>
+          <FiltroBar
+            busca={search}
+            onBuscaChange={setSearch}
+            placeholderBusca="Buscar por título ou conteúdo do artigo..."
+            filtros={[
+              {
+                chave: 'categoria',
+                label: 'Categoria',
+                tipo: 'select',
+                valor: filterCategory,
+                valorPadrao: 'all',
+                opcoes: [
+                  { value: 'all', label: 'Todas Categorias' },
+                  ...Object.entries(categoryInfo).map(([key, info]) => ({ value: key, label: info.label })),
+                ],
+                onChange: setFilterCategory,
+              },
+            ]}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {isLoading ? (
@@ -536,8 +567,8 @@ export function KnowledgeBase() {
         </div>
       )}
 
-      {/* MODAL 1: VISUALIZADOR DE ARTIGO COMPLETO */}
-      <Modal
+      {/* PAINEL 1: VISUALIZADOR DE ARTIGO COMPLETO */}
+      <SidePanel
         isOpen={!!viewingArticle}
         onClose={() => setViewingArticle(null)}
         title="Documentação do Procedimento"
@@ -593,14 +624,22 @@ export function KnowledgeBase() {
             </div>
           </div>
         )}
-      </Modal>
+      </SidePanel>
 
-      {/* MODAL 2: CRIAR / EDITAR ARTIGO */}
-      <Modal
+      {/* PAINEL 2: CRIAR / EDITAR ARTIGO */}
+      <SidePanel
         isOpen={showArticleModal}
         onClose={() => setShowArticleModal(false)}
         title={editingArticle ? 'Editar Artigo' : 'Novo Artigo de Conhecimento'}
         size="lg"
+        footer={
+          <>
+            <button onClick={() => setShowArticleModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSaveArticle} className="btn-primary">
+              {editingArticle ? 'Salvar Alterações' : 'Publicar Artigo'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -613,7 +652,7 @@ export function KnowledgeBase() {
               placeholder="Ex: Passo a Passo para Configuração de VPN Corporativa"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">Categoria</label>
               <select
@@ -660,20 +699,22 @@ export function KnowledgeBase() {
               Suporta **negrito**, listas (linhas começando com &quot;- &quot;), e [links](https://exemplo.com).
             </p>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={() => setShowArticleModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSaveArticle} className="btn-primary">
-              {editingArticle ? 'Salvar Alterações' : 'Publicar Artigo'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
 
-      {/* MODAL 3: CRIAR / EDITAR CREDENCIAL */}
-      <Modal
+      {/* PAINEL 3: CRIAR / EDITAR CREDENCIAL */}
+      <SidePanel
         isOpen={showCredModal}
         onClose={() => setShowCredModal(false)}
         title={editingCred ? 'Editar Credencial' : 'Nova Credencial de Acesso'}
+        footer={
+          <>
+            <button onClick={() => setShowCredModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSaveCred} className="btn-primary">
+              {editingCred ? 'Salvar Alterações' : 'Adicionar Credencial'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -718,57 +759,24 @@ export function KnowledgeBase() {
               placeholder="Ex: IP: 10.100.0.1 - Porta 22 SSH"
             />
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={() => setShowCredModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSaveCred} className="btn-primary">
-              {editingCred ? 'Salvar Alterações' : 'Adicionar Credencial'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
 
-      {/* MODAL 4: LOG DE AUDITORIA DO COFRE (só ADMIN) */}
-      <Modal
+      {/* PAINEL 4: LOG DE AUDITORIA DO COFRE (só ADMIN) */}
+      <SidePanel
         isOpen={showAuditModal}
         onClose={() => setShowAuditModal(false)}
         title="Auditoria do Cofre de Credenciais"
         size="lg"
       >
-        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header">Quando</th>
-                <th scope="col" className="table-header">Usuário</th>
-                <th scope="col" className="table-header">Ação</th>
-                <th scope="col" className="table-header">Credencial</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingAudit ? (
-                <tr><td colSpan={4} className="text-center py-8 text-dark-400">Carregando...</td></tr>
-              ) : auditLog.length === 0 ? (
-                <tr><td colSpan={4} className="text-center py-8 text-dark-400">Nenhum acesso registrado ainda.</td></tr>
-              ) : (
-                auditLog.map((log) => (
-                  <tr key={log.id} className="hover:bg-dark-700/30 transition-colors">
-                    <td className="table-cell text-dark-300 text-sm">
-                      {new Date(log.dataHora).toLocaleString('pt-BR')}
-                    </td>
-                    <td className="table-cell font-mono text-primary-400 text-sm">{log.usuario}</td>
-                    <td className="table-cell">
-                      <span className={`badge ${log.acao === 'EXCLUIR' ? 'badge-danger' : log.acao === 'CRIAR' ? 'badge-success' : 'badge-info'}`}>
-                        {log.acao}
-                      </span>
-                    </td>
-                    <td className="table-cell text-white">{log.credencialNome}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Modal>
+        <DataTable
+          colunas={COLUNAS_AUDITORIA}
+          dados={auditLog}
+          carregando={isLoadingAudit}
+          vazio="Nenhum acesso registrado ainda."
+          offset="220px"
+        />
+      </SidePanel>
     </div>
   );
 }

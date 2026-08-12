@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
 import { listarMovimentos, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { DataTable } from './DataTable.jsx';
 
 function SearchableSelect({ items, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -83,6 +84,60 @@ function SearchableSelect({ items, value, onChange }) {
       )}
     </div>
   );
+}
+
+function colunasHistorico(formatDate) {
+  return [
+    {
+      chave: 'item',
+      header: 'Item',
+      mobile: 'titulo',
+      tdClassName: 'font-medium text-white',
+      render: (m) => m.itemName,
+    },
+    {
+      chave: 'data',
+      header: 'Data',
+      mobile: 'subtitulo',
+      tdClassName: 'text-dark-300 whitespace-nowrap text-sm',
+      render: (m) => formatDate(m.date),
+    },
+    {
+      chave: 'tipo',
+      header: 'Tipo',
+      mobile: 'badge',
+      render: (m) =>
+        m.type === 'IN' ? (
+          <span className="badge badge-success">
+            <ArrowDownCircle className="w-3 h-3 mr-1" />
+            Entrada
+          </span>
+        ) : (
+          <span className="badge badge-warning">
+            <ArrowUpCircle className="w-3 h-3 mr-1" />
+            Saída
+          </span>
+        ),
+    },
+    {
+      chave: 'quantity',
+      header: 'Qtd',
+      tdClassName: 'text-center',
+      render: (m) => <span className="font-bold text-white">{m.quantity}</span>,
+    },
+    {
+      chave: 'destination',
+      header: 'Destino',
+      tdClassName: 'text-dark-300',
+      render: (m) => m.destination,
+    },
+    {
+      chave: 'notes',
+      header: 'Obs',
+      tdClassName: 'text-dark-400 text-sm max-w-[200px] truncate',
+      render: (m) => m.notes || '-',
+    },
+  ];
 }
 
 export function StockDispatch({ items, onAtualizado }) {
@@ -283,66 +338,12 @@ export function StockDispatch({ items, onAtualizado }) {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th scope="col" className="table-header">Data</th>
-                  <th scope="col" className="table-header">Tipo</th>
-                  <th scope="col" className="table-header">Item</th>
-                  <th scope="col" className="table-header text-center">Qtd</th>
-                  <th scope="col" className="table-header">Destino</th>
-                  <th scope="col" className="table-header">Obs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoadingHistory ? (
-                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-dark-400">
-                      Carregando histórico do banco de dados...
-                    </td>
-                  </tr>
-                ) : movements.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-dark-400">
-                      Nenhuma movimentação registrada ainda
-                    </td>
-                  </tr>
-                ) : (
-                  movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-dark-700/30 transition-colors">
-                      <td className="table-cell text-dark-300 whitespace-nowrap text-sm">
-                        {formatDate(m.date)}
-                      </td>
-                      <td className="table-cell">
-                        {m.type === 'IN' ? (
-                          <span className="badge badge-success">
-                            <ArrowDownCircle className="w-3 h-3 mr-1" />
-                            Entrada
-                          </span>
-                        ) : (
-                          <span className="badge badge-warning">
-                            <ArrowUpCircle className="w-3 h-3 mr-1" />
-                            Saída
-                          </span>
-                        )}
-                      </td>
-                      <td className="table-cell">
-                        <p className="font-medium text-white">{m.itemName}</p>
-                      </td>
-                      <td className="table-cell text-center">
-                        <span className="font-bold text-white">{m.quantity}</span>
-                      </td>
-                      <td className="table-cell text-dark-300">{m.destination}</td>
-                      <td className="table-cell text-dark-400 text-sm max-w-[200px] truncate" title={m.notes}>
-                        {m.notes || '-'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            colunas={colunasHistorico(formatDate)}
+            dados={movements}
+            carregando={isLoadingHistory}
+            vazio="Nenhuma movimentação registrada ainda"
+          />
         </div>
       </div>
     </div>

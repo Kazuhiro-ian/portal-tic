@@ -3,7 +3,8 @@ import {
   Plus, Edit, Trash2, Sparkles, Save, AlertTriangle, AlertCircle,
   ClipboardList, CalendarDays, Lock, FileSpreadsheet,
 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
+import { DataTable } from './DataTable.jsx';
 import { InventoryResultPanel } from './InventoryResultPanel.jsx';
 import {
   listarFiliais, listarInventarios, salvarInventario, atualizarInventario,
@@ -17,6 +18,97 @@ const emptyForm = {
   filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO',
   responsavel: '', observacao: '', cienteConflitoRecebimento: false,
 };
+
+function colunasProposta(alterarDataProposta) {
+  return [
+    {
+      chave: 'filial',
+      header: 'Filial',
+      mobile: 'titulo',
+      tdClassName: 'font-medium text-white',
+      render: (item) => `${item.numeroFilial} — ${item.nomeFilial}`,
+    },
+    {
+      chave: 'grupo',
+      header: 'Grupo',
+      mobile: 'badge',
+      render: (item) =>
+        item.grupo ? (
+          <span className={`badge ${grupoBadge(item.grupo)}`}>{grupoLabels[item.grupo]}</span>
+        ) : (
+          <span className="badge">—</span>
+        ),
+    },
+    {
+      chave: 'dataAtual',
+      header: 'Data atual',
+      tdClassName: 'text-dark-400',
+      render: (item) => formatarBR(item.dataAtual),
+    },
+    {
+      chave: 'dataSugerida',
+      header: 'Data sugerida',
+      render: (item) =>
+        item.editavel ? (
+          <input
+            type="date"
+            value={item.dataSugerida || ''}
+            onChange={(e) => alterarDataProposta(item.filialId, e.target.value)}
+            className="input-field py-1.5"
+          />
+        ) : (
+          <span className="text-dark-400 flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5" />
+            {formatarBR(item.dataSugerida)}
+          </span>
+        ),
+    },
+    {
+      chave: 'motivo',
+      header: 'Motivo',
+      render: (item) => (
+        <>
+          <span className={`badge ${MOTIVOS[item.motivo]?.badge || 'badge'}`} title={item.descricaoMotivo}>
+            {MOTIVOS[item.motivo]?.label || item.motivo}
+          </span>
+          <p className="text-xs text-dark-400 mt-1">{item.descricaoMotivo}</p>
+        </>
+      ),
+    },
+  ];
+}
+
+const COLUNAS_INVENTARIOS = (nomeFilial) => [
+  {
+    chave: 'filial',
+    header: 'Filial',
+    mobile: 'titulo',
+    tdClassName: 'font-medium text-white',
+    render: (inv) => nomeFilial(inv.filialId),
+  },
+  {
+    chave: 'data',
+    header: 'Data',
+    mobile: 'subtitulo',
+    render: (inv) => formatarBR(inv.data),
+  },
+  {
+    chave: 'status',
+    header: 'Status',
+    mobile: 'badge',
+    render: (inv) => (
+      <span className={`badge ${STATUS[inv.status]?.badge || 'badge'}`}>
+        {STATUS[inv.status]?.label || inv.status}
+      </span>
+    ),
+  },
+  {
+    chave: 'responsavel',
+    header: 'Responsável',
+    tdClassName: 'text-dark-300',
+    render: (inv) => inv.responsavel || '—',
+  },
+];
 
 export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos }) {
   const { confirmar, dialogoConfirmacao } = useConfirm();
@@ -326,62 +418,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                 </div>
               )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th scope="col" className="table-header">Filial</th>
-                      <th scope="col" className="table-header">Grupo</th>
-                      <th scope="col" className="table-header">Data atual</th>
-                      <th scope="col" className="table-header">Data sugerida</th>
-                      <th scope="col" className="table-header">Motivo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {proposta.itens.map((item) => (
-                      <tr key={item.filialId} className="hover:bg-dark-700/30 transition-colors">
-                        <td className="table-cell font-medium text-white">
-                          {item.numeroFilial} — {item.nomeFilial}
-                        </td>
-                        <td className="table-cell">
-                          {item.grupo ? (
-                            <span className={`badge ${grupoBadge(item.grupo)}`}>
-                              {grupoLabels[item.grupo]}
-                            </span>
-                          ) : (
-                            <span className="badge">—</span>
-                          )}
-                        </td>
-                        <td className="table-cell text-dark-400">{formatarBR(item.dataAtual)}</td>
-                        <td className="table-cell">
-                          {item.editavel ? (
-                            <input
-                              type="date"
-                              value={item.dataSugerida || ''}
-                              onChange={(e) => alterarDataProposta(item.filialId, e.target.value)}
-                              className="input-field py-1.5"
-                            />
-                          ) : (
-                            <span className="text-dark-400 flex items-center gap-1.5">
-                              <Lock className="w-3.5 h-3.5" />
-                              {formatarBR(item.dataSugerida)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="table-cell">
-                          <span
-                            className={`badge ${MOTIVOS[item.motivo]?.badge || 'badge'}`}
-                            title={item.descricaoMotivo}
-                          >
-                            {MOTIVOS[item.motivo]?.label || item.motivo}
-                          </span>
-                          <p className="text-xs text-dark-400 mt-1">{item.descricaoMotivo}</p>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                colunas={colunasProposta(alterarDataProposta)}
+                dados={proposta.itens}
+                chaveLinha={(item) => item.filialId}
+              />
 
               <div className="flex justify-end gap-3 mt-5">
                 <button onClick={() => setProposta(null)} className="btn-secondary">Descartar</button>
@@ -411,63 +452,33 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header">Filial</th>
-                <th scope="col" className="table-header">Data</th>
-                <th scope="col" className="table-header">Status</th>
-                <th scope="col" className="table-header">Responsável</th>
-                {canWrite && <th scope="col" className="table-header text-right">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {inventarios.length === 0 ? (
-                <tr>
-                  <td colSpan={canWrite ? 5 : 4} className="text-center py-16 text-dark-400">
-                    {isLoading ? 'Carregando...' : 'Nenhum inventário planejado para este mês.'}
-                  </td>
-                </tr>
-              ) : (
-                [...inventarios]
-                  .sort((a, b) => a.data.localeCompare(b.data))
-                  .map((inv) => (
-                    <tr key={inv.id} className="hover:bg-dark-700/30 transition-colors">
-                      <td className="table-cell font-medium text-white">{nomeFilial(inv.filialId)}</td>
-                      <td className="table-cell">{formatarBR(inv.data)}</td>
-                      <td className="table-cell">
-                        <span className={`badge ${STATUS[inv.status]?.badge || 'badge'}`}>
-                          {STATUS[inv.status]?.label || inv.status}
-                        </span>
-                      </td>
-                      <td className="table-cell text-dark-300">{inv.responsavel || '—'}</td>
-                      {canWrite && (
-                        <td className="table-cell text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => setInventarioResultado(inv)}
-                              className="btn-secondary px-3 py-1.5"
-                              title="Resultado do inventário"
-                              aria-label="Resultado do inventário"
-                            >
-                              <FileSpreadsheet className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDelete(inv)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={COLUNAS_INVENTARIOS(nomeFilial)}
+          dados={[...inventarios].sort((a, b) => a.data.localeCompare(b.data))}
+          carregando={isLoading}
+          vazio="Nenhum inventário planejado para este mês."
+          acoes={
+            canWrite &&
+            ((inv) => (
+              <>
+                <button
+                  onClick={() => setInventarioResultado(inv)}
+                  className="btn-secondary px-3 py-1.5"
+                  title="Resultado do inventário"
+                  aria-label="Resultado do inventário"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+                <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(inv)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            ))
+          }
+        />
       </div>
 
       {/* Visão de calendário */}
@@ -477,15 +488,15 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           Distribuição no mês
         </h2>
 
-        <div className="grid grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-            <div key={d} className="text-center text-xs font-semibold text-dark-400 uppercase tracking-wider py-2">
+            <div key={d} className="text-center text-[10px] sm:text-xs font-semibold text-dark-400 uppercase tracking-wider py-1 sm:py-2">
               {d}
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {celulas.map((data, idx) => {
             if (!data) return <div key={`vazio-${idx}`} />;
 
@@ -495,22 +506,23 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
             return (
               <div
                 key={iso}
-                className={`min-h-24 rounded-lg border p-2 ${
+                className={`min-h-14 sm:min-h-20 md:min-h-24 rounded-lg border p-1 sm:p-2 ${
                   doDia.length > 0
                     ? 'bg-primary-500/10 border-primary-500/30'
                     : 'bg-dark-800 border-dark-700'
                 }`}
               >
-                <span className={`text-sm font-bold ${doDia.length > 0 ? 'text-primary-300' : 'text-dark-500'}`}>
+                <span className={`text-xs sm:text-sm font-bold ${doDia.length > 0 ? 'text-primary-300' : 'text-dark-500'}`}>
                   {data.getDate()}
                 </span>
-                <div className="mt-1 space-y-0.5">
+                <div className="mt-0.5 sm:mt-1 space-y-0.5">
                   {doDia.map((inv) => {
                     const f = filialPorId.get(inv.filialId);
                     return (
-                      <p key={inv.id} className="text-[10px] leading-tight text-dark-200 truncate"
+                      <p key={inv.id} className="text-[9px] sm:text-[10px] leading-tight text-dark-200 truncate"
                          title={nomeFilial(inv.filialId)}>
-                        {f ? f.numeroFilial : '?'} — {f ? f.nome : 'removida'}
+                        {f ? f.numeroFilial : '?'}{' '}
+                        <span className="hidden sm:inline">— {f ? f.nome : 'removida'}</span>
                       </p>
                     );
                   })}
@@ -521,11 +533,19 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
         </div>
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editando ? 'Editar Inventário' : 'Novo Inventário'}
         size="md"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSave} className="btn-primary">
+              {editando ? 'Salvar Alterações' : 'Agendar Inventário'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -555,7 +575,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">Horário de início</label>
               <input
@@ -641,15 +661,8 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               {formError}
             </p>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSave} className="btn-primary">
-              {editando ? 'Salvar Alterações' : 'Agendar Inventário'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
 
       {inventarioResultado && (
         <InventoryResultPanel

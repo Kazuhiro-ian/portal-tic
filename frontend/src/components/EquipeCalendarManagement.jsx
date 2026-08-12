@@ -77,15 +77,15 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
         <p className="text-center py-16 text-dark-400">Carregando calendário...</p>
       ) : (
         <>
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-              <div key={d} className="text-center text-xs font-semibold text-dark-400 uppercase tracking-wider py-2">
+              <div key={d} className="text-center text-[10px] sm:text-xs font-semibold text-dark-400 uppercase tracking-wider py-1 sm:py-2">
                 {d}
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {celulas.map((data, idx) => {
               if (!data) return <div key={`vazio-${idx}`} />;
 
@@ -99,12 +99,12 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
                   onClick={() => alternarDia(iso)}
                   disabled={!canWrite}
                   title={dia?.observacao || cfg?.label || 'Sem marcação'}
-                  className={`min-h-20 rounded-lg border p-2 flex flex-col items-start justify-between transition-colors text-left ${
+                  className={`min-h-14 sm:min-h-20 rounded-lg border p-1.5 sm:p-2 flex flex-col items-start justify-between transition-colors text-left ${
                     cfg ? cfg.celula : 'bg-dark-800 border-dark-700 text-dark-500'
                   } ${canWrite ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'}`}
                 >
-                  <span className="text-sm font-bold">{data.getDate()}</span>
-                  <span className="text-[10px] leading-tight font-medium opacity-90">
+                  <span className="text-xs sm:text-sm font-bold">{data.getDate()}</span>
+                  <span className="hidden xs:block text-[9px] sm:text-[10px] leading-tight font-medium opacity-90">
                     {cfg ? cfg.label : '—'}
                   </span>
                 </button>

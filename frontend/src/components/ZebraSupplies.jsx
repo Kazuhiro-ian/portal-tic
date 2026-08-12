@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   AlertTriangle, Send, Tag, Layers, Settings, Edit, Trash2, History,
-  Building2, CheckCircle2, Store, FileText, Info
+  CheckCircle2, Store, FileText
 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
+import { DataTable } from './DataTable.jsx';
 import {
   listarFiliais,
   listarEstoqueItens, atualizarEstoqueItem,
@@ -29,6 +30,75 @@ function branchLabel(branches, branchNum) {
   
   const num = getBranchNumber(b);
   return `Loja ${num} - ${b.name || b.nome || ''}`;
+}
+
+function colunasHistoricoZebra(branches) {
+  return [
+    {
+      chave: 'filial',
+      header: 'Filial',
+      mobile: 'titulo',
+      tdClassName: 'font-medium text-white',
+      render: (d) => branchLabel(branches, d.filialId),
+    },
+    {
+      chave: 'data',
+      header: 'Data',
+      mobile: 'subtitulo',
+      tdClassName: 'whitespace-nowrap text-white',
+      render: (d) => new Date(d.dataEnvio + 'T00:00:00').toLocaleDateString('pt-BR'),
+    },
+    {
+      chave: 'tipo',
+      header: 'Tipo',
+      mobile: 'badge',
+      render: (d) =>
+        d.tipoEnvio === 'EXTRA' ? (
+          <span
+            className="badge bg-accent-500/10 text-accent-400 border-accent-500/30"
+            title={d.motivoExtra}
+          >
+            Extra
+          </span>
+        ) : (
+          <span className="badge badge-success">Regular</span>
+        ),
+    },
+    {
+      chave: 'etiquetas',
+      header: 'Etiquetas',
+      tdClassName: 'text-center',
+      render: (d) => (
+        <span className="inline-flex items-center gap-1 font-semibold text-primary-400">
+          {d.qtdEtiquetas > 0 ? (
+            <>
+              <Tag className="w-3.5 h-3.5" />
+              {d.qtdEtiquetas}
+            </>
+          ) : (
+            <span className="text-dark-500">—</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      chave: 'ribbons',
+      header: 'Ribbons',
+      tdClassName: 'text-center',
+      render: (d) => (
+        <span className="inline-flex items-center gap-1 font-semibold text-accent-400">
+          {d.qtdRibbons > 0 ? (
+            <>
+              <Layers className="w-3.5 h-3.5" />
+              {d.qtdRibbons}
+            </>
+          ) : (
+            <span className="text-dark-500">—</span>
+          )}
+        </span>
+      ),
+    },
+  ];
 }
 
 export function ZebraSupplies() {
@@ -419,13 +489,14 @@ export function ZebraSupplies() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 border-t border-dark-600 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-dark-600 pt-4">
               <div>
                 <label className="block text-sm font-medium text-dark-300 mb-2 flex items-center gap-1.5">
                   <Tag className="w-4 h-4 text-primary-400" /> Etiquetas (rolos)
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   value={dispatchForm.qtdEtiquetas}
                   onChange={(e) => setDispatchForm({ ...dispatchForm, qtdEtiquetas: parseInt(e.target.value) || 0 })}
@@ -442,6 +513,7 @@ export function ZebraSupplies() {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   value={dispatchForm.qtdRibbons}
                   onChange={(e) => setDispatchForm({ ...dispatchForm, qtdRibbons: parseInt(e.target.value) || 0 })}
@@ -549,79 +621,22 @@ export function ZebraSupplies() {
           <span className="badge badge-info">{distributions.length} registros</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header">Data</th>
-                <th scope="col" className="table-header">Tipo</th>
-                <th scope="col" className="table-header">Filial</th>
-                <th scope="col" className="table-header text-center">Etiquetas</th>
-                <th scope="col" className="table-header text-center">Ribbons</th>
-                <th scope="col" className="table-header text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr><td colSpan={6} className="text-center py-8 text-dark-400">Carregando histórico...</td></tr>
-              ) : distributions.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-dark-400">Nenhum envio registrado.</td></tr>
-              ) : (
-                distributions.map((d) => {
-                  const dDate = new Date(d.dataEnvio + 'T00:00:00');
-                  const isExtra = d.tipoEnvio === 'EXTRA';
-                  
-                  return (
-                    <tr key={d.id} className="hover:bg-dark-700/30 transition-colors">
-                      <td className="table-cell whitespace-nowrap">
-                        <span className="text-white">{dDate.toLocaleDateString('pt-BR')}</span>
-                      </td>
-                      <td className="table-cell">
-                        {isExtra ? (
-                           <div className="flex items-center gap-1.5 group relative cursor-help">
-                             <span className="badge bg-accent-500/10 text-accent-400 border-accent-500/30">Extra</span>
-                             <Info className="w-4 h-4 text-dark-400 group-hover:text-accent-400 transition-colors" />
-                             <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-dark-800 border border-dark-600 rounded-lg shadow-xl text-xs text-white opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 text-center">
-                               {d.motivoExtra}
-                             </div>
-                           </div>
-                        ) : (
-                           <span className="badge badge-success">Regular</span>
-                        )}
-                      </td>
-                      <td className="table-cell">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-dark-400 shrink-0" />
-                          <span className="font-medium text-white">{branchLabel(branches, d.filialId)}</span>
-                        </div>
-                      </td>
-                      <td className="table-cell text-center">
-                        <span className="inline-flex items-center gap-1 font-semibold text-primary-400">
-                          {d.qtdEtiquetas > 0 ? <><Tag className="w-3.5 h-3.5" />{d.qtdEtiquetas}</> : <span className="text-dark-500">—</span>}
-                        </span>
-                      </td>
-                      <td className="table-cell text-center">
-                        <span className="inline-flex items-center gap-1 font-semibold text-accent-400">
-                          {d.qtdRibbons > 0 ? <><Layers className="w-3.5 h-3.5" />{d.qtdRibbons}</> : <span className="text-dark-500">—</span>}
-                        </span>
-                      </td>
-                      <td className="table-cell text-right">
-                        {canWrite && (
-                          <button onClick={() => handleDeleteDistribution(d.id)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={colunasHistoricoZebra(branches)}
+          dados={distributions}
+          carregando={isLoading}
+          vazio="Nenhum envio registrado."
+          acoes={(d) =>
+            canWrite && (
+              <button onClick={() => handleDeleteDistribution(d.id)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )
+          }
+        />
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showQuotaModal}
         onClose={() => setShowQuotaModal(false)}
         title="Cronogramas e Cotas das Filiais"
@@ -706,7 +721,7 @@ export function ZebraSupplies() {
             ))
           )}
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

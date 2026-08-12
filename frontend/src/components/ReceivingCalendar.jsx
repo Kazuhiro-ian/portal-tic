@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, Wand2, Pin, Info } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
 import { listarDiasRecebimento, aplicarPadraoMensal, salvarDiaRecebimento } from '../services/api.js';
 import { toISO, formatarBR, limitesDoMes, diasNoMes, DIAS_SEMANA } from '../utils/datas.js';
 import { TIPOS_DIA } from '../utils/qualidade.js';
@@ -157,15 +157,15 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
           <p className="text-center py-16 text-dark-400">Carregando calendário...</p>
         ) : (
           <>
-            <div className="grid grid-cols-7 gap-2 mb-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-                <div key={d} className="text-center text-xs font-semibold text-dark-400 uppercase tracking-wider py-2">
+                <div key={d} className="text-center text-[10px] sm:text-xs font-semibold text-dark-400 uppercase tracking-wider py-1 sm:py-2">
                   {d}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {celulas.map((data, idx) => {
                 if (!data) return <div key={`vazio-${idx}`} />;
 
@@ -179,15 +179,15 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
                     onClick={() => abrirDia(iso)}
                     disabled={!canWrite}
                     title={dia?.observacao || cfg?.label || 'Não configurado'}
-                    className={`min-h-24 rounded-lg border p-2 flex flex-col items-start justify-between transition-colors text-left ${
+                    className={`min-h-14 sm:min-h-20 md:min-h-24 rounded-lg border p-1.5 sm:p-2 flex flex-col items-start justify-between transition-colors text-left ${
                       cfg ? cfg.celula : 'bg-dark-800 border-dark-700 text-dark-500'
                     } ${canWrite ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'}`}
                   >
                     <div className="flex items-start justify-between w-full">
-                      <span className="text-sm font-bold">{data.getDate()}</span>
+                      <span className="text-xs sm:text-sm font-bold">{data.getDate()}</span>
                       {dia?.ajusteManual && <Pin className="w-3 h-3 shrink-0 opacity-80" />}
                     </div>
-                    <span className="text-[10px] leading-tight font-medium opacity-90">
+                    <span className="hidden xs:block text-[9px] sm:text-[10px] leading-tight font-medium opacity-90">
                       {cfg ? cfg.label : '—'}
                     </span>
                   </button>
@@ -207,11 +207,17 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
         )}
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={diaSelecionado !== null}
         onClose={() => setDiaSelecionado(null)}
         title={`Ajustar dia — ${formatarBR(diaSelecionado)}`}
         size="md"
+        footer={
+          <>
+            <button onClick={() => setDiaSelecionado(null)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSalvarDia} className="btn-primary">Salvar Dia</button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -248,13 +254,8 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
               {formError}
             </p>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setDiaSelecionado(null)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSalvarDia} className="btn-primary">Salvar Dia</button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
 import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso, listarEscalasPorPeriodo, listarLinks } from '../services/api.js';
 import { toISO } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -478,7 +478,22 @@ export function Dashboard() {
         </div>
       </div>
 
-      <Modal isOpen={showAddNotice} onClose={() => setShowAddNotice(false)} title="Novo Aviso" size="sm">
+      <SidePanel
+        isOpen={showAddNotice}
+        onClose={() => setShowAddNotice(false)}
+        title="Novo Aviso"
+        size="sm"
+        footer={
+          <>
+            <button onClick={() => setShowAddNotice(false)} className="btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={handleAddNotice} className="btn-primary">
+              Adicionar
+            </button>
+          </>
+        }
+      >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">Mensagem</label>
@@ -501,16 +516,8 @@ export function Dashboard() {
               <option value="ALTA">Alta</option>
             </select>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={() => setShowAddNotice(false)} className="btn-secondary">
-              Cancelar
-            </button>
-            <button onClick={handleAddNotice} className="btn-primary">
-              Adicionar
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

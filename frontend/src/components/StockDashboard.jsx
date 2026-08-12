@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
-  Plus, Search, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight,
+  Plus, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight,
   Package, Laptop, Smartphone, KeyRound
 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
+import { FiltroBar } from './FiltroBar.jsx';
+import { DataTable } from './DataTable.jsx';
 import { StockDispatch } from './StockDispatch.jsx';
 import { listarEstoqueItens, salvarEstoqueItem, atualizarEstoqueItem, deletarEstoqueItem, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -32,6 +34,79 @@ const emptyForm = {
   serialNumber: '',
   responsavel: '',
 };
+
+function colunasEstoque({ canWrite, adjustQuantity }) {
+  return [
+    {
+      chave: 'name',
+      header: 'Item',
+      mobile: 'titulo',
+      tdClassName: 'font-medium text-white',
+      render: (item) => (
+        <>
+          {item.name}
+          {item.subcategory && (
+            <span className="block text-xs text-dark-400 font-normal mt-0.5">{item.subcategory}</span>
+          )}
+        </>
+      ),
+    },
+    {
+      chave: 'category',
+      header: 'Categoria',
+      mobile: 'badge',
+      render: (item) => (
+        <span className="badge badge-info">{(categoryInfo[item.category] || categoryInfo.peripherals).label}</span>
+      ),
+    },
+    {
+      chave: 'quantity',
+      header: 'Quantidade',
+      render: (item) => {
+        const isCritical = item.quantity <= item.minQuantity;
+        return (
+          <div className="flex items-center justify-center gap-2">
+            {canWrite && (
+              <button
+                onClick={() => adjustQuantity(item, -1)}
+                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+              >
+                <Minus className="w-4 h-4 text-dark-300" />
+              </button>
+            )}
+            <span
+              className={`font-bold text-lg min-w-[40px] text-center ${isCritical ? 'text-red-400' : 'text-white'}`}
+            >
+              {item.quantity}
+            </span>
+            {canWrite && (
+              <button
+                onClick={() => adjustQuantity(item, 1)}
+                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+              >
+                <Plus className="w-4 h-4 text-dark-300" />
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      chave: 'minQuantity',
+      header: 'Mínimo',
+      render: (item) => {
+        const isCritical = item.quantity <= item.minQuantity;
+        return <span className={`font-medium ${isCritical ? 'text-red-400' : 'text-dark-300'}`}>{item.minQuantity}</span>;
+      },
+    },
+    {
+      chave: 'location',
+      header: 'Localização',
+      tdClassName: 'text-dark-300',
+      render: (item) => item.location,
+    },
+  ];
+}
 
 export function StockDashboard() {
   const { canWrite } = useAuth();
@@ -292,159 +367,78 @@ export function StockDashboard() {
           </div>
 
           <div className="card">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar item..."
-              aria-label="Buscar item"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input-field pl-10"
-                />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showCriticalOnly}
-                  onChange={(e) => setShowCriticalOnly(e.target.checked)}
-                  className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
-                />
-                <span className="text-dark-300">Apenas estoque baixo</span>
-                {showCriticalOnly && <AlertTriangle className="w-4 h-4 text-red-400" />}
-              </label>
-            </div>
+            <FiltroBar
+              busca={search}
+              onBuscaChange={setSearch}
+              placeholderBusca="Buscar item..."
+              filtros={[
+                {
+                  chave: 'critico',
+                  label: 'Apenas estoque baixo',
+                  tipo: 'toggle',
+                  valor: showCriticalOnly,
+                  onChange: setShowCriticalOnly,
+                },
+              ]}
+            />
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <th scope="col" className="table-header">Item</th>
-                    <th scope="col" className="table-header">Categoria</th>
-                    <th scope="col" className="table-header text-center">Quantidade</th>
-                    <th scope="col" className="table-header text-center">Mínimo</th>
-                    <th scope="col" className="table-header">Localização</th>
-                    <th scope="col" className="table-header text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-dark-400">
-                        Conectando ao banco de dados...
-                      </td>
-                    </tr>
-                  ) : paginacao.itensPagina.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12 text-dark-400">
-                        Nenhum item encontrado
-                      </td>
-                    </tr>
-                  ) : (
-                    paginacao.itensPagina.map((item) => {
-                      const isCritical = item.quantity <= item.minQuantity;
-                      const info = categoryInfo[item.category] || categoryInfo.peripherals;
-                      return (
-                        <tr
-                          key={item.id}
-                          className={`hover:bg-dark-700/30 transition-colors ${isCritical ? 'bg-red-500/5' : ''}`}
+            <DataTable
+              colunas={colunasEstoque({ canWrite, adjustQuantity })}
+              dados={paginacao.itensPagina}
+              carregando={isLoading}
+              vazio="Nenhum item encontrado"
+              acoes={(item) => {
+                const isCritical = item.quantity <= item.minQuantity;
+                return (
+                  <>
+                    {isCritical && (
+                      <span className="badge badge-danger">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Crítico
+                      </span>
+                    )}
+                    {canWrite && (
+                      <>
+                        <button
+                          onClick={() => openAdjustModal(item)}
+                          className="btn-secondary px-3 py-1.5"
+                          title="Movimentar / Ajuste rápido" aria-label="Movimentar / Ajuste rápido"
                         >
-                          <td className="table-cell">
-                            <div>
-                              <p className="font-medium text-white">{item.name}</p>
-                              {item.subcategory && (
-                                <p className="text-xs text-dark-400">{item.subcategory}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <span className="badge badge-info">{info.label}</span>
-                          </td>
-                          <td className="table-cell">
-                            <div className="flex items-center justify-center gap-2">
-                              {canWrite && (
-                                <button
-                                  onClick={() => adjustQuantity(item, -1)}
-                                  className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
-                                >
-                                  <Minus className="w-4 h-4 text-dark-300" />
-                                </button>
-                              )}
-                              <span
-                                className={`font-bold text-lg min-w-[40px] text-center ${
-                                  isCritical ? 'text-red-400' : 'text-white'
-                                }`}
-                              >
-                                {item.quantity}
-                              </span>
-                              {canWrite && (
-                                <button
-                                  onClick={() => adjustQuantity(item, 1)}
-                                  className="w-7 h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
-                                >
-                                  <Plus className="w-4 h-4 text-dark-300" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                          <td className="table-cell text-center">
-                            <span className={`font-medium ${isCritical ? 'text-red-400' : 'text-dark-300'}`}>
-                              {item.minQuantity}
-                            </span>
-                          </td>
-                          <td className="table-cell text-dark-300">{item.location}</td>
-                          <td className="table-cell">
-                            <div className="flex items-center justify-end gap-2">
-                              {isCritical && (
-                                <span className="badge badge-danger">
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Crítico
-                                </span>
-                              )}
-                              {canWrite && (
-                                <>
-                                  <button
-                                    onClick={() => openAdjustModal(item)}
-                                    className="btn-secondary px-3 py-1.5"
-                                    title="Movimentar / Ajuste rápido" aria-label="Movimentar / Ajuste rápido"
-                                  >
-                                    <ArrowLeftRight className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenModal(item)}
-                                    className="btn-secondary px-3 py-1.5"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(item.id)}
-                                    className="btn-danger px-3 py-1.5"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleOpenModal(item)} className="btn-secondary px-3 py-1.5">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} className="btn-danger px-3 py-1.5">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </>
+                );
+              }}
+            />
 
             <Paginacao {...paginacao} rotulo="itens" />
           </div>
         </>
       )}
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingItem ? 'Editar Item' : 'Novo Item'}
         size="lg"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={handleSave} className="btn-primary">
+              {editingItem ? 'Salvar Alterações' : 'Adicionar Item'}
+            </button>
+          </>
+        }
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
@@ -532,21 +526,25 @@ export function StockDashboard() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6">
-          <button onClick={() => setShowModal(false)} className="btn-secondary">
-            Cancelar
-          </button>
-          <button onClick={handleSave} className="btn-primary">
-            {editingItem ? 'Salvar Alterações' : 'Adicionar Item'}
-          </button>
-        </div>
-      </Modal>
+      </SidePanel>
 
-      <Modal
+      <SidePanel
         isOpen={showAdjustModal}
         onClose={() => setShowAdjustModal(false)}
         title="Ajuste Rápido de Estoque"
         size="md"
+        footer={
+          adjustItem && (
+            <>
+              <button onClick={() => setShowAdjustModal(false)} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={handleAdjustSave} className="btn-primary">
+                Confirmar Ajuste
+              </button>
+            </>
+          )
+        }
       >
         {adjustItem && (
           <div className="space-y-4">
@@ -629,18 +627,9 @@ export function StockDashboard() {
                 {adjustError}
               </p>
             )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button onClick={() => setShowAdjustModal(false)} className="btn-secondary">
-                Cancelar
-              </button>
-              <button onClick={handleAdjustSave} className="btn-primary">
-                Confirmar Ajuste
-              </button>
-            </div>
           </div>
         )}
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

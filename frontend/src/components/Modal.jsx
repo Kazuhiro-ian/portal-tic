@@ -1,15 +1,12 @@
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
+import { useScrollLock } from '../hooks/useScrollLock.js';
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  // Contador de travas em vez de `overflow: hidden` direto no body: essa lógica antiga
+  // destravava o fundo ao fechar QUALQUER modal, mesmo com outro ainda aberto por baixo
+  // (ex.: ConfirmDialog dentro de outro modal). Ver PLANO-MOBILE.md §1.4b.
+  useScrollLock(isOpen);
 
   // Fechar com Esc: o clique no overlay já fechava, mas quem usa teclado ficava preso no modal.
   useEffect(() => {
@@ -43,13 +40,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
           <h2 className="text-xl font-semibold text-white">{title}</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-dark-600 flex items-center justify-center transition-colors"
+            className="w-11 h-11 rounded-lg bg-dark-700 hover:bg-dark-600 flex items-center justify-center transition-colors shrink-0"
             aria-label="Fechar"
           >
             <X className="w-5 h-5 text-dark-300" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[60vh]">{children}</div>
+        <div className="modal-scroll-area">{children}</div>
       </div>
     </div>
   );

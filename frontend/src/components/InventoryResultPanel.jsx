@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Upload, FileSpreadsheet, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
 import {
   importarResultadoInventario, buscarResultadoInventario,
   removerResultadoInventario, buscarConfiguracaoQualidade,
@@ -112,7 +112,7 @@ export function InventoryResultPanel({ inventario, nomeFilial, canWrite, onClose
     : null;
 
   return (
-    <Modal isOpen={!!inventario} onClose={onClose} title={`Resultado — ${nomeFilial}`} size="lg">
+    <SidePanel isOpen={!!inventario} onClose={onClose} title={`Resultado — ${nomeFilial}`} size="lg">
       {dialogoConfirmacao}
 
       {carregando ? (
@@ -217,6 +217,6 @@ export function InventoryResultPanel({ inventario, nomeFilial, canWrite, onClose
           )}
         </div>
       )}
-    </Modal>
+    </SidePanel>
   );
 }

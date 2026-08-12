@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
 import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -249,10 +249,20 @@ export function LinksManager() {
         </div>
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingLink ? 'Editar Link' : 'Novo Link'}
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={handleSave} className="btn-primary">
+              {editingLink ? 'Salvar Alterações' : 'Adicionar Link'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -299,16 +309,8 @@ export function LinksManager() {
               placeholder="Ex: Cloud, Azure, Microsoft"
             />
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">
-              Cancelar
-            </button>
-            <button onClick={handleSave} className="btn-primary">
-              {editingLink ? 'Salvar Alterações' : 'Adicionar Link'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

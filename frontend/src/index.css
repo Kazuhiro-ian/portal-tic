@@ -5,10 +5,17 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-dark-900 text-dark-100;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
@@ -26,7 +33,7 @@
   }
 
   .card {
-    @apply bg-dark-800 rounded-xl border border-dark-700 p-6 transition-all duration-200;
+    @apply bg-dark-800 rounded-xl border border-dark-700 p-4 md:p-6 transition-all duration-200;
   }
 
   .card:hover {
@@ -34,35 +41,70 @@
   }
 
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+    @apply bg-primary-600 hover:bg-primary-700 text-white px-4 min-h-[44px] md:min-h-0 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
   }
 
   .btn-secondary {
-    @apply bg-dark-700 hover:bg-dark-600 text-dark-100 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+    @apply bg-dark-700 hover:bg-dark-600 text-dark-100 px-4 min-h-[44px] md:min-h-0 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
   }
 
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+    @apply bg-red-600 hover:bg-red-700 text-white px-4 min-h-[44px] md:min-h-0 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
   }
 
   .btn-success {
-    @apply bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+    @apply bg-green-600 hover:bg-green-700 text-white px-4 min-h-[44px] md:min-h-0 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
   }
 
   .input-field {
-    @apply w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2.5 text-dark-100 placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+    @apply w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2.5 text-base md:text-sm text-dark-100 placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
   }
 
   .select-field {
-    @apply w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2.5 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 cursor-pointer;
+    @apply w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-2.5 text-base md:text-sm text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 cursor-pointer;
   }
 
   .table-header {
-    @apply text-left text-xs font-semibold text-dark-400 uppercase tracking-wider px-4 py-3 border-b border-dark-700;
+    @apply text-left text-xs font-semibold text-dark-400 uppercase tracking-wider px-2 py-2.5 md:px-4 md:py-3 border-b border-dark-700;
   }
 
   .table-cell {
-    @apply px-4 py-3 border-b border-dark-700/50;
+    @apply px-2 py-2.5 md:px-4 md:py-3 border-b border-dark-700/50;
+  }
+
+  /* Container de rolagem da tabela: altura limitada para o cabeçalho sticky ter contra
+     quem rolar (ver PLANO-MOBILE.md §1.2). --table-offset é definido por cada tela conforme
+     o espaço ocupado acima da tabela (título, filtros, etc). */
+  .table-scroll {
+    max-height: 70vh;
+    max-height: calc(100dvh - var(--table-offset, 320px));
+    @apply overflow-auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-sticky-head {
+    @apply sticky top-0 z-20 bg-dark-800;
+  }
+
+  .table-sticky-head.is-scrolled {
+    @apply shadow-md shadow-black/30;
+  }
+
+  .data-card {
+    @apply bg-dark-800 rounded-xl border border-dark-700 p-4 transition-colors duration-200;
+  }
+
+  .data-card-row {
+    @apply flex items-center justify-between gap-3 py-1.5 border-b border-dark-700/50 last:border-b-0;
+  }
+
+  .data-card-label {
+    @apply text-xs font-semibold text-dark-400 uppercase tracking-wider shrink-0;
+  }
+
+  .panel-surface {
+    @apply bg-dark-800 border border-dark-700 shadow-2xl shadow-black/40;
   }
 
   .badge {
@@ -85,12 +127,24 @@
     @apply bg-blue-500/20 text-blue-400;
   }
 
+  /* Sem backdrop-blur de propósito: backdrop-filter força o navegador a recompor a textura
+     desfocada a cada repintura (inclusive a cada tecla digitada num input do modal), o que
+     é especialmente pesado no iOS Safari. Ver PLANO-MOBILE.md §1.4a. */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50;
+    @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
   }
 
   .modal-content {
-    @apply bg-dark-800 rounded-2xl border border-dark-700 w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl;
+    max-height: 85vh;
+    max-height: 85dvh;
+    @apply bg-dark-800 rounded-2xl border border-dark-700 w-full max-w-lg overflow-hidden shadow-2xl;
+  }
+
+  .modal-scroll-area {
+    max-height: 60vh;
+    max-height: 70dvh;
+    @apply p-6 overflow-y-auto;
+    overscroll-behavior: contain;
   }
 
   .metric-card {
@@ -107,6 +161,14 @@
 }
 
 @layer utilities {
+  /* 100vh primeiro como fallback: Safari < 15.4 ignora a segunda regra (dvh) e fica com a
+     primeira. Em iOS, 100dvh exclui a barra de endereço do Safari, evitando que o rodapé
+     fique escondido atrás dela (PLANO-MOBILE.md §1.3). */
+  .h-app {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;

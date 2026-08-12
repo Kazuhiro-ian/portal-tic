@@ -1,5 +1,7 @@
 import { Edit, X } from 'lucide-react';
 import { useSlidePanel } from '../hooks/useSlidePanel.js';
+import { useMediaQuery, BREAKPOINTS } from '../hooks/useMediaQuery.js';
+import { SidePanel } from './SidePanel.jsx';
 
 const PANEL_WIDTH = 420;
 
@@ -21,10 +23,14 @@ function Secao({ titulo, children }) {
   );
 }
 
+// Abaixo de md, 420px inline não cabe na tela — vira um SidePanel em sobreposição
+// (tela cheia no mobile). No desktop mantém o painel inline que empurra a tabela,
+// que já funciona bem com espaço de sobra. Ver PLANO-MOBILE.md §4.5.
 export function AssetDetailPanel({ open, ativo, tipoLabel, filiais, onEdit, onClose }) {
   const { mounted, visible } = useSlidePanel(open);
+  const isDesktop = useMediaQuery(BREAKPOINTS.md);
 
-  if (!mounted || !ativo) return null;
+  if (!ativo) return null;
 
   const mostraHardware = ativo.tipo === 'DESKTOP' || ativo.tipo === 'NOTEBOOK';
   const mostraImei = ativo.tipo === 'CELULAR';
@@ -35,6 +41,70 @@ export function AssetDetailPanel({ open, ativo, tipoLabel, filiais, onEdit, onCl
   const dataFormatada = ativo.lastMaintenance
     ? new Date(ativo.lastMaintenance + 'T00:00:00').toLocaleDateString('pt-BR')
     : null;
+
+  const conteudo = (
+    <div className="space-y-5">
+      <Secao titulo="Identificação">
+        <Campo label="Marca" valor={ativo.marca} />
+        <Campo label="Modelo" valor={ativo.modelo} />
+        <Campo label="Etiqueta" valor={ativo.etiqueta} />
+        <Campo label="Nº de Série" valor={ativo.numeroSerie} />
+      </Secao>
+
+      {mostraHardware && (
+        <Secao titulo="Hardware">
+          <Campo label="Processador" valor={ativo.processador} />
+          <Campo label="Memória" valor={ativo.memoria} />
+          <Campo label="Armazenamento" valor={ativo.armazenamento} />
+        </Secao>
+      )}
+
+      <Secao titulo="Rede">
+        <Campo label="IP" valor={ativo.ip} />
+        <Campo label="MAC Address" valor={ativo.macAddress} />
+        {mostraImei && <Campo label="IMEI" valor={ativo.imei} />}
+      </Secao>
+
+      <Secao titulo="Localização">
+        <Campo label="Filial" valor={nomeFilial} />
+        <Campo label="Setor" valor={ativo.setor} />
+        <Campo label="Responsável Atual" valor={ativo.responsavelAtual} />
+      </Secao>
+
+      <Secao titulo="Status">
+        <Campo label="Status atual" valor={ativo.status} />
+        <Campo label="Última Manutenção" valor={dataFormatada} />
+      </Secao>
+
+      <Secao titulo="Observações">
+        <p className="text-sm text-dark-100 whitespace-pre-wrap">{ativo.observacoes || '—'}</p>
+      </Secao>
+    </div>
+  );
+
+  if (!isDesktop) {
+    return (
+      <SidePanel
+        isOpen={open}
+        onClose={onClose}
+        title={tipoLabel}
+        size="md"
+        footer={
+          <>
+            <button onClick={onClose} className="btn-secondary">Fechar</button>
+            <button onClick={onEdit} className="btn-primary">
+              <Edit className="w-4 h-4" />
+              Editar
+            </button>
+          </>
+        }
+      >
+        {conteudo}
+      </SidePanel>
+    );
+  }
+
+  if (!mounted) return null;
 
   return (
     <div
@@ -57,43 +127,7 @@ export function AssetDetailPanel({ open, ativo, tipoLabel, filiais, onEdit, onCl
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5">
-          <Secao titulo="Identificação">
-            <Campo label="Marca" valor={ativo.marca} />
-            <Campo label="Modelo" valor={ativo.modelo} />
-            <Campo label="Etiqueta" valor={ativo.etiqueta} />
-            <Campo label="Nº de Série" valor={ativo.numeroSerie} />
-          </Secao>
-
-          {mostraHardware && (
-            <Secao titulo="Hardware">
-              <Campo label="Processador" valor={ativo.processador} />
-              <Campo label="Memória" valor={ativo.memoria} />
-              <Campo label="Armazenamento" valor={ativo.armazenamento} />
-            </Secao>
-          )}
-
-          <Secao titulo="Rede">
-            <Campo label="IP" valor={ativo.ip} />
-            <Campo label="MAC Address" valor={ativo.macAddress} />
-            {mostraImei && <Campo label="IMEI" valor={ativo.imei} />}
-          </Secao>
-
-          <Secao titulo="Localização">
-            <Campo label="Filial" valor={nomeFilial} />
-            <Campo label="Setor" valor={ativo.setor} />
-            <Campo label="Responsável Atual" valor={ativo.responsavelAtual} />
-          </Secao>
-
-          <Secao titulo="Status">
-            <Campo label="Status atual" valor={ativo.status} />
-            <Campo label="Última Manutenção" valor={dataFormatada} />
-          </Secao>
-
-          <Secao titulo="Observações">
-            <p className="text-sm text-dark-100 whitespace-pre-wrap">{ativo.observacoes || '—'}</p>
-          </Secao>
-        </div>
+        <div className="flex-1 overflow-y-auto scrollbar-thin p-5">{conteudo}</div>
 
         <div className="flex justify-end gap-3 p-5 border-t border-dark-700">
           <button onClick={onClose} className="btn-secondary">

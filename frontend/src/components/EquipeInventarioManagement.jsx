@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Users } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
+import { DataTable } from './DataTable.jsx';
 import { listarEquipesInventario, salvarEquipeInventario, atualizarEquipeInventario, deletarEquipeInventario } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -8,6 +9,16 @@ import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
 
 const emptyForm = { nome: '' };
+
+const COLUNAS = [
+  {
+    chave: 'nome',
+    header: 'Nome',
+    mobile: 'titulo',
+    tdClassName: 'font-semibold text-white',
+    render: (equipe) => equipe.nome,
+  },
+];
 
 export function EquipeInventarioManagement() {
   const { canWriteQualidade } = useAuth();
@@ -119,50 +130,39 @@ export function EquipeInventarioManagement() {
       </div>
 
       <div className="card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header">Nome</th>
-                <th scope="col" className="table-header text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {equipes.length === 0 ? (
-                <tr>
-                  <td colSpan={2} className="text-center py-16 text-dark-400">
-                    {isLoading ? 'Conectando ao banco de dados...' : 'Nenhuma equipe cadastrada.'}
-                  </td>
-                </tr>
-              ) : (
-                equipes.map((equipe) => (
-                  <tr key={equipe.id} className="hover:bg-dark-700/30 transition-colors">
-                    <td className="table-cell font-semibold text-white">{equipe.nome}</td>
-                    <td className="table-cell text-right">
-                      {canWriteQualidade && (
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEdit(equipe)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDelete(equipe)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={COLUNAS}
+          dados={equipes}
+          carregando={isLoading}
+          vazio="Nenhuma equipe cadastrada."
+          acoes={(equipe) =>
+            canWriteQualidade && (
+              <>
+                <button onClick={() => openEdit(equipe)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(equipe)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )
+          }
+        />
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingEquipe ? `Editar Equipe — ${editingEquipe.nome}` : 'Nova Equipe'}
         size="md"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSave} className="btn-primary">
+              {editingEquipe ? 'Salvar Alterações' : 'Cadastrar Equipe'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -181,15 +181,8 @@ export function EquipeInventarioManagement() {
               {formError}
             </p>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSave} className="btn-primary">
-              {editingEquipe ? 'Salvar Alterações' : 'Cadastrar Equipe'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

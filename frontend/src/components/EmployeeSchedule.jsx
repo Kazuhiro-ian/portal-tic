@@ -3,7 +3,7 @@ import {
   Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, Coffee, CheckSquare,
   ListTodo, Circle, PlayCircle, Search
 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { SidePanel } from './SidePanel.jsx';
 import {
   listarColaboradores, salvarColaborador, atualizarColaborador, deletarColaborador,
   listarEscalasPorPeriodo, salvarEscalaDia,
@@ -271,18 +271,22 @@ export function EmployeeSchedule() {
               </button>
             </div>
 
-            <div className="overflow-x-auto pb-24 pt-2">
+            {/* Exceção deliberada ao padrão DataTable: isto é uma grade dia×pessoa, não uma
+                lista. Mantém o scroll horizontal, mas com a primeira coluna e o cabeçalho de
+                dias congelados, para o nome do colaborador nunca sumir de vista.
+                Ver PLANO-MOBILE.md §6 (módulo 11). */}
+            <div className="table-scroll pt-2" style={{ '--table-offset': '360px' }}>
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr>
-                    <th scope="col" className="table-header w-40">Colaborador</th>
+                    <th scope="col" className="table-header table-sticky-head sticky left-0 z-30 w-40">Colaborador</th>
                     {weekDays.map((day, index) => {
                       const isToday = weekDates[index].toDateString() === today.toDateString();
                       const isFimDeSemana = day === 'Sabado' || day === 'Domingo';
                       return (
                         <th
                           key={day}
-                          className={`table-header text-center ${isToday ? 'bg-primary-500/10' : ''}`}
+                          className={`table-header table-sticky-head text-center ${isToday ? 'bg-primary-500/10' : ''}`}
                         >
                           <div>
                             <p className={isToday ? 'text-primary-400' : ''}>
@@ -313,7 +317,7 @@ export function EmployeeSchedule() {
                   ) : (
                     employees.map((employee, empIndex) => (
                       <tr key={employee.id} className="hover:bg-dark-700/30 transition-colors">
-                        <td className="table-cell">
+                        <td className="table-cell sticky left-0 z-10 bg-dark-800">
                           <div>
                             <p className="font-medium text-white">{employee.name}</p>
                             <p className="text-xs text-dark-400">{employee.role}</p>
@@ -649,11 +653,21 @@ export function EmployeeSchedule() {
         </div>
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingEmployee ? 'Editar Colaborador' : 'Novo Colaborador'}
         size="md"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={handleSaveColaborador} className="btn-primary">
+              {editingEmployee ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
           <div>
@@ -687,16 +701,8 @@ export function EmployeeSchedule() {
               <span className="text-dark-300">Regime de Sobreaviso (Plantão Fim de Semana)</span>
             </label>
           </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">
-              Cancelar
-            </button>
-            <button onClick={handleSaveColaborador} className="btn-primary">
-              {editingEmployee ? 'Salvar Alterações' : 'Cadastrar Colaborador'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

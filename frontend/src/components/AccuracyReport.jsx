@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Minus, Building2, Store, Layers, ArrowDown, A
 import {
   buscarRelatorioAcuracidade, buscarRankingAcuracidade, buscarConfiguracaoQualidade,
 } from '../services/api.js';
+import { DataTable } from './DataTable.jsx';
 
 const percentual = (valor) =>
   valor == null ? '—' : `${(Number(valor) * 100).toFixed(2).replace('.', ',')}%`;
@@ -129,6 +130,54 @@ function ListaRanking({ titulo, icon: Icon, cor, itens }) {
   );
 }
 
+const COLUNAS = [
+  {
+    chave: 'filial',
+    header: 'Filial',
+    mobile: 'titulo',
+    tdClassName: 'font-medium text-white',
+    render: (linha) => `${linha.numeroFilial} - ${linha.nome}`,
+  },
+  {
+    chave: 'tipo',
+    header: 'Tipo',
+    mobile: 'badge',
+    render: (linha) => (
+      <span className={`badge ${linha.tipoFilial === 'CD' ? 'badge-info' : linha.tipoFilial === 'LOJA' ? 'badge-success' : ''}`}>
+        {rotuloTipo(linha.tipoFilial)}
+      </span>
+    ),
+  },
+  {
+    chave: 'acuracidade',
+    header: 'Acuracidade',
+    tdClassName: 'text-dark-100',
+    render: (linha) => (linha.atual ? percentual(linha.atual.percentualAcuracidade) : '—'),
+  },
+  {
+    chave: 'variacao',
+    header: 'Variação',
+    render: (linha) =>
+      linha.atual ? (
+        <Variacao atual={linha.atual.percentualAcuracidade} anterior={linha.anterior?.percentualAcuracidade} />
+      ) : (
+        <span className="text-dark-400 text-sm">—</span>
+      ),
+  },
+  {
+    chave: 'ajuste',
+    header: 'Ajuste (R$)',
+    tdClassName: 'text-dark-100',
+    render: (linha) => (linha.atual ? percentual(linha.atual.percentualInacuracia) : '—'),
+  },
+  {
+    chave: 'produtos',
+    header: 'Produtos',
+    tdClassName: 'text-dark-300',
+    render: (linha) => (linha.atual ? linha.atual.totalProdutos : '—'),
+  },
+];
+
 export function AccuracyReport({ ano, mes, showToast }) {
   const [relatorio, setRelatorio] = useState(null);
   const [ranking, setRanking] = useState(null);
@@ -172,54 +221,12 @@ export function AccuracyReport({ ano, mes, showToast }) {
 
       <div className="card">
         <h2 className="text-lg font-semibold text-white mb-4">Acuracidade por Filial</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header">Filial</th>
-                <th scope="col" className="table-header">Tipo</th>
-                <th scope="col" className="table-header">Acuracidade</th>
-                <th scope="col" className="table-header">Variação</th>
-                <th scope="col" className="table-header">Ajuste (R$)</th>
-                <th scope="col" className="table-header">Produtos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relatorio.filiais.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-dark-400">Nenhuma filial cadastrada.</td>
-                </tr>
-              ) : (
-                relatorio.filiais.map((linha) => (
-                  <tr key={linha.filialId} className="hover:bg-dark-700/30 transition-colors">
-                    <td className="table-cell font-medium text-white">
-                      {linha.numeroFilial} - {linha.nome}
-                    </td>
-                    <td className="table-cell">
-                      <span className={`badge ${linha.tipoFilial === 'CD' ? 'badge-info' : linha.tipoFilial === 'LOJA' ? 'badge-success' : ''}`}>
-                        {rotuloTipo(linha.tipoFilial)}
-                      </span>
-                    </td>
-                    <td className="table-cell text-dark-100">
-                      {linha.atual ? percentual(linha.atual.percentualAcuracidade) : '—'}
-                    </td>
-                    <td className="table-cell">
-                      {linha.atual
-                        ? <Variacao atual={linha.atual.percentualAcuracidade} anterior={linha.anterior?.percentualAcuracidade} />
-                        : <span className="text-dark-400 text-sm">—</span>}
-                    </td>
-                    <td className="table-cell text-dark-100">
-                      {linha.atual ? percentual(linha.atual.percentualInacuracia) : '—'}
-                    </td>
-                    <td className="table-cell text-dark-300">
-                      {linha.atual ? linha.atual.totalProdutos : '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={COLUNAS}
+          dados={relatorio.filiais}
+          chaveLinha={(linha) => linha.filialId}
+          vazio="Nenhuma filial cadastrada."
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

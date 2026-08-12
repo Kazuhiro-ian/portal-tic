@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Hash, Building2 } from 'lucide-react';
-import { Modal } from './Modal.jsx';
+import { Plus, Edit, Trash2, Search, Building2 } from 'lucide-react';
+import { SidePanel } from './SidePanel.jsx';
+import { DataTable } from './DataTable.jsx';
 import { listarFiliais, salvarFilial, atualizarFilial, deletarFilial } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -19,6 +20,63 @@ function formatCnpj(value) {
 }
 
 const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '' };
+
+const COLUNAS = [
+  {
+    chave: 'numeroFilial',
+    header: 'Núm.',
+    mobile: 'badge',
+    render: (branch) => (
+      <span className="inline-flex items-center justify-center w-10 h-8 rounded-lg bg-primary-500/15 border border-primary-500/25 text-primary-400 font-bold text-sm">
+        {branch.numeroFilial}
+      </span>
+    ),
+  },
+  {
+    chave: 'nome',
+    header: 'Nome da Filial',
+    mobile: 'titulo',
+    tdClassName: 'font-semibold text-white',
+    render: (branch) => branch.nome,
+  },
+  {
+    chave: 'tipoFilial',
+    header: 'Tipo',
+    mobile: 'badge',
+    render: (branch) =>
+      branch.tipoFilial ? (
+        <span className={`badge ${branch.tipoFilial === 'CD' ? 'badge-info' : 'badge-success'}`}>
+          {branch.tipoFilial === 'CD' ? 'CD' : 'Loja'}
+        </span>
+      ) : (
+        <span className="badge">—</span>
+      ),
+  },
+  {
+    chave: 'cnpj',
+    header: 'CNPJ',
+    tdClassName: 'font-mono text-dark-300',
+    render: (branch) => branch.cnpj || '—',
+  },
+  {
+    chave: 'endereco',
+    header: 'Endereço',
+    tdClassName: 'text-dark-300',
+    render: (branch) => branch.endereco || '—',
+  },
+  {
+    chave: 'grupoRecebimento',
+    header: 'Grupo Receb.',
+    render: (branch) =>
+      branch.grupoRecebimento ? (
+        <span className={`badge ${grupoBadge(branch.grupoRecebimento)}`}>
+          {grupoLabels[branch.grupoRecebimento]}
+        </span>
+      ) : (
+        <span className="badge">Não definido</span>
+      ),
+  },
+];
 
 export function BranchManagement() {
   const { canWrite } = useAuth();
@@ -180,98 +238,59 @@ export function BranchManagement() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th scope="col" className="table-header w-20"><Hash className="inline w-3.5 h-3.5"/> Núm.</th>
-                <th scope="col" className="table-header">Nome da Filial</th>
-                <th scope="col" className="table-header">Tipo</th>
-                <th scope="col" className="table-header">CNPJ</th>
-                <th scope="col" className="table-header">Endereço</th>
-                <th scope="col" className="table-header">Grupo Receb.</th>
-                <th scope="col" className="table-header text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-16 text-dark-400">
-                    {isLoading ? 'Conectando ao banco de dados...' : 'Nenhuma filial encontrada.'}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((branch) => (
-                  <tr key={branch.id} className="hover:bg-dark-700/30 transition-colors">
-                    <td className="table-cell">
-                      <span className="inline-flex items-center justify-center w-10 h-8 rounded-lg bg-primary-500/15 border border-primary-500/25 text-primary-400 font-bold text-sm">
-                        {branch.numeroFilial}
-                      </span>
-                    </td>
-                    <td className="table-cell font-semibold text-white">{branch.nome}</td>
-                    <td className="table-cell">
-                      {branch.tipoFilial ? (
-                        <span className={`badge ${branch.tipoFilial === 'CD' ? 'badge-info' : 'badge-success'}`}>
-                          {branch.tipoFilial === 'CD' ? 'CD' : 'Loja'}
-                        </span>
-                      ) : (
-                        <span className="badge">—</span>
-                      )}
-                    </td>
-                    <td className="table-cell font-mono text-dark-300">{branch.cnpj || '—'}</td>
-                    <td className="table-cell text-dark-300">{branch.endereco || '—'}</td>
-                    <td className="table-cell">
-                      {branch.grupoRecebimento ? (
-                        <span className={`badge ${grupoBadge(branch.grupoRecebimento)}`}>
-                          {grupoLabels[branch.grupoRecebimento]}
-                        </span>
-                      ) : (
-                        <span className="badge">Não definido</span>
-                      )}
-                    </td>
-                    <td className="table-cell text-right">
-                      {canWrite && (
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          colunas={COLUNAS}
+          dados={filtered}
+          carregando={isLoading}
+          vazio="Nenhuma filial encontrada."
+          acoes={(branch) =>
+            canWrite && (
+              <>
+                <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )
+          }
+        />
       </div>
 
-      <Modal
+      <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingBranch ? `Editar Filial — ${editingBranch.nome}` : 'Nova Filial'}
         size="lg"
+        footer={
+          <>
+            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleSave} className="btn-primary">
+              {editingBranch ? 'Salvar Alterações' : 'Cadastrar Filial'}
+            </button>
+          </>
+        }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">Número da Filial *</label>
               <input
                 type="number"
+                inputMode="numeric"
                 value={form.numeroFilial}
                 onChange={(e) => { setForm({ ...form, numeroFilial: e.target.value }); setFormError(''); }}
                 className="input-field"
                 placeholder="Ex: 1"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">CNPJ</label>
               <input
                 type="text"
+                inputMode="numeric"
                 value={form.cnpj}
                 onChange={(e) => setForm({ ...form, cnpj: formatCnpj(e.target.value) })}
                 className="input-field font-mono"
@@ -344,15 +363,8 @@ export function BranchManagement() {
               {formError}
             </p>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleSave} className="btn-primary">
-              {editingBranch ? 'Salvar Alterações' : 'Cadastrar Filial'}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </SidePanel>
     </div>
   );
 }

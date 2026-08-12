@@ -2,7 +2,9 @@ import { LayoutDashboard, Link, HardDrive, Package, Calendar, BookOpen, Monitor,
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const menuItems = [
+// Exportado para o App.jsx reaproveitar: título do módulo atual no header mobile e a
+// lista de rotas da barra de navegação inferior (BottomNav) usam a mesma fonte de verdade.
+export const menuItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/links', label: 'Links Uteis', icon: Link },
   { to: '/ativos', label: 'Ativos', icon: HardDrive },
@@ -14,6 +16,8 @@ const menuItems = [
   { to: '/qualidade', label: 'Qualidade', icon: ClipboardCheck },
 ];
 
+export const usuariosMenuItem = { to: '/usuarios', label: 'Usuários', icon: Users };
+
 const roleLabels = {
   ADMIN: 'Administrador',
   TECNICO: 'Técnico',
@@ -24,12 +28,10 @@ const roleLabels = {
 export function Sidebar({ onNavigate }) {
   const { user, logout, isAdmin } = useAuth();
 
-  const items = isAdmin
-    ? [...menuItems, { to: '/usuarios', label: 'Usuários', icon: Users }]
-    : menuItems;
+  const items = isAdmin ? [...menuItems, usuariosMenuItem] : menuItems;
 
   return (
-    <aside className="w-64 bg-dark-900 border-r border-dark-700 flex flex-col min-h-screen">
+    <aside className="w-64 bg-dark-900 border-r border-dark-700 flex flex-col h-app">
       <div className="h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-accent-500 w-full" />
 
       <div className="px-6 py-5 border-b border-dark-700">
@@ -78,7 +80,7 @@ export function Sidebar({ onNavigate }) {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-dark-700">
+      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-dark-700">
         <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-dark-800 border border-dark-700">
           <div className="w-9 h-9 bg-primary-500/20 border border-primary-500/40 rounded-full flex items-center justify-center shrink-0">
             <Monitor className="w-4 h-4 text-primary-400" />
@@ -90,7 +92,7 @@ export function Sidebar({ onNavigate }) {
           <button
             onClick={logout}
             title="Sair" aria-label="Sair"
-            className="w-8 h-8 rounded-lg bg-dark-700 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-dark-400 transition-colors shrink-0"
+            className="w-11 h-11 rounded-lg bg-dark-700 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-dark-400 transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />
           </button>
