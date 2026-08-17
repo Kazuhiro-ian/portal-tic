@@ -2,9 +2,11 @@ package portal.ti.queiroz.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import portal.ti.queiroz.dto.DetalheFilialAcuracidadeResponse;
 import portal.ti.queiroz.dto.RelatorioAcuracidadeResponse;
 import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.service.RelatorioAcuracidadeService;
@@ -32,5 +34,12 @@ public class RelatorioAcuracidadeController {
             @RequestParam(required = false) Long filialId,
             @RequestParam(required = false) Integer limite) {
         return service.ranking(ano, mes, tipoFilial, filialId, limite);
+    }
+
+    // GET /api/qualidade/acuracidade/filial/42?ano=2026&mes=8
+    @GetMapping("/filial/{filialId}")
+    public DetalheFilialAcuracidadeResponse detalheFilial(
+            @PathVariable Long filialId, @RequestParam Integer ano, @RequestParam Integer mes) {
+        return service.detalheFilial(filialId, ano, mes);
     }
 }

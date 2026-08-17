@@ -1,14 +1,19 @@
 package portal.ti.queiroz.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import portal.ti.queiroz.dto.DivergenciaCruzada;
 import portal.ti.queiroz.dto.RelatorioAcuracidadeResponse;
 import portal.ti.queiroz.dto.ResumoFilialAcuracidade;
+import portal.ti.queiroz.model.Armazem;
+import portal.ti.queiroz.model.ConfiguracaoQualidade;
 import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.model.Inventario;
 import portal.ti.queiroz.model.InventarioItem;
@@ -52,6 +57,14 @@ class RelatorioAcuracidadeServiceTest {
     @InjectMocks
     private RelatorioAcuracidadeService service;
 
+    @BeforeEach
+    void configuracaoPadrao() {
+        ConfiguracaoQualidade config = new ConfiguracaoQualidade();
+        config.setLimiteZerados(3000);
+        // lenient: nem todo teste passa por relatorioMensal/detalheFilial (os de ranking não usam isso).
+        Mockito.lenient().doReturn(config).when(acuracidadeService).configuracaoAtual();
+    }
+
     private Filiais filial(long id, int numero, String nome, TipoFilial tipo) {
         Filiais f = new Filiais();
         f.setId(id);
@@ -90,6 +103,25 @@ class RelatorioAcuracidadeServiceTest {
         r.setUnidadesPerda(BigDecimal.ZERO);
         r.setUnidadesGanho(BigDecimal.ZERO);
         return r;
+    }
+
+    private InventarioItem item(long inventarioId, String codProduto, String valorUnitario,
+                                 String quantidade, String contagem1, String divergencia) {
+        InventarioItem i = new InventarioItem();
+        i.setInventarioId(inventarioId);
+        i.setCodProduto(codProduto);
+        BigDecimal vu = new BigDecimal(valorUnitario);
+        BigDecimal qtd = new BigDecimal(quantidade);
+        BigDecimal c1 = new BigDecimal(contagem1);
+        BigDecimal div = new BigDecimal(divergencia);
+        i.setQuantidadeSistema(qtd);
+        i.setQuantidadeFinal(c1);
+        i.setValorInicial(qtd.multiply(vu));
+        i.setValorFinal(c1.multiply(vu));
+        i.setDivergencia(div);
+        i.setValorDivergencia(div.multiply(vu));
+        i.setZerado(qtd.signum() == 0 && c1.signum() == 0 && div.signum() == 0);
+        return i;
     }
 
     private void semDadosNoMesAnterior(YearMonth mesAtual) {
@@ -230,5 +262,92 @@ class RelatorioAcuracidadeServiceTest {
         service.ranking(2026, 8, TipoFilial.CD, null, 10);
 
         assertThat(captor.getValue()).containsExactly(20L);
+    }
+
+    @Test
+    void filialComEstoqueDivididoMesclaItensPorProdutoNoResultadoGeralSemDuplicarSku() {
+        // O caso relatado: mesmo dia, mesmo inventário, duas planilhas. Um produto contado
+        // parte na loja (600) e parte no estoque (400) é 1 SKU no Geral, não 2.
+        Filiais loja = filial(1L, 42, "Loja 42", TipoFilial.LOJA);
+        loja.setEstoqueDividido(true);
+        when(filiaisRepository.findAll()).thenReturn(List.of(loja));
+
+        YearMonth agosto = YearMonth.of(2026, 8);
+        Inventario inv = inventario(10L, 1L, LocalDate.of(2026, 8, 5));
+        when(inventarioRepository.findByDataBetween(agosto.atDay(1), agosto.atEndOfMonth()))
+                .thenReturn(List.of(inv));
+        semDadosNoMesAnterior(agosto);
+
+        InventarioResultado r01 = resultado(10L, 700, 500, 200, "10000", "-100", "50");
+        r01.setArmazem(Armazem.ARMAZEM_01);
+        InventarioResultado r03 = resultado(10L, 300, 250, 50, "4000", "-20", "10");
+        r03.setArmazem(Armazem.ARMAZEM_03);
+        resultadosDisponiveis(r01, r03);
+
+        InventarioItem comumNaLoja = item(10L, "P-COMUM", "10", "600", "600", "0");
+        InventarioItem soNaLoja = item(10L, "P-LOJA", "10", "50", "45", "-5");
+        InventarioItem comumNoEstoque = item(10L, "P-COMUM", "10", "400", "400", "0");
+        InventarioItem soNoEstoque = item(10L, "P-ESTOQUE", "10", "30", "30", "0");
+
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_01))
+                .thenReturn(List.of(comumNaLoja, soNaLoja));
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_03))
+                .thenReturn(List.of(comumNoEstoque, soNoEstoque));
+
+        RelatorioAcuracidadeResponse resposta = service.relatorioMensal(2026, 8);
+
+        ResumoFilialAcuracidade linha = resposta.filiais().get(0);
+        // 3 produtos únicos (P-COMUM mesclado + P-LOJA + P-ESTOQUE), não 4.
+        assertThat(linha.atual().getTotalProdutos()).isEqualTo(3);
+        assertThat(linha.atual().getProdutosAcurados()).isEqualTo(2);
+        assertThat(linha.atual().getProdutosInacurados()).isEqualTo(1);
+        assertThat(linha.atual().getEstoqueInicialValor()).isEqualByComparingTo("10800.00");
+
+        // Cada armazém isolado continua mostrando seu próprio resultado, sem mesclar.
+        assertThat(linha.armazem01()).isNotNull();
+        assertThat(linha.armazem01().atual().getTotalProdutos()).isEqualTo(700);
+        assertThat(linha.armazem03()).isNotNull();
+        assertThat(linha.armazem03().atual().getTotalProdutos()).isEqualTo(300);
+    }
+
+    @Test
+    void divergenciaExataEOpostaEntreArmazensEDetectadaComoPossivelTransferencia() {
+        YearMonth agosto = YearMonth.of(2026, 8);
+        Inventario inv = inventario(10L, 1L, LocalDate.of(2026, 8, 5));
+        when(inventarioRepository.findByDataBetween(agosto.atDay(1), agosto.atEndOfMonth()))
+                .thenReturn(List.of(inv));
+
+        InventarioItem sobraNaLoja = new InventarioItem();
+        sobraNaLoja.setInventarioId(10L);
+        sobraNaLoja.setCodProduto("000001");
+        sobraNaLoja.setDescricao("PRODUTO TRANSFERIDO");
+        sobraNaLoja.setDivergencia(new BigDecimal("20"));
+
+        InventarioItem semDivergenciaNaLoja = new InventarioItem();
+        semDivergenciaNaLoja.setInventarioId(10L);
+        semDivergenciaNaLoja.setCodProduto("000002");
+        semDivergenciaNaLoja.setDivergencia(BigDecimal.ZERO);
+
+        InventarioItem faltaNoEstoque = new InventarioItem();
+        faltaNoEstoque.setInventarioId(10L);
+        faltaNoEstoque.setCodProduto("000001");
+        faltaNoEstoque.setDivergencia(new BigDecimal("-20"));
+
+        InventarioItem semDivergenciaNoEstoque = new InventarioItem();
+        semDivergenciaNoEstoque.setInventarioId(10L);
+        semDivergenciaNoEstoque.setCodProduto("000002");
+        semDivergenciaNoEstoque.setDivergencia(BigDecimal.ZERO);
+
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_01))
+                .thenReturn(List.of(sobraNaLoja, semDivergenciaNaLoja));
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_03))
+                .thenReturn(List.of(faltaNoEstoque, semDivergenciaNoEstoque));
+
+        List<DivergenciaCruzada> divergencias = service.divergenciasCruzadas(1L, 2026, 8);
+
+        assertThat(divergencias).hasSize(1);
+        assertThat(divergencias.get(0).codProduto()).isEqualTo("000001");
+        assertThat(divergencias.get(0).divergenciaLoja()).isEqualByComparingTo("20");
+        assertThat(divergencias.get(0).divergenciaEstoque()).isEqualByComparingTo("-20");
     }
 }

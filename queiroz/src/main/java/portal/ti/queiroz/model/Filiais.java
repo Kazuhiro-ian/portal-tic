@@ -47,4 +47,14 @@ public class Filiais {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_filial")
     private TipoFilial tipoFilial;
+
+    /**
+     * Indica se a loja opera com o estoque dividido em dois armazéns (01 = Loja,
+     * 03 = Estoque), gerando um inventário e um resultado de acuracidade por armazém.
+     *
+     * NULLABLE pelo mesmo motivo dos campos acima. Só faz sentido true para tipoFilial
+     * LOJA — validado em {@link portal.ti.queiroz.controller.FiliaisController}.
+     */
+    @Column(name = "estoque_dividido")
+    private Boolean estoqueDividido;
 }

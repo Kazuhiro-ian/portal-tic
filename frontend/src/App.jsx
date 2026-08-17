@@ -16,6 +16,7 @@ import { ZebraSupplies } from './components/ZebraSupplies.jsx';
 import { BranchManagement } from './components/BranchManagement.jsx';
 import { UsuarioManagement } from './components/UsuarioManagement.jsx';
 import { QualityPlanning } from './components/QualityPlanning.jsx';
+import { StoreAccuracyDashboardPage } from './components/StoreAccuracyDashboardPage.jsx';
 import { LoginPage } from './components/LoginPage.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
@@ -170,6 +171,7 @@ function App() {
             <Route path="/filiais" element={<BranchManagement />} />
             <Route path="/zebra" element={<ZebraSupplies />} />
             <Route path="/qualidade" element={<QualityPlanning />} />
+            <Route path="/qualidade/acuracidade/loja/:filialId" element={<StoreAccuracyDashboardPage />} />
             {/* A rota de usuários só existe para ADMIN. Quem não for cai no dashboard, e o
                 backend recusa /api/usuarios de qualquer forma. */}
             <Route

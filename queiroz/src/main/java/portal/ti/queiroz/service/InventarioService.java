@@ -99,6 +99,10 @@ public class InventarioService {
         // Um inventário por filial por mês (CANCELADO não conta) -- exceto CD, que faz
         // contagens parciais ao longo do mês (ex: um inventário por sábado no CD 00) e cujo
         // resultado mensal é a soma dessas contagens, não um único relatório.
+        //
+        // Loja com estoque dividido continua com um único inventário por mês -- o dia é da
+        // loja, não do armazém. O armazém só entra na hora de importar o relatório (dois
+        // uploads dentro do mesmo inventário), não no agendamento.
         if (filial.getTipoFilial() != TipoFilial.CD) {
             YearMonth mes = YearMonth.from(inventario.getData());
             List<Inventario> doMes = repository.findByFilialIdAndDataBetween(

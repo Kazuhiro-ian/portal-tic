@@ -27,6 +27,14 @@ public class InventarioItem {
     @Column(name = "inventario_id", nullable = false)
     private Long inventarioId;
 
+    /**
+     * Armazém (01 = Loja, 03 = Estoque) de origem deste item, para filiais com estoque
+     * dividido. Null = filial não dividida (item único do inventário, como sempre foi).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "armazem")
+    private Armazem armazem;
+
     // --- Campos vindos do relatório do Protheus ---
 
     @Column(name = "cod_produto")

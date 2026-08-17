@@ -668,6 +668,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
         <InventoryResultPanel
           inventario={inventarioResultado}
           nomeFilial={nomeFilial(inventarioResultado.filialId)}
+          estoqueDividido={Boolean(filialPorId.get(inventarioResultado.filialId)?.estoqueDividido)}
           canWrite={canWrite}
           showToast={showToast}
           onClose={() => setInventarioResultado(null)}

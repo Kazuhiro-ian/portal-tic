@@ -5,11 +5,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import portal.ti.queiroz.exception.RegraDeNegocioException;
+import portal.ti.queiroz.model.Armazem;
 import portal.ti.queiroz.model.ConfiguracaoQualidade;
+import portal.ti.queiroz.model.Filiais;
+import portal.ti.queiroz.model.Inventario;
 import portal.ti.queiroz.model.InventarioItem;
 import portal.ti.queiroz.model.InventarioResultado;
+import portal.ti.queiroz.model.StatusInventario;
+import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.repository.ConfiguracaoQualidadeRepository;
+import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioItemRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
 import portal.ti.queiroz.repository.InventarioResultadoRepository;
@@ -33,6 +40,9 @@ class AcuracidadeServiceTest {
 
     @Mock
     private InventarioRepository inventarioRepository;
+
+    @Mock
+    private FiliaisRepository filiaisRepository;
 
     @Mock
     private InventarioItemRepository itemRepository;
@@ -232,5 +242,109 @@ class AcuracidadeServiceTest {
         assertThatThrownBy(() -> service.salvarConfiguracao(nova))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("entre 0 e 1");
+    }
+
+    // --- mesclarPorProduto: Loja e Estoque compartilham o mesmo catálogo de produtos ---
+
+    @Test
+    void deveSomarQuantidadesDoMesmoProdutoEntreLojaEEstoque() {
+        // O exemplo do usuário: 1000 un. de um produto no dia do inventário, 600 contadas na
+        // loja e 400 no estoque -- deve virar 1 produto de 1000 un. no "Geral", não 2 de 600+400.
+        InventarioItem naLoja = item("10", "600", "600", "0");
+        naLoja.setCodProduto("P1");
+        InventarioItem noEstoque = item("10", "400", "400", "0");
+        noEstoque.setCodProduto("P1");
+
+        List<InventarioItem> mesclados = service.mesclarPorProduto(List.of(naLoja), List.of(noEstoque));
+
+        assertThat(mesclados).hasSize(1);
+        InventarioItem mesclado = mesclados.get(0);
+        assertThat(mesclado.getCodProduto()).isEqualTo("P1");
+        assertThat(mesclado.getQuantidadeSistema()).isEqualByComparingTo("1000");
+        assertThat(mesclado.getValorInicial()).isEqualByComparingTo("10000");
+        assertThat(mesclado.getZerado()).isFalse();
+    }
+
+    @Test
+    void produtoPresenteSoEmUmArmazemEntraSemAlteracao() {
+        InventarioItem soNaLoja = item("10", "50", "50", "0");
+        soNaLoja.setCodProduto("P2");
+
+        List<InventarioItem> mesclados = service.mesclarPorProduto(List.of(soNaLoja), List.of());
+
+        assertThat(mesclados).hasSize(1);
+        assertThat(mesclados.get(0).getQuantidadeSistema()).isEqualByComparingTo("50");
+    }
+
+    @Test
+    void produtoZeradoNosDoisArmazensContinuaZeradoAposMesclar() {
+        InventarioItem zeradoLoja = itemZerado();
+        zeradoLoja.setCodProduto("P3");
+        InventarioItem zeradoEstoque = itemZerado();
+        zeradoEstoque.setCodProduto("P3");
+
+        List<InventarioItem> mesclados = service.mesclarPorProduto(List.of(zeradoLoja), List.of(zeradoEstoque));
+
+        assertThat(mesclados).hasSize(1);
+        assertThat(mesclados.get(0).getZerado()).isTrue();
+    }
+
+    @Test
+    void calcularSobreItensMescladosNaoDuplicaTotalDeProdutos() {
+        InventarioItem p1Loja = item("10", "600", "600", "0");
+        p1Loja.setCodProduto("P1");
+        InventarioItem p1Estoque = item("10", "400", "400", "0");
+        p1Estoque.setCodProduto("P1");
+        InventarioItem p2SoLoja = item("10", "50", "45", "-5");
+        p2SoLoja.setCodProduto("P2");
+
+        List<InventarioItem> mesclados = service.mesclarPorProduto(List.of(p1Loja, p2SoLoja), List.of(p1Estoque));
+        InventarioResultado geral = service.calcular(mesclados, LIMITE_PADRAO);
+
+        // 2 produtos únicos (P1 mesclado + P2), não 3 (que seria a contagem ingênua de itens)
+        assertThat(geral.getTotalProdutos()).isEqualTo(2);
+    }
+
+    // --- importar: obrigatoriedade do armazém conforme a filial ---
+
+    private Inventario inventarioDaFilial(Long filialId) {
+        Inventario inv = new Inventario();
+        inv.setId(10L);
+        inv.setFilialId(filialId);
+        inv.setStatus(StatusInventario.PLANEJADO);
+        return inv;
+    }
+
+    private MockMultipartFile arquivoFalso() {
+        return new MockMultipartFile("arquivo", "relatorio.xml", "text/xml", "conteudo".getBytes());
+    }
+
+    @Test
+    void deveExigirArmazemAoImportarParaFilialComEstoqueDividido() {
+        Filiais filial = new Filiais();
+        filial.setId(1L);
+        filial.setTipoFilial(TipoFilial.LOJA);
+        filial.setEstoqueDividido(true);
+
+        when(inventarioRepository.findById(10L)).thenReturn(Optional.of(inventarioDaFilial(1L)));
+        when(filiaisRepository.findById(1L)).thenReturn(Optional.of(filial));
+
+        assertThatThrownBy(() -> service.importar(10L, null, arquivoFalso(), "usuario"))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("armazéns");
+    }
+
+    @Test
+    void naoDevePermitirArmazemAoImportarParaFilialSemEstoqueDividido() {
+        Filiais filial = new Filiais();
+        filial.setId(1L);
+        filial.setTipoFilial(TipoFilial.LOJA);
+
+        when(inventarioRepository.findById(10L)).thenReturn(Optional.of(inventarioDaFilial(1L)));
+        when(filiaisRepository.findById(1L)).thenReturn(Optional.of(filial));
+
+        assertThatThrownBy(() -> service.importar(10L, Armazem.ARMAZEM_01, arquivoFalso(), "usuario"))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("não tem o estoque dividido");
     }
 }

@@ -19,7 +19,10 @@ function formatCnpj(value) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
-const emptyForm = { numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '' };
+const emptyForm = {
+  numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '',
+  estoqueDividido: false,
+};
 
 const COLUNAS = [
   {
@@ -133,6 +136,7 @@ export function BranchManagement() {
       endereco: branch.endereco || '',
       grupoRecebimento: branch.grupoRecebimento || '',
       tipoFilial: branch.tipoFilial || '',
+      estoqueDividido: Boolean(branch.estoqueDividido),
     });
     setFormError('');
     setShowModal(true);
@@ -157,6 +161,8 @@ export function BranchManagement() {
         // string vazia no select significa "não definido" — o backend espera null
         grupoRecebimento: form.grupoRecebimento || null,
         tipoFilial: form.tipoFilial || null,
+        // Estoque dividido só faz sentido para Loja — o backend rejeita a combinação contrária.
+        estoqueDividido: form.tipoFilial === 'LOJA' ? form.estoqueDividido : false,
       };
 
       if (editingBranch) {
@@ -326,7 +332,10 @@ export function BranchManagement() {
             <label className="block text-sm font-medium text-dark-300 mb-2">Tipo</label>
             <select
               value={form.tipoFilial}
-              onChange={(e) => setForm({ ...form, tipoFilial: e.target.value })}
+              onChange={(e) => {
+                const tipoFilial = e.target.value;
+                setForm({ ...form, tipoFilial, estoqueDividido: tipoFilial === 'LOJA' ? form.estoqueDividido : false });
+              }}
               className="select-field"
             >
               <option value="">Não definido</option>
@@ -338,6 +347,25 @@ export function BranchManagement() {
               isso definido, a filial fica de fora dos agregados por tipo (mas entra no Geral).
             </p>
           </div>
+
+          {form.tipoFilial === 'LOJA' && (
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl bg-dark-700/50 border border-dark-600">
+              <input
+                type="checkbox"
+                checked={form.estoqueDividido}
+                onChange={(e) => setForm({ ...form, estoqueDividido: e.target.checked })}
+                className="w-5 h-5 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-sm text-dark-200">
+                Estoque dividido em armazéns (Loja/Estoque)
+                <span className="block text-xs text-dark-400 mt-0.5">
+                  Ative para lojas que enviam duas planilhas de inventário no Protheus — uma da
+                  loja (armazém 01) e outra do estoque (armazém 03). A acuracidade passa a ser
+                  calculada e exibida separadamente para os dois, além do geral combinado.
+                </span>
+              </span>
+            </label>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">Grupo de Recebimento</label>

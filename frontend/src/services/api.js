@@ -178,14 +178,18 @@ export const salvarPlanoInventario = (payload) =>
 // --- ROTAS DE QUALIDADE: RESULTADO DO INVENTÁRIO (ACURACIDADE) ---
 // O upload do relatório do Protheus é o que conclui o inventário: o backend
 // calcula os indicadores e marca o inventário como REALIZADO.
-export const importarResultadoInventario = (id, arquivo) =>
-  apiUpload(`/api/qualidade/inventarios/${id}/resultado`, arquivo);
-export const buscarResultadoInventario = (id) =>
-  apiGet(`/api/qualidade/inventarios/${id}/resultado`);
-export const listarItensInventario = (id) =>
-  apiGet(`/api/qualidade/inventarios/${id}/itens`);
-export const removerResultadoInventario = (id) =>
-  apiDelete(`/api/qualidade/inventarios/${id}/resultado`);
+// `armazem` só se aplica a filiais com estoque dividido -- o mesmo inventário (mesmo dia)
+// recebe até duas planilhas, uma por armazém (ARMAZEM_01 = Loja, ARMAZEM_03 = Estoque).
+const comArmazem = (path, armazem) => (armazem ? `${path}?armazem=${armazem}` : path);
+
+export const importarResultadoInventario = (id, arquivo, armazem) =>
+  apiUpload(comArmazem(`/api/qualidade/inventarios/${id}/resultado`, armazem), arquivo);
+export const buscarResultadoInventario = (id, armazem) =>
+  apiGet(comArmazem(`/api/qualidade/inventarios/${id}/resultado`, armazem));
+export const listarItensInventario = (id, armazem) =>
+  apiGet(comArmazem(`/api/qualidade/inventarios/${id}/itens`, armazem));
+export const removerResultadoInventario = (id, armazem) =>
+  apiDelete(comArmazem(`/api/qualidade/inventarios/${id}/resultado`, armazem));
 
 // --- ROTAS DE QUALIDADE: CONFIGURAÇÃO (METAS) ---
 export const buscarConfiguracaoQualidade = () => apiGet('/api/qualidade/configuracao');
@@ -202,6 +206,8 @@ export const buscarRankingAcuracidade = (ano, mes, { tipoFilial, filialId, limit
   if (limite) params.set('limite', limite);
   return apiGet(`/api/qualidade/acuracidade/ranking?${params.toString()}`);
 };
+export const buscarDetalheFilialAcuracidade = (filialId, ano, mes) =>
+  apiGet(`/api/qualidade/acuracidade/filial/${filialId}?ano=${ano}&mes=${mes}`);
 
 // --- ROTAS DE EQUIPES DE INVENTÁRIO ---
 export const listarEquipesInventario = () => apiGet('/api/qualidade/equipes');

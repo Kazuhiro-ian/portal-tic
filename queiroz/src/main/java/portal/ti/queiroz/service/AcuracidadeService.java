@@ -6,12 +6,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.exception.RegraDeNegocioException;
+import portal.ti.queiroz.model.Armazem;
 import portal.ti.queiroz.model.ConfiguracaoQualidade;
+import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.model.Inventario;
 import portal.ti.queiroz.model.InventarioItem;
 import portal.ti.queiroz.model.InventarioResultado;
 import portal.ti.queiroz.model.StatusInventario;
 import portal.ti.queiroz.repository.ConfiguracaoQualidadeRepository;
+import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioItemRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
 import portal.ti.queiroz.repository.InventarioResultadoRepository;
@@ -21,7 +24,9 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -32,6 +37,9 @@ public class AcuracidadeService {
 
     @Autowired
     private InventarioRepository inventarioRepository;
+
+    @Autowired
+    private FiliaisRepository filiaisRepository;
 
     @Autowired
     private InventarioItemRepository itemRepository;
@@ -45,8 +53,12 @@ public class AcuracidadeService {
     @Autowired
     private RelatorioProtheusParser parser;
 
+    /**
+     * @param armazem obrigatório quando a filial tem estoque dividido (qual das duas
+     *                planilhas do dia está sendo importada); deve ser null caso contrário
+     */
     @Transactional
-    public InventarioResultado importar(Long inventarioId, MultipartFile arquivo, String usuario) {
+    public InventarioResultado importar(Long inventarioId, Armazem armazem, MultipartFile arquivo, String usuario) {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new RegraDeNegocioException("Selecione o arquivo do relatório antes de importar.");
         }
@@ -60,6 +72,11 @@ public class AcuracidadeService {
                     "Este inventário está cancelado. Reative-o antes de importar o relatório.");
         }
 
+        Filiais filial = filiaisRepository.findById(inventario.getFilialId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Filial não encontrada com o ID: " + inventario.getFilialId()));
+        validarArmazem(filial, armazem);
+
         List<InventarioItem> itens;
         try (InputStream entrada = arquivo.getInputStream()) {
             itens = parser.ler(entrada);
@@ -71,21 +88,28 @@ public class AcuracidadeService {
         InventarioResultado resultado = calcular(itens, config.getLimiteZerados());
 
         resultado.setInventarioId(inventarioId);
+        resultado.setArmazem(armazem);
         resultado.setArquivoNome(arquivo.getOriginalFilename());
         resultado.setImportadoEm(LocalDateTime.now());
         resultado.setImportadoPor(usuario);
 
         // Reimportar substitui o resultado anterior por inteiro, em vez de somar em
-        // cima do antigo — o caso comum é corrigir um arquivo enviado errado.
-        itemRepository.deleteByInventarioId(inventarioId);
-        resultadoRepository.findByInventarioId(inventarioId)
+        // cima do antigo — o caso comum é corrigir um arquivo enviado errado. Escopado por
+        // armazém: reimportar a planilha da Loja não pode apagar o que já foi importado do
+        // Estoque no mesmo inventário.
+        itemRepository.deleteByInventarioIdAndArmazem(inventarioId, armazem);
+        resultadoRepository.findByInventarioIdAndArmazem(inventarioId, armazem)
                 .ifPresent(anterior -> resultado.setId(anterior.getId()));
 
-        itens.forEach(item -> item.setInventarioId(inventarioId));
+        itens.forEach(item -> {
+            item.setInventarioId(inventarioId);
+            item.setArmazem(armazem);
+        });
         itemRepository.saveAll(itens);
         InventarioResultado salvo = resultadoRepository.save(resultado);
 
-        // Ter relatório importado é o que caracteriza inventário concluído.
+        // Ter relatório importado é o que caracteriza inventário concluído (a primeira
+        // planilha do dia já basta, mesmo que a filial seja dividida e falte a segunda).
         // O status é gravado direto (sem passar pelo InventarioService) de propósito:
         // as validações de agendamento — conflito de recebimento, um por mês — valem
         // para planejar uma data futura, não para registrar algo que já aconteceu.
@@ -95,6 +119,20 @@ public class AcuracidadeService {
         }
 
         return salvo;
+    }
+
+    private void validarArmazem(Filiais filial, Armazem armazem) {
+        boolean dividida = Boolean.TRUE.equals(filial.getEstoqueDividido());
+        if (dividida && armazem == null) {
+            throw new RegraDeNegocioException(
+                    "A filial %s - %s tem o estoque dividido em armazéns. Informe se este relatório é da Loja ou do Estoque."
+                            .formatted(filial.getNumeroFilial(), filial.getNome()));
+        }
+        if (!dividida && armazem != null) {
+            throw new RegraDeNegocioException(
+                    "A filial %s - %s não tem o estoque dividido em armazéns."
+                            .formatted(filial.getNumeroFilial(), filial.getNome()));
+        }
     }
 
     /**
@@ -273,20 +311,76 @@ public class AcuracidadeService {
         return valor.setScale(2, RoundingMode.HALF_UP);
     }
 
-    // --- Consultas ---
+    /**
+     * Junta os itens de dois armazéns por código de produto -- usado para calcular o
+     * "Geral" de uma filial dividida sem duplicar SKU. Loja e Estoque compartilham o mesmo
+     * catálogo de produtos (um produto com 600 un. na loja e 400 no estoque é 1 SKU, não 2),
+     * então somar os {@link InventarioResultado} prontos dos dois (como {@link #somarResultados}
+     * faz para filiais DIFERENTES) inflaria a contagem de produtos. Aqui a soma acontece antes,
+     * no nível do item, e só depois {@link #calcular} roda em cima do catálogo já mesclado.
+     *
+     * Só popula os campos que {@link #calcular} lê -- a lista resultante nunca é persistida.
+     */
+    public List<InventarioItem> mesclarPorProduto(List<InventarioItem> itensA, List<InventarioItem> itensB) {
+        Map<String, InventarioItem> mesclados = new LinkedHashMap<>();
 
-    public Optional<InventarioResultado> buscarResultado(Long inventarioId) {
-        return resultadoRepository.findByInventarioId(inventarioId);
+        for (InventarioItem item : itensA) {
+            mesclados.put(item.getCodProduto(), copiaParaMesclagem(item));
+        }
+        for (InventarioItem item : itensB) {
+            InventarioItem existente = mesclados.get(item.getCodProduto());
+            if (existente == null) {
+                mesclados.put(item.getCodProduto(), copiaParaMesclagem(item));
+            } else {
+                existente.setValorInicial(somaCampo(existente.getValorInicial(), item.getValorInicial()));
+                existente.setValorFinal(somaCampo(existente.getValorFinal(), item.getValorFinal()));
+                existente.setQuantidadeSistema(somaCampo(existente.getQuantidadeSistema(), item.getQuantidadeSistema()));
+                existente.setQuantidadeFinal(somaCampo(existente.getQuantidadeFinal(), item.getQuantidadeFinal()));
+                existente.setValorDivergencia(somaCampo(existente.getValorDivergencia(), item.getValorDivergencia()));
+                existente.setDivergencia(somaCampo(existente.getDivergencia(), item.getDivergencia()));
+            }
+        }
+
+        for (InventarioItem item : mesclados.values()) {
+            item.setZerado(valor(item.getValorInicial()).signum() == 0
+                    && valor(item.getQuantidadeSistema()).signum() == 0
+                    && valor(item.getDivergencia()).signum() == 0);
+        }
+
+        return List.copyOf(mesclados.values());
     }
 
-    public List<InventarioItem> buscarItens(Long inventarioId) {
-        return itemRepository.findByInventarioId(inventarioId);
+    private InventarioItem copiaParaMesclagem(InventarioItem original) {
+        InventarioItem copia = new InventarioItem();
+        copia.setCodProduto(original.getCodProduto());
+        copia.setDescricao(original.getDescricao());
+        copia.setValorInicial(original.getValorInicial());
+        copia.setValorFinal(original.getValorFinal());
+        copia.setQuantidadeSistema(original.getQuantidadeSistema());
+        copia.setQuantidadeFinal(original.getQuantidadeFinal());
+        copia.setValorDivergencia(original.getValorDivergencia());
+        copia.setDivergencia(original.getDivergencia());
+        return copia;
+    }
+
+    private BigDecimal somaCampo(BigDecimal a, BigDecimal b) {
+        return valor(a).add(valor(b));
+    }
+
+    // --- Consultas ---
+
+    public Optional<InventarioResultado> buscarResultado(Long inventarioId, Armazem armazem) {
+        return resultadoRepository.findByInventarioIdAndArmazem(inventarioId, armazem);
+    }
+
+    public List<InventarioItem> buscarItens(Long inventarioId, Armazem armazem) {
+        return itemRepository.findByInventarioIdAndArmazem(inventarioId, armazem);
     }
 
     @Transactional
-    public void removerResultado(Long inventarioId) {
-        itemRepository.deleteByInventarioId(inventarioId);
-        resultadoRepository.deleteByInventarioId(inventarioId);
+    public void removerResultado(Long inventarioId, Armazem armazem) {
+        itemRepository.deleteByInventarioIdAndArmazem(inventarioId, armazem);
+        resultadoRepository.deleteByInventarioIdAndArmazem(inventarioId, armazem);
     }
 
     // --- Configuração (metas) ---

@@ -16,15 +16,26 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "inventario_resultados")
+@Table(name = "inventario_resultados",
+        uniqueConstraints = @UniqueConstraint(name = "uk_inv_resultado_armazem", columnNames = {"inventario_id", "armazem"}))
 public class InventarioResultado {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "inventario_id", nullable = false, unique = true)
+    @Column(name = "inventario_id", nullable = false)
     private Long inventarioId;
+
+    /**
+     * Armazém (01 = Loja, 03 = Estoque) a que este resultado se refere, para filiais com
+     * estoque dividido. Null = filial não dividida — um único resultado por inventário, como
+     * sempre foi. Filial dividida tem até dois resultados para o MESMO inventário (mesmo dia),
+     * um por armazém — por isso a unicidade acima é composta, não mais só em inventario_id.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "armazem")
+    private Armazem armazem;
 
     // --- Valores em R$ ---
 
