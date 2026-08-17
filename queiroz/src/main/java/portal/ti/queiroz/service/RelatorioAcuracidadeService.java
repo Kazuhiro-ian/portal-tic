@@ -27,19 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * Monta o relatório de acuracidade (o equivalente ao "dashboard" da planilha do
- * setor): comparativo mês atual x anterior por filial, agregados CDs/Lojas/Geral,
- * e ranking dos produtos com maior sobra/falta.
- *
- * Para cada filial, "o resultado do mês" é o do upload mais recente no período —
- * não a soma de vários uploads da mesma filial. O Protheus já consolida contagens
- * feitas em datas diferentes (ex: os sábados do CD 00) quando a consulta roda com
- * o intervalo do mês inteiro, então re-somar itens de inventários diferentes da
- * MESMA filial aqui duplicaria contagem. Já os agregados por grupo (CDs/Lojas/
- * Geral) somam entre filiais DIFERENTES, o que é seguro — cada filial é um
- * estoque genuinamente separado.
- */
 @Service
 public class RelatorioAcuracidadeService {
 

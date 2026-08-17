@@ -24,15 +24,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Importa o relatório de inventário do Protheus e calcula os indicadores de
- * acuracidade que antes eram produzidos pela planilha do setor.
- *
- * As fórmulas abaixo são a tradução direta da aba "resumo_atual" daquela planilha.
- * Qualquer mudança aqui muda o número que vai para a reunião mensal — por isso o
- * cálculo fica isolado em {@link #calcular} (função pura, coberta por teste) e
- * separado da parte de I/O.
- */
 @Service
 public class AcuracidadeService {
 
