@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronRight, ArrowLeftRight, ArrowLeft, ArrowDown, ArrowUp,
-  Layers, Store, Warehouse, BarChart3, PieChart,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeftRight, ArrowLeft, ArrowDown, ArrowUp,
+  Layers, Store, Warehouse, BarChart3, PieChart, Scale,
 } from 'lucide-react';
 import { ResultadoArmazemCard } from './ResultadoArmazemCard.jsx';
 import { DeltaBadge } from './DeltaBadge.jsx';
@@ -21,8 +21,11 @@ import { MESES } from '../utils/datas.js';
 const COR_LOJA = { bar: 'bg-blue-400', dot: 'bg-blue-400', texto: 'text-blue-300' };
 const COR_ESTOQUE = { bar: 'bg-violet-400', dot: 'bg-violet-400', texto: 'text-violet-300' };
 
+/** Quantos produtos com divergência cruzada mostrar antes do "ver todos". */
+const PREVIA_DIVERGENCIAS = 6;
+
 /** Grande número de destaque (KPI) com meta e variação vs mês anterior. */
-function HeroKpi({ titulo, valor, atingiu, meta, delta }) {
+function HeroKpi({ titulo, valor, atingiu, meta, delta, extra }) {
   const cor = atingiu == null ? 'text-white' : atingiu ? 'text-green-400' : 'text-red-400';
   return (
     <div className="min-w-0">
@@ -32,6 +35,7 @@ function HeroKpi({ titulo, valor, atingiu, meta, delta }) {
         {delta}
         {meta && <span className="text-xs text-dark-500">{meta}</span>}
       </div>
+      {extra}
     </div>
   );
 }
@@ -59,6 +63,52 @@ function BarraComparativa({ rotulo, valorLoja, valorEstoque, formatador }) {
             />
           </div>
           <span className="w-16 text-xs text-dark-200 text-right shrink-0 tabular-nums">{formatador(s.valor)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Falta (R$) x Sobra (R$) de cada linha (Loja/Estoque/Geral), como barra divergente a
+ * partir de um eixo central -- deixa visível de um lado só quanto cada armazém "perdeu"
+ * e "ganhou" em valor, sem precisar ler os dois números soltos numa tabela.
+ */
+function BarraFaltaSobra({ linhas }) {
+  const maxLado = Math.max(
+    ...linhas.map((l) => Math.abs(Number(l.falta) || 0)),
+    ...linhas.map((l) => Number(l.sobra) || 0),
+    0.0001,
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between text-xs text-dark-400 uppercase tracking-wider">
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /> Falta</span>
+        <span className="flex items-center gap-1.5">Sobra <span className="w-2 h-2 rounded-full bg-green-400" /></span>
+      </div>
+      {linhas.map((l) => (
+        <div key={l.nome} className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs tabular-nums">
+            <span className="text-red-400 font-medium" title={`${l.nome} · Falta: ${moeda(l.falta)}`}>{moeda(l.falta)}</span>
+            <span className="text-dark-300 font-medium">{l.nome}</span>
+            <span className="text-green-400 font-medium" title={`${l.nome} · Sobra: ${moeda(l.sobra)}`}>{moeda(l.sobra)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="flex-1 flex justify-end h-2.5 rounded-full bg-dark-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-red-400 transition-[width] duration-500"
+                style={{ width: `${Math.max((Math.abs(Number(l.falta) || 0) / maxLado) * 100, Number(l.falta) ? 1.5 : 0)}%` }}
+              />
+            </div>
+            <div className="w-px h-4 bg-dark-600 shrink-0" />
+            <div className="flex-1 h-2.5 rounded-full bg-dark-700 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-green-400 transition-[width] duration-500"
+                style={{ width: `${Math.max((Number(l.sobra) || 0) / maxLado * 100, Number(l.sobra) ? 1.5 : 0)}%` }}
+              />
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -192,6 +242,7 @@ export function StoreAccuracyDashboardPage() {
   const [detalhe, setDetalhe] = useState(null);
   const [config, setConfig] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [divergenciasExpandidas, setDivergenciasExpandidas] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -202,6 +253,7 @@ export function StoreAccuracyDashboardPage() {
       ]);
       setDetalhe(dadosDetalhe);
       setConfig(dadosConfig);
+      setDivergenciasExpandidas(false);
     } catch (erro) {
       showToast(erro.message || 'Erro ao carregar o dashboard da filial.', 'error');
     } finally {
@@ -238,6 +290,17 @@ export function StoreAccuracyDashboardPage() {
   const atingiuAjuste = geral && config?.metaInacuracia != null
     ? Number(geral.percentualInacuracia) <= Number(config.metaInacuracia)
     : null;
+
+  const temDivergencias = detalhe.estoqueDividido && detalhe.divergenciasCruzadas?.length > 0;
+  const divergenciasVisiveis = temDivergencias
+    ? (divergenciasExpandidas ? detalhe.divergenciasCruzadas : detalhe.divergenciasCruzadas.slice(0, PREVIA_DIVERGENCIAS))
+    : [];
+
+  const linhasFaltaSobra = [
+    geral && { nome: 'Geral', falta: geral.perdaValor, sobra: geral.ganhoValor },
+    detalhe.estoqueDividido && armazem01 && { nome: 'Loja', falta: armazem01.perdaValor, sobra: armazem01.ganhoValor },
+    detalhe.estoqueDividido && armazem03 && { nome: 'Estoque', falta: armazem03.perdaValor, sobra: armazem03.ganhoValor },
+  ].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -285,6 +348,14 @@ export function StoreAccuracyDashboardPage() {
             delta={geralAnterior && (
               <DeltaBadge atual={geral?.percentualAcuracidade} anterior={geralAnterior.percentualAcuracidade} />
             )}
+            extra={temDivergencias && (
+              <p className="text-xs text-dark-400 mt-1.5">
+                Sem transferências:{' '}
+                <span className="text-amber-300 font-medium tabular-nums">
+                  {percentual(detalhe.percentualAcuracidadeGeralSemTransferencias)}
+                </span>
+              </p>
+            )}
           />
           <HeroKpi
             titulo="Ajuste (R$)"
@@ -302,6 +373,16 @@ export function StoreAccuracyDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResultadoArmazemCard titulo="Loja" icon={Store} resultado={armazem01} anterior={detalhe.armazem01?.anterior} config={config} />
           <ResultadoArmazemCard titulo="Estoque" icon={Warehouse} resultado={armazem03} anterior={detalhe.armazem03?.anterior} config={config} />
+        </div>
+      )}
+
+      {linhasFaltaSobra.length > 0 && (
+        <div className="card">
+          <h3 className="font-semibold text-white mb-5 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-primary-400" />
+            Falta x Sobra (R$){detalhe.estoqueDividido ? ' — Loja, Estoque e Geral' : ''}
+          </h3>
+          <BarraFaltaSobra linhas={linhasFaltaSobra} />
         </div>
       )}
 
@@ -338,7 +419,12 @@ export function StoreAccuracyDashboardPage() {
         </div>
       </div>
 
-      {detalhe.estoqueDividido && detalhe.divergenciasCruzadas?.length > 0 && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RankingBarras titulo="Maiores Faltas" icon={ArrowDown} itens={detalhe.maioresFaltas} cor="text-red-400" />
+        <RankingBarras titulo="Maiores Sobras" icon={ArrowUp} itens={detalhe.maioresSobras} cor="text-green-400" />
+      </div>
+
+      {temDivergencias && (
         <div className="card border-amber-500/30 bg-amber-500/5">
           <h3 className="font-semibold text-amber-200 mb-2 flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4" />
@@ -375,7 +461,7 @@ export function StoreAccuracyDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {detalhe.divergenciasCruzadas.map((d) => (
+            {divergenciasVisiveis.map((d) => (
               <div key={d.codProduto} className="p-3 rounded-lg bg-dark-800/60 border border-dark-600">
                 <p className="text-sm text-white truncate">{d.descricao || d.codProduto}</p>
                 <p className="text-xs text-dark-400 mb-1">{d.codProduto}</p>
@@ -392,13 +478,21 @@ export function StoreAccuracyDashboardPage() {
               </div>
             ))}
           </div>
+
+          {detalhe.divergenciasCruzadas.length > PREVIA_DIVERGENCIAS && (
+            <button
+              onClick={() => setDivergenciasExpandidas((v) => !v)}
+              className="btn-secondary w-full justify-center text-sm mt-4"
+            >
+              {divergenciasExpandidas ? (
+                <>Mostrar menos <ChevronUp className="w-4 h-4" /></>
+              ) : (
+                <>Mostrar todos os {detalhe.divergenciasCruzadas.length} produtos <ChevronDown className="w-4 h-4" /></>
+              )}
+            </button>
+          )}
         </div>
       )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RankingBarras titulo="Maiores Faltas" icon={ArrowDown} itens={detalhe.maioresFaltas} cor="text-red-400" />
-        <RankingBarras titulo="Maiores Sobras" icon={ArrowUp} itens={detalhe.maioresSobras} cor="text-green-400" />
-      </div>
     </div>
   );
 }
