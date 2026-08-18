@@ -16,6 +16,9 @@ public interface InventarioItemRepository extends JpaRepository<InventarioItem, 
     /** armazem null busca os itens de filial não dividida (Spring Data gera "IS NULL"). */
     List<InventarioItem> findByInventarioIdAndArmazem(Long inventarioId, Armazem armazem);
 
+    /** Mesma busca que {@link #findByInventarioIdAndArmazem}, pra vários inventários de uma vez. */
+    List<InventarioItem> findByInventarioIdInAndArmazem(List<Long> inventarioIds, Armazem armazem);
+
     /** Usado na reimportação: o resultado antigo daquele armazém é descartado antes de gravar o novo. */
     void deleteByInventarioIdAndArmazem(Long inventarioId, Armazem armazem);
 

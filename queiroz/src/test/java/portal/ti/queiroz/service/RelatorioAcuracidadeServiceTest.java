@@ -291,9 +291,11 @@ class RelatorioAcuracidadeServiceTest {
         InventarioItem comumNoEstoque = item(10L, "P-COMUM", "10", "400", "400", "0");
         InventarioItem soNoEstoque = item(10L, "P-ESTOQUE", "10", "30", "30", "0");
 
-        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_01))
+        // relatorioMensal pré-carrega os itens de todas as filiais divididas de uma vez
+        // (findByInventarioIdInAndArmazem), não busca inventário por inventário.
+        when(itemRepository.findByInventarioIdInAndArmazem(List.of(10L), Armazem.ARMAZEM_01))
                 .thenReturn(List.of(comumNaLoja, soNaLoja));
-        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_03))
+        when(itemRepository.findByInventarioIdInAndArmazem(List.of(10L), Armazem.ARMAZEM_03))
                 .thenReturn(List.of(comumNoEstoque, soNoEstoque));
 
         RelatorioAcuracidadeResponse resposta = service.relatorioMensal(2026, 8);

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Monta o relatório de acuracidade (o equivalente ao "dashboard" da planilha do
@@ -91,6 +92,22 @@ public class RelatorioAcuracidadeService {
         Map<Long, InventarioResultado> resultadoAnterior01 = resultadosPorArmazem(inventariosAnterior, Armazem.ARMAZEM_01);
         Map<Long, InventarioResultado> resultadoAnterior03 = resultadosPorArmazem(inventariosAnterior, Armazem.ARMAZEM_03);
 
+        // Pré-carrega os itens dos dois armazéns de TODAS as filiais divididas do período de uma
+        // vez (uma query por armazém), em vez de deixar geral()/divergenciasCruzadas() buscarem
+        // item por filial dentro do loop abaixo -- isso chegava a disparar 6 queries síncronas
+        // por filial dividida (2 em cada chamada de geral() para atual/anterior, mais 2 em
+        // divergenciasCruzadas(), repetindo a mesma busca que geral() já tinha feito para o mês
+        // atual) para montar um único relatório.
+        List<Long> inventarioIdsDivididos = filiais.stream()
+                .filter(f -> Boolean.TRUE.equals(f.getEstoqueDividido()))
+                .flatMap(f -> Stream.of(inventariosAtual.get(f.getId()), inventariosAnterior.get(f.getId())))
+                .filter(Objects::nonNull)
+                .map(Inventario::getId)
+                .distinct()
+                .toList();
+        Map<Long, List<InventarioItem>> itens01PorInventario = itensPorInventario(inventarioIdsDivididos, Armazem.ARMAZEM_01);
+        Map<Long, List<InventarioItem>> itens03PorInventario = itensPorInventario(inventarioIdsDivididos, Armazem.ARMAZEM_03);
+
         Map<Long, InventarioResultado> geralAtual = new LinkedHashMap<>();
         Map<Long, InventarioResultado> geralAnterior = new LinkedHashMap<>();
         List<ResumoFilialAcuracidade> linhas = new ArrayList<>();
@@ -101,8 +118,10 @@ public class RelatorioAcuracidadeService {
             InventarioResultado r01Anterior = resultadoAnterior01.get(f.getId());
             InventarioResultado r03Anterior = resultadoAnterior03.get(f.getId());
 
-            InventarioResultado rGeralAtual = geral(inventariosAtual.get(f.getId()), r01Atual, r03Atual, limiteZerados);
-            InventarioResultado rGeralAnterior = geral(inventariosAnterior.get(f.getId()), r01Anterior, r03Anterior, limiteZerados);
+            InventarioResultado rGeralAtual = geral(inventariosAtual.get(f.getId()), r01Atual, r03Atual, limiteZerados,
+                    itens01PorInventario, itens03PorInventario);
+            InventarioResultado rGeralAnterior = geral(inventariosAnterior.get(f.getId()), r01Anterior, r03Anterior, limiteZerados,
+                    itens01PorInventario, itens03PorInventario);
             if (rGeralAtual != null) geralAtual.put(f.getId(), rGeralAtual);
             if (rGeralAnterior != null) geralAnterior.put(f.getId(), rGeralAnterior);
 
@@ -114,7 +133,8 @@ public class RelatorioAcuracidadeService {
 
             Integer divergenciasCruzadas = null;
             if (dividida) {
-                int quantidade = divergenciasCruzadas(inventariosAtual.get(f.getId())).size();
+                int quantidade = divergenciasCruzadas(inventariosAtual.get(f.getId()),
+                        itens01PorInventario, itens03PorInventario).size();
                 divergenciasCruzadas = quantidade > 0 ? quantidade : null;
             }
 
@@ -158,15 +178,42 @@ public class RelatorioAcuracidadeService {
      * seguro): em vez disso mescla os itens por código de produto e recalcula em cima do
      * catálogo já unificado. Se só um armazém tem resultado, devolve ele direto, sem recalcular
      * nada (preserva os valores originais, inclusive {@code considerouZerados}).
+     *
+     * Busca os itens direto no banco -- uso pontual (uma filial só), como em {@link #detalheFilial}.
+     * Para o relatório mensal (todas as filiais de uma vez), use a sobrecarga com os mapas
+     * pré-carregados, senão vira uma query por filial dentro do loop.
      */
     private InventarioResultado geral(Inventario inventario, InventarioResultado r01, InventarioResultado r03, int limiteZerados) {
         if (r01 != null && r03 != null) {
             List<InventarioItem> itens01 = itemRepository.findByInventarioIdAndArmazem(inventario.getId(), Armazem.ARMAZEM_01);
             List<InventarioItem> itens03 = itemRepository.findByInventarioIdAndArmazem(inventario.getId(), Armazem.ARMAZEM_03);
-            List<InventarioItem> mesclados = acuracidadeService.mesclarPorProduto(itens01, itens03);
-            return acuracidadeService.calcular(mesclados, limiteZerados);
+            return geralDosItens(itens01, itens03, limiteZerados);
         }
         return r01 != null ? r01 : r03;
+    }
+
+    /** Mesma regra de {@link #geral}, mas lendo de mapas já carregados em memória (sem query). */
+    private InventarioResultado geral(Inventario inventario, InventarioResultado r01, InventarioResultado r03, int limiteZerados,
+                                       Map<Long, List<InventarioItem>> itens01PorInventario,
+                                       Map<Long, List<InventarioItem>> itens03PorInventario) {
+        if (r01 != null && r03 != null) {
+            List<InventarioItem> itens01 = itens01PorInventario.getOrDefault(inventario.getId(), List.of());
+            List<InventarioItem> itens03 = itens03PorInventario.getOrDefault(inventario.getId(), List.of());
+            return geralDosItens(itens01, itens03, limiteZerados);
+        }
+        return r01 != null ? r01 : r03;
+    }
+
+    private InventarioResultado geralDosItens(List<InventarioItem> itens01, List<InventarioItem> itens03, int limiteZerados) {
+        List<InventarioItem> mesclados = acuracidadeService.mesclarPorProduto(itens01, itens03);
+        return acuracidadeService.calcular(mesclados, limiteZerados);
+    }
+
+    /** Agrupa por inventarioId os itens de um armazém, de vários inventários, numa única query. */
+    private Map<Long, List<InventarioItem>> itensPorInventario(List<Long> inventarioIds, Armazem armazem) {
+        if (inventarioIds.isEmpty()) return Map.of();
+        return itemRepository.findByInventarioIdInAndArmazem(inventarioIds, armazem).stream()
+                .collect(Collectors.groupingBy(InventarioItem::getInventarioId));
     }
 
     /** O inventário mais recente (por data, depois por id) de cada filial que teve algo REALIZADO no período. */
@@ -230,9 +277,24 @@ public class RelatorioAcuracidadeService {
         if (inventario == null) {
             return List.of();
         }
-
         List<InventarioItem> itens01 = itemRepository.findByInventarioIdAndArmazem(inventario.getId(), Armazem.ARMAZEM_01);
         List<InventarioItem> itens03 = itemRepository.findByInventarioIdAndArmazem(inventario.getId(), Armazem.ARMAZEM_03);
+        return divergenciasCruzadasDosItens(itens01, itens03);
+    }
+
+    /** Mesma regra de {@link #divergenciasCruzadas(Inventario)}, mas sem query -- lendo dos mapas já carregados. */
+    private List<DivergenciaCruzada> divergenciasCruzadas(Inventario inventario,
+                                                            Map<Long, List<InventarioItem>> itens01PorInventario,
+                                                            Map<Long, List<InventarioItem>> itens03PorInventario) {
+        if (inventario == null) {
+            return List.of();
+        }
+        List<InventarioItem> itens01 = itens01PorInventario.getOrDefault(inventario.getId(), List.of());
+        List<InventarioItem> itens03 = itens03PorInventario.getOrDefault(inventario.getId(), List.of());
+        return divergenciasCruzadasDosItens(itens01, itens03);
+    }
+
+    private List<DivergenciaCruzada> divergenciasCruzadasDosItens(List<InventarioItem> itens01, List<InventarioItem> itens03) {
         if (itens01.isEmpty() || itens03.isEmpty()) {
             return List.of();
         }
