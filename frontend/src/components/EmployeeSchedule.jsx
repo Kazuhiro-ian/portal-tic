@@ -671,8 +671,9 @@ export function EmployeeSchedule() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome *</label>
+            <label htmlFor="colaborador-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome *</label>
             <input
+              id="colaborador-nome"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -681,8 +682,9 @@ export function EmployeeSchedule() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Cargo *</label>
+            <label htmlFor="colaborador-cargo" className="block text-sm font-medium text-dark-300 mb-2">Cargo *</label>
             <input
+              id="colaborador-cargo"
               type="text"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}

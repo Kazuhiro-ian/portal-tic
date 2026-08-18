@@ -549,8 +549,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
+            <label htmlFor="inventario-filial" className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
             <select
+              id="inventario-filial"
               value={form.filialId}
               onChange={(e) => alterarFilialOuData('filialId', e.target.value)}
               className="select-field"
@@ -566,8 +567,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Data *</label>
+            <label htmlFor="inventario-data" className="block text-sm font-medium text-dark-300 mb-2">Data *</label>
             <input
+              id="inventario-data"
               type="date"
               value={form.data}
               onChange={(e) => alterarFilialOuData('data', e.target.value)}
@@ -577,8 +579,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Horário de início</label>
+              <label htmlFor="inventario-hora-inicio" className="block text-sm font-medium text-dark-300 mb-2">Horário de início</label>
               <input
+                id="inventario-hora-inicio"
                 type="time"
                 value={form.horarioInicio}
                 onChange={(e) => setForm({ ...form, horarioInicio: e.target.value })}
@@ -586,8 +589,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Horário de término</label>
+              <label htmlFor="inventario-hora-fim" className="block text-sm font-medium text-dark-300 mb-2">Horário de término</label>
               <input
+                id="inventario-hora-fim"
                 type="time"
                 value={form.horarioFim}
                 onChange={(e) => setForm({ ...form, horarioFim: e.target.value })}
@@ -597,8 +601,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Status</label>
+            <label htmlFor="inventario-status" className="block text-sm font-medium text-dark-300 mb-2">Status</label>
             <select
+              id="inventario-status"
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               className="select-field"
@@ -610,8 +615,9 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Responsável</label>
+            <label htmlFor="inventario-responsavel" className="block text-sm font-medium text-dark-300 mb-2">Responsável</label>
             <input
+              id="inventario-responsavel"
               type="text"
               value={form.responsavel}
               onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
@@ -621,10 +627,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">
+            <label htmlFor="inventario-observacao" className="block text-sm font-medium text-dark-300 mb-2">
               Observação{conflitoPendente ? ' *' : ''}
             </label>
             <input
+              id="inventario-observacao"
               type="text"
               value={form.observacao}
               onChange={(e) => { setForm({ ...form, observacao: e.target.value }); if (formError) setFormError(''); }}

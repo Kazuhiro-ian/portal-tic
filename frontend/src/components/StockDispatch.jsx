@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
 import { listarMovimentos, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../hooks/useToast.js';
 import { DataTable } from './DataTable.jsx';
+import { Toast } from './Toast.jsx';
 
-function SearchableSelect({ items, value, onChange }) {
+function SearchableSelect({ items, value, onChange, labelId }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef(null);
@@ -31,6 +33,7 @@ function SearchableSelect({ items, value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-labelledby={labelId}
         className="input-field w-full flex items-center justify-between text-left"
       >
         <span className={selected ? 'text-white truncate' : 'text-dark-400'}>
@@ -142,6 +145,8 @@ function colunasHistorico(formatDate) {
 
 export function StockDispatch({ items, onAtualizado }) {
   const { canWrite } = useAuth();
+  const { toast, showToast, hideToast } = useToast();
+  const itemLabelId = useId();
   const [movements, setMovements] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,8 +157,10 @@ export function StockDispatch({ items, onAtualizado }) {
     destination: '',
     notes: '',
   });
+  // Só validação de campo (síncrona, antes de qualquer chamada) fica aqui, perto do
+  // formulário -- o resultado da submissão em si (sucesso ou erro do backend) vira toast,
+  // como o restante do app já faz para confirmação de ação assíncrona concluída.
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     carregarMovimentos();
@@ -165,7 +172,7 @@ export function StockDispatch({ items, onAtualizado }) {
       const data = await listarMovimentos();
       setMovements(data);
     } catch (err) {
-      setError('Erro ao carregar o histórico de movimentações.');
+      showToast('Erro ao carregar o histórico de movimentações.', 'error');
     } finally {
       setIsLoadingHistory(false);
     }
@@ -175,7 +182,6 @@ export function StockDispatch({ items, onAtualizado }) {
 
   const handleSubmit = async () => {
     setError('');
-    setSuccess('');
 
     if (!selectedItem) {
       setError('Selecione um item do estoque.');
@@ -212,14 +218,12 @@ export function StockDispatch({ items, onAtualizado }) {
 
       await salvarMovimento(movement);
 
-      setSuccess(`${qty} un. de "${selectedItem.name}" enviadas para ${form.destination.trim()}.`);
+      showToast(`${qty} un. de "${selectedItem.name}" enviadas para ${form.destination.trim()}.`);
       setForm({ itemId: '', quantity: 1, destination: '', notes: '' });
       await carregarMovimentos();
       await onAtualizado?.();
-
-      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setError(err.message || 'Falha na comunicação com o servidor. A transação foi abortada.');
+      showToast(err.message || 'Falha na comunicação com o servidor. A transação foi abortada.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -238,6 +242,7 @@ export function StockDispatch({ items, onAtualizado }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <Toast toast={toast} onClose={hideToast} />
       {canWrite && (
       <div className="lg:col-span-2">
         <div className="card">
@@ -253,11 +258,12 @@ export function StockDispatch({ items, onAtualizado }) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Item do Estoque *</label>
+              <label id={itemLabelId} className="block text-sm font-medium text-dark-300 mb-2">Item do Estoque *</label>
               <SearchableSelect
                 items={items}
                 value={form.itemId}
                 onChange={(item) => setForm({ ...form, itemId: item.id })}
+                labelId={itemLabelId}
               />
               {selectedItem && (
                 <p className="text-xs text-dark-400 mt-1.5">
@@ -267,8 +273,9 @@ export function StockDispatch({ items, onAtualizado }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade a enviar *</label>
+              <label htmlFor="despacho-quantidade" className="block text-sm font-medium text-dark-300 mb-2">Quantidade a enviar *</label>
               <input
+                id="despacho-quantidade"
                 type="number"
                 min="1"
                 value={form.quantity}
@@ -279,8 +286,9 @@ export function StockDispatch({ items, onAtualizado }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Destino *</label>
+              <label htmlFor="despacho-destino" className="block text-sm font-medium text-dark-300 mb-2">Destino *</label>
               <input
+                id="despacho-destino"
                 type="text"
                 value={form.destination}
                 onChange={(e) => setForm({ ...form, destination: e.target.value })}
@@ -290,8 +298,9 @@ export function StockDispatch({ items, onAtualizado }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
+              <label htmlFor="despacho-observacoes" className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
               <textarea
+                id="despacho-observacoes"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 className="input-field resize-none"
@@ -303,11 +312,6 @@ export function StockDispatch({ items, onAtualizado }) {
             {error && (
               <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
                 {error}
-              </p>
-            )}
-            {success && (
-              <p className="text-sm text-success-400 bg-success-500/10 border border-success-500/30 rounded-lg px-3 py-2">
-                {success}
               </p>
             )}
 

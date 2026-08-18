@@ -155,8 +155,8 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     if (def.tipoCampo === 'status') {
       return (
         <div key={chave}>
-          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
-          <select value={formData.status} onChange={(e) => handleChange('status', e.target.value)} className="select-field">
+          <label htmlFor={`ativo-${chave}`} className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <select id={`ativo-${chave}`} value={formData.status} onChange={(e) => handleChange('status', e.target.value)} className="select-field">
             <option value="Online">Online</option>
             <option value="Offline">Offline</option>
           </select>
@@ -167,8 +167,8 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     if (def.tipoCampo === 'filial') {
       return (
         <div key={chave}>
-          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
-          <select value={formData.filialId} onChange={(e) => handleChange('filialId', e.target.value)} className="select-field">
+          <label htmlFor={`ativo-${chave}`} className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <select id={`ativo-${chave}`} value={formData.filialId} onChange={(e) => handleChange('filialId', e.target.value)} className="select-field">
             <option value="">{obrigatorio ? 'Selecione a filial' : 'Sem filial'}</option>
             {filiais.map((f) => (
               <option key={f.id} value={f.id}>
@@ -183,8 +183,9 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     if (def.tipoCampo === 'data') {
       return (
         <div key={chave}>
-          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <label htmlFor={`ativo-${chave}`} className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
           <input
+            id={`ativo-${chave}`}
             type="date"
             value={formData.lastMaintenance}
             onChange={(e) => handleChange('lastMaintenance', e.target.value)}
@@ -197,8 +198,9 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
     if (def.tipoCampo === 'textarea') {
       return (
         <div key={chave}>
-          <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+          <label htmlFor={`ativo-${chave}`} className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
           <textarea
+            id={`ativo-${chave}`}
             value={formData.observacoes}
             onChange={(e) => handleChange('observacoes', e.target.value)}
             className="input-field"
@@ -210,8 +212,9 @@ export function AssetFormPanel({ open, ativo, tipo, tipoLabel, filiais, onSave, 
 
     return (
       <div key={chave}>
-        <label className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
+        <label htmlFor={`ativo-${chave}`} className="block text-sm font-medium text-dark-300 mb-2">{label}</label>
         <input
+          id={`ativo-${chave}`}
           type="text"
           value={formData[chave]}
           onChange={(e) => handleChange(chave, e.target.value)}

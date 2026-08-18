@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { Upload, FileSpreadsheet, Trash2, AlertTriangle, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import {
@@ -166,12 +166,16 @@ function ResultadoView({ resultado, carregando, titulo, canWrite, config, onRemo
 
 /** Um seletor de arquivo com indicação do resultado da última tentativa de importação. */
 function SeletorArquivo({ titulo, arquivo, status, mensagemErro, onEscolher }) {
+  // useId (não um id fixo) porque este componente é renderizado duas vezes lado a lado
+  // (Loja/Estoque) numa filial com estoque dividido -- um id fixo duplicaria no DOM.
+  const inputId = useId();
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-dark-300">
+      <label htmlFor={inputId} className="block text-sm font-medium text-dark-300">
         {titulo || 'Relatório do Protheus (.xml)'}
       </label>
       <input
+        id={inputId}
         type="file"
         accept=".xml"
         onChange={(e) => onEscolher(e.target.files?.[0] || null)}

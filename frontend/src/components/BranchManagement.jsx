@@ -281,8 +281,9 @@ export function BranchManagement() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Número da Filial *</label>
+              <label htmlFor="filial-numero" className="block text-sm font-medium text-dark-300 mb-2">Número da Filial *</label>
               <input
+                id="filial-numero"
                 type="number"
                 inputMode="numeric"
                 value={form.numeroFilial}
@@ -293,8 +294,9 @@ export function BranchManagement() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">CNPJ</label>
+              <label htmlFor="filial-cnpj" className="block text-sm font-medium text-dark-300 mb-2">CNPJ</label>
               <input
+                id="filial-cnpj"
                 type="text"
                 inputMode="numeric"
                 value={form.cnpj}
@@ -307,8 +309,9 @@ export function BranchManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome da Filial *</label>
+            <label htmlFor="filial-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome da Filial *</label>
             <input
+              id="filial-nome"
               type="text"
               value={form.nome}
               onChange={(e) => { setForm({ ...form, nome: e.target.value }); setFormError(''); }}
@@ -318,8 +321,9 @@ export function BranchManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Endereço</label>
+            <label htmlFor="filial-endereco" className="block text-sm font-medium text-dark-300 mb-2">Endereço</label>
             <input
+              id="filial-endereco"
               type="text"
               value={form.endereco}
               onChange={(e) => setForm({ ...form, endereco: e.target.value })}
@@ -329,8 +333,9 @@ export function BranchManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Tipo</label>
+            <label htmlFor="filial-tipo" className="block text-sm font-medium text-dark-300 mb-2">Tipo</label>
             <select
+              id="filial-tipo"
               value={form.tipoFilial}
               onChange={(e) => {
                 const tipoFilial = e.target.value;
@@ -368,8 +373,9 @@ export function BranchManagement() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Grupo de Recebimento</label>
+            <label htmlFor="filial-grupo-recebimento" className="block text-sm font-medium text-dark-300 mb-2">Grupo de Recebimento</label>
             <select
+              id="filial-grupo-recebimento"
               value={form.grupoRecebimento}
               onChange={(e) => setForm({ ...form, grupoRecebimento: e.target.value })}
               className="select-field"

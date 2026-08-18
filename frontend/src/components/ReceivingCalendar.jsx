@@ -104,8 +104,9 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {DIAS_SEMANA.map((d) => (
             <div key={d.java}>
-              <label className="block text-sm font-medium text-dark-300 mb-2">{d.curto}</label>
+              <label htmlFor={`padrao-dia-${d.java}`} className="block text-sm font-medium text-dark-300 mb-2">{d.curto}</label>
               <select
+                id={`padrao-dia-${d.java}`}
                 value={padrao[d.java]}
                 onChange={(e) => setPadrao({ ...padrao, [d.java]: e.target.value })}
                 className="select-field"
@@ -221,8 +222,9 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Recebimento neste dia</label>
+            <label htmlFor="recebimento-tipo" className="block text-sm font-medium text-dark-300 mb-2">Recebimento neste dia</label>
             <select
+              id="recebimento-tipo"
               value={form.tipo}
               onChange={(e) => setForm({ ...form, tipo: e.target.value })}
               className="select-field"
@@ -234,8 +236,9 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Observação</label>
+            <label htmlFor="recebimento-observacao" className="block text-sm font-medium text-dark-300 mb-2">Observação</label>
             <input
+              id="recebimento-observacao"
               type="text"
               value={form.observacao}
               onChange={(e) => setForm({ ...form, observacao: e.target.value })}

@@ -221,8 +221,9 @@ export function UsuarioManagement() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Usuário *</label>
+            <label htmlFor="usuario-username" className="block text-sm font-medium text-dark-300 mb-2">Usuário *</label>
             <input
+              id="usuario-username"
               type="text"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -231,10 +232,11 @@ export function UsuarioManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">
+            <label htmlFor="usuario-password" className="block text-sm font-medium text-dark-300 mb-2">
               Senha {editingUsuario ? '(deixe em branco para manter a atual)' : '*'}
             </label>
             <input
+              id="usuario-password"
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -243,8 +245,9 @@ export function UsuarioManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome Completo *</label>
+            <label htmlFor="usuario-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome Completo *</label>
             <input
+              id="usuario-nome"
               type="text"
               value={form.nomeCompleto}
               onChange={(e) => setForm({ ...form, nomeCompleto: e.target.value })}
@@ -253,8 +256,9 @@ export function UsuarioManagement() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Papel</label>
+            <label htmlFor="usuario-role" className="block text-sm font-medium text-dark-300 mb-2">Papel</label>
             <select
+              id="usuario-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               className="select-field"
