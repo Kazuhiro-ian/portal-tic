@@ -15,22 +15,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
-
-// Retorna com segurança o número da filial baseado na coluna real do banco (numeroFilial)
-function getBranchNumber(b) {
-  if (!b) return null;
-  return b.numeroFilial !== undefined && b.numeroFilial !== null ? b.numeroFilial : (b.numero_loja ?? b.branchNumber ?? b.number ?? b.numero ?? b.id);
-}
-
-// Formata o rótulo para exibição unificada: "Loja X - Nome"
-function branchLabel(branches, branchNum) {
-  if (branchNum === undefined || branchNum === null || branchNum === '') return '-';
-  const b = branches.find((br) => getBranchNumber(br)?.toString() === branchNum.toString());
-  if (!b) return `Filial ${branchNum}`;
-  
-  const num = getBranchNumber(b);
-  return `Loja ${num} - ${b.name || b.nome || ''}`;
-}
+import { getBranchNumber, branchLabel } from '../utils/filiais.js';
 
 function colunasHistoricoZebra(branches) {
   return [
