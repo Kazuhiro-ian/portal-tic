@@ -266,8 +266,9 @@ export function LinksManager() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome *</label>
+            <label htmlFor="link-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome *</label>
             <input
+              id="link-nome"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -276,8 +277,9 @@ export function LinksManager() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">URL *</label>
+            <label htmlFor="link-url" className="block text-sm font-medium text-dark-300 mb-2">URL *</label>
             <input
+              id="link-url"
               type="url"
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
@@ -286,8 +288,9 @@ export function LinksManager() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Categoria</label>
+            <label htmlFor="link-categoria" className="block text-sm font-medium text-dark-300 mb-2">Categoria</label>
             <select
+              id="link-categoria"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="select-field"
@@ -300,8 +303,9 @@ export function LinksManager() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Tags (separadas por virgula)</label>
+            <label htmlFor="link-tags" className="block text-sm font-medium text-dark-300 mb-2">Tags (separadas por virgula)</label>
             <input
+              id="link-tags"
               type="text"
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}

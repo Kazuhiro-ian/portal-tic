@@ -35,7 +35,7 @@ const emptyForm = {
   responsavel: '',
 };
 
-function colunasEstoque({ canWrite, adjustQuantity }) {
+function colunasEstoque({ canWrite, adjustQuantity, ajustandoId }) {
   return [
     {
       chave: 'name',
@@ -64,12 +64,15 @@ function colunasEstoque({ canWrite, adjustQuantity }) {
       header: 'Quantidade',
       render: (item) => {
         const isCritical = item.quantity <= item.minQuantity;
+        const ajustando = ajustandoId === item.id;
         return (
           <div className="flex items-center justify-center gap-2">
             {canWrite && (
               <button
                 onClick={() => adjustQuantity(item, -1)}
-                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+                disabled={ajustando}
+                title="Diminuir 1 unidade" aria-label="Diminuir 1 unidade"
+                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Minus className="w-4 h-4 text-dark-300" />
               </button>
@@ -82,7 +85,9 @@ function colunasEstoque({ canWrite, adjustQuantity }) {
             {canWrite && (
               <button
                 onClick={() => adjustQuantity(item, 1)}
-                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors"
+                disabled={ajustando}
+                title="Aumentar 1 unidade" aria-label="Aumentar 1 unidade"
+                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Plus className="w-4 h-4 text-dark-300" />
               </button>
@@ -120,6 +125,10 @@ export function StockDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+
+  // Trava os steppers +/- da linha que está em ajuste, pra um clique duplo (ou dois cliques
+  // rápidos em +/-) não disparar duas movimentações antes da primeira resposta voltar.
+  const [ajustandoId, setAjustandoId] = useState(null);
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustItem, setAdjustItem] = useState(null);
@@ -221,7 +230,9 @@ export function StockDashboard() {
   // atualizar a quantidade direto -- assim toda mudança de estoque gera um registro de
   // movimentação, sem um segundo caminho "silencioso" de alterar a quantidade sem rastro.
   const adjustQuantity = async (item, delta) => {
+    if (ajustandoId) return;
     try {
+      setAjustandoId(item.id);
       await salvarMovimento({
         itemId: item.id.toString(),
         itemName: item.name,
@@ -233,6 +244,8 @@ export function StockDashboard() {
       await carregarEstoque();
     } catch (error) {
       showToast(error.message || 'Erro ao ajustar quantidade.', 'error');
+    } finally {
+      setAjustandoId(null);
     }
   };
 
@@ -383,7 +396,7 @@ export function StockDashboard() {
             />
 
             <DataTable
-              colunas={colunasEstoque({ canWrite, adjustQuantity })}
+              colunas={colunasEstoque({ canWrite, adjustQuantity, ajustandoId })}
               dados={paginacao.itensPagina}
               carregando={isLoading}
               vazio="Nenhum item encontrado"
@@ -442,8 +455,9 @@ export function StockDashboard() {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome do Item *</label>
+            <label htmlFor="estoque-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome do Item *</label>
             <input
+              id="estoque-nome"
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -452,8 +466,9 @@ export function StockDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Categoria</label>
+            <label htmlFor="estoque-categoria" className="block text-sm font-medium text-dark-300 mb-2">Categoria</label>
             <select
+              id="estoque-categoria"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="select-field"
@@ -466,8 +481,9 @@ export function StockDashboard() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Subcategoria</label>
+            <label htmlFor="estoque-subcategoria" className="block text-sm font-medium text-dark-300 mb-2">Subcategoria</label>
             <input
+              id="estoque-subcategoria"
               type="text"
               value={formData.subcategory}
               onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
@@ -476,8 +492,9 @@ export function StockDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade Atual</label>
+            <label htmlFor="estoque-quantidade" className="block text-sm font-medium text-dark-300 mb-2">Quantidade Atual</label>
             <input
+              id="estoque-quantidade"
               type="number"
               min="0"
               value={formData.quantity}
@@ -486,8 +503,9 @@ export function StockDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade Mínima (Crítico)</label>
+            <label htmlFor="estoque-quantidade-minima" className="block text-sm font-medium text-dark-300 mb-2">Quantidade Mínima (Crítico)</label>
             <input
+              id="estoque-quantidade-minima"
               type="number"
               min="0"
               value={formData.minQuantity}
@@ -496,8 +514,9 @@ export function StockDashboard() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-dark-300 mb-2">Localização Física *</label>
+            <label htmlFor="estoque-localizacao" className="block text-sm font-medium text-dark-300 mb-2">Localização Física *</label>
             <input
+              id="estoque-localizacao"
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -506,8 +525,9 @@ export function StockDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Número de Série (opcional)</label>
+            <label htmlFor="estoque-numero-serie" className="block text-sm font-medium text-dark-300 mb-2">Número de Série (opcional)</label>
             <input
+              id="estoque-numero-serie"
               type="text"
               value={formData.serialNumber}
               onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
@@ -516,8 +536,9 @@ export function StockDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Responsável (opcional)</label>
+            <label htmlFor="estoque-responsavel" className="block text-sm font-medium text-dark-300 mb-2">Responsável (opcional)</label>
             <input
+              id="estoque-responsavel"
               type="text"
               value={formData.responsavel}
               onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
@@ -587,8 +608,9 @@ export function StockDashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Quantidade *</label>
+              <label htmlFor="ajuste-quantidade" className="block text-sm font-medium text-dark-300 mb-2">Quantidade *</label>
               <input
+                id="ajuste-quantidade"
                 type="number"
                 min="1"
                 value={adjustData.quantity}
@@ -599,10 +621,11 @@ export function StockDashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">
+              <label htmlFor="ajuste-destino" className="block text-sm font-medium text-dark-300 mb-2">
                 Destino {adjustData.type === 'OUT' ? '*' : '(opcional)'}
               </label>
               <input
+                id="ajuste-destino"
                 type="text"
                 value={adjustData.destination}
                 onChange={(e) => setAdjustData({ ...adjustData, destination: e.target.value })}
@@ -612,8 +635,9 @@ export function StockDashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
+              <label htmlFor="ajuste-observacoes" className="block text-sm font-medium text-dark-300 mb-2">Observações (opcional)</label>
               <textarea
+                id="ajuste-observacoes"
                 value={adjustData.notes}
                 onChange={(e) => setAdjustData({ ...adjustData, notes: e.target.value })}
                 className="input-field resize-none"

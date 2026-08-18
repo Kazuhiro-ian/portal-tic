@@ -166,8 +166,9 @@ export function EquipeInventarioManagement() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Nome da Equipe *</label>
+            <label htmlFor="equipe-nome" className="block text-sm font-medium text-dark-300 mb-2">Nome da Equipe *</label>
             <input
+              id="equipe-nome"
               type="text"
               value={form.nome}
               onChange={(e) => { setForm({ ...form, nome: e.target.value }); setFormError(''); }}

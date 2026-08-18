@@ -95,8 +95,9 @@ export function FiltroBar({ busca, onBuscaChange, placeholderBusca = 'Buscar...'
                   </label>
                 ) : (
                   <>
-                    <label className="block text-sm font-medium text-dark-300 mb-2">{filtro.label}</label>
+                    <label htmlFor={`filtro-${filtro.chave}`} className="block text-sm font-medium text-dark-300 mb-2">{filtro.label}</label>
                     <select
+                      id={`filtro-${filtro.chave}`}
                       value={filtro.valor}
                       onChange={(e) => filtro.onChange(e.target.value)}
                       className="select-field"

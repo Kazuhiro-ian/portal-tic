@@ -496,8 +496,9 @@ export function Dashboard() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Mensagem</label>
+            <label htmlFor="aviso-mensagem" className="block text-sm font-medium text-dark-300 mb-2">Mensagem</label>
             <textarea
+              id="aviso-mensagem"
               value={newNotice.mensagem}
               onChange={(e) => setNewNotice({ ...newNotice, mensagem: e.target.value })}
               className="input-field min-h-[100px] resize-none"
@@ -505,8 +506,9 @@ export function Dashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Prioridade</label>
+            <label htmlFor="aviso-prioridade" className="block text-sm font-medium text-dark-300 mb-2">Prioridade</label>
             <select
+              id="aviso-prioridade"
               value={newNotice.prioridade}
               onChange={(e) => setNewNotice({ ...newNotice, prioridade: e.target.value })}
               className="select-field"
