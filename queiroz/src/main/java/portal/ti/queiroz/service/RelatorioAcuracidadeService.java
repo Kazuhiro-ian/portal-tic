@@ -218,8 +218,8 @@ public class RelatorioAcuracidadeService {
     /**
      * Produtos com indício de transferência entre os armazéns de uma filial dividida no mês:
      * a divergência de um armazém é exatamente o oposto da do outro (ex: +20 na Loja, -20 no
-     * Estoque). Não altera o percentual de acuracidade de nenhum dos dois armazéns — é apenas
-     * um alerta informativo.
+     * Estoque). Não altera o percentual de Loja nem o de Estoque isolados, mas afeta o "Geral"
+     * — ver {@link #percentualSemTransferencias}.
      */
     public List<DivergenciaCruzada> divergenciasCruzadas(Long filialId, int ano, int mes) {
         Inventario inventario = inventariosMaisRecentesPorFilial(YearMonth.of(ano, mes)).get(filialId);
@@ -287,8 +287,9 @@ public class RelatorioAcuracidadeService {
 
         boolean dividida = Boolean.TRUE.equals(filial.getEstoqueDividido());
 
+        InventarioResultado geralAtual = geral(invAtual, r01Atual, r03Atual, limiteZerados);
         ResultadoArmazem geral = new ResultadoArmazem(
-                geral(invAtual, r01Atual, r03Atual, limiteZerados),
+                geralAtual,
                 geral(invAnterior, r01Anterior, r03Anterior, limiteZerados));
         ResultadoArmazem armazem01 = new ResultadoArmazem(r01Atual, r01Anterior);
         ResultadoArmazem armazem03 = dividida ? new ResultadoArmazem(r03Atual, r03Anterior) : null;
@@ -300,8 +301,39 @@ public class RelatorioAcuracidadeService {
         return new DetalheFilialAcuracidadeResponse(
                 filial.getId(), filial.getNumeroFilial(), filial.getNome(), filial.getTipoFilial(), dividida,
                 geral, armazem01, armazem03,
-                divergencias, ranking.maioresFaltas(), ranking.maioresSobras(),
+                divergencias,
+                percentualSemTransferencias(geralAtual, divergencias.size()),
+                produtosAcuradosSemTransferencias(geralAtual, divergencias.size()),
+                produtosInacuradosSemTransferencias(geralAtual, divergencias.size()),
+                ranking.maioresFaltas(), ranking.maioresSobras(),
                 resumoDe(invAtual, r01Atual), dividida ? resumoDe(invAtual, r03Atual) : null);
+    }
+
+    /**
+     * Percentual de acuracidade do "Geral" se as divergências cruzadas (possíveis transferências
+     * entre armazéns, ver {@link #divergenciasCruzadas}) NÃO tivessem se cancelado na mesclagem —
+     * ou seja, contando esses produtos como inacurados, do jeito que já contam em Loja e Estoque
+     * isoladamente. Todo produto com divergência cruzada tem, por definição, divergência líquida
+     * zero no mesclado (a de um armazém é exatamente o oposto da do outro), então ele sempre conta
+     * como acurado no {@code geral} recebido aqui — subtrair a quantidade de acurados (e somar de
+     * volta aos inacurados) desfaz exatamente esse efeito, sem precisar refazer a mesclagem.
+     */
+    private BigDecimal percentualSemTransferencias(InventarioResultado geral, int qtdDivergenciasCruzadas) {
+        if (geral == null || qtdDivergenciasCruzadas == 0) {
+            return geral != null ? geral.getPercentualAcuracidade() : null;
+        }
+        int acurados = geral.getProdutosAcurados() - qtdDivergenciasCruzadas;
+        int denominador = Boolean.TRUE.equals(geral.getConsiderouZerados())
+                ? geral.getTotalProdutos() : geral.getProdutosContados();
+        return acuracidadeService.dividir(BigDecimal.valueOf(acurados), BigDecimal.valueOf(denominador));
+    }
+
+    private Integer produtosAcuradosSemTransferencias(InventarioResultado geral, int qtdDivergenciasCruzadas) {
+        return geral == null ? null : geral.getProdutosAcurados() - qtdDivergenciasCruzadas;
+    }
+
+    private Integer produtosInacuradosSemTransferencias(InventarioResultado geral, int qtdDivergenciasCruzadas) {
+        return geral == null ? null : geral.getProdutosInacurados() + qtdDivergenciasCruzadas;
     }
 
     private InventarioResultado resultadoDe(Inventario inv, Armazem armazem) {

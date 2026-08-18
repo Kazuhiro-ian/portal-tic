@@ -8,7 +8,7 @@ import { ResultadoArmazemCard } from './ResultadoArmazemCard.jsx';
 import { Toast } from './Toast.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { buscarDetalheFilialAcuracidade, buscarConfiguracaoQualidade } from '../services/api.js';
-import { moeda, percentual, unidade } from '../utils/formato.js';
+import { moeda, percentual, inteiro, unidade } from '../utils/formato.js';
 import { MESES } from '../utils/datas.js';
 
 /** Comparação Loja x Estoque de um indicador, em barras horizontais finas. */
@@ -246,12 +246,38 @@ export function StoreAccuracyDashboardPage() {
         <div className="card border-amber-500/30 bg-amber-500/5">
           <h3 className="font-semibold text-amber-200 mb-2 flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4" />
-            Possíveis transferências entre estoques
+            Possíveis transferências entre estoques ({detalhe.divergenciasCruzadas.length}{' '}
+            {detalhe.divergenciasCruzadas.length === 1 ? 'produto' : 'produtos'})
           </h3>
           <p className="text-xs text-amber-200/80 mb-4">
-            Produtos com sobra num armazém e falta exatamente igual no outro. Não altera o
-            percentual de acuracidade — é só um alerta para revisar a movimentação.
+            Produtos com sobra num armazém e falta exatamente igual no outro — provável
+            movimentação entre Loja e Estoque nunca lançada no sistema. A divergência líquida
+            desses produtos é zero, então o &quot;Geral&quot; já conta todos eles como acurados;
+            compare abaixo com o que o Geral seria se eles continuassem contando como
+            inacurados, do jeito que já contam em Loja e Estoque isoladamente.
           </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <div className="p-4 rounded-xl bg-dark-800/60 border border-dark-600">
+              <p className="text-xs text-dark-400 uppercase tracking-wider">
+                Acuracidade Geral · considerando as transferências
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">{percentual(geral?.percentualAcuracidade)}</p>
+              <p className="text-xs text-dark-400 mt-1">{inteiro(geral?.produtosAcurados)} produtos acurados</p>
+            </div>
+            <div className="p-4 rounded-xl bg-dark-800/60 border border-dark-600">
+              <p className="text-xs text-dark-400 uppercase tracking-wider">
+                Acuracidade Geral · sem considerar as transferências
+              </p>
+              <p className="text-2xl font-bold text-amber-300 mt-1">
+                {percentual(detalhe.percentualAcuracidadeGeralSemTransferencias)}
+              </p>
+              <p className="text-xs text-dark-400 mt-1">
+                {inteiro(detalhe.produtosAcuradosGeralSemTransferencias)} produtos acurados
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {detalhe.divergenciasCruzadas.map((d) => (
               <div key={d.codProduto} className="p-3 rounded-lg bg-dark-800/60 border border-dark-600">

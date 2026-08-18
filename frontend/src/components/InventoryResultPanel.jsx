@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Upload, FileSpreadsheet, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Trash2, AlertTriangle, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import {
   importarResultadoInventario, buscarResultadoInventario,
@@ -7,6 +7,11 @@ import {
 } from '../services/api.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { percentual, moeda, inteiro, unidade } from '../utils/formato.js';
+
+const ARMAZENS = [
+  { valor: 'ARMAZEM_01', titulo: 'Loja (armazém 01)' },
+  { valor: 'ARMAZEM_03', titulo: 'Estoque (armazém 03)' },
+];
 
 /** Indicador grande com cor de semáforo conforme bate ou não a meta. */
 function Indicador({ titulo, valor, meta, atingiu, descricaoMeta }) {
@@ -29,18 +34,12 @@ function Linha({ rotulo, valor, destaque }) {
   );
 }
 
-/**
- * Upload + resultado de um armazém específico do inventário (ou do inventário inteiro, quando
- * `armazem` é null e a filial não é dividida). Cada bloco busca/importa/remove de forma
- * independente -- numa filial dividida, os dois armazéns do mesmo dia vivem lado a lado aqui.
- */
-function BlocoImportacao({ inventarioId, armazem, titulo, canWrite, config, confirmar, onImportado, showToast }) {
+/** Busca/recarrega o resultado de um armazém (ou do inventário inteiro, se `armazem` é null). */
+function useResultado(inventarioId, armazem, showToast) {
   const [resultado, setResultado] = useState(null);
-  const [arquivo, setArquivo] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [importando, setImportando] = useState(false);
 
-  const carregar = useCallback(async () => {
+  const recarregar = useCallback(async () => {
     try {
       setCarregando(true);
       const dados = await buscarResultadoInventario(inventarioId, armazem);
@@ -53,45 +52,14 @@ function BlocoImportacao({ inventarioId, armazem, titulo, canWrite, config, conf
   }, [inventarioId, armazem, showToast]);
 
   useEffect(() => {
-    carregar();
-  }, [carregar]);
+    recarregar();
+  }, [recarregar]);
 
-  const handleImportar = async () => {
-    if (!arquivo) {
-      showToast('Selecione o arquivo do relatório antes de importar.', 'error');
-      return;
-    }
-    try {
-      setImportando(true);
-      const novo = await importarResultadoInventario(inventarioId, arquivo, armazem);
-      setResultado(novo);
-      setArquivo(null);
-      showToast('Relatório importado. O inventário foi marcado como realizado.');
-      if (onImportado) onImportado();
-    } catch (erro) {
-      showToast(erro.message || 'Erro ao importar o relatório.', 'error');
-    } finally {
-      setImportando(false);
-    }
-  };
+  return { resultado, carregando, recarregar };
+}
 
-  const handleRemover = async () => {
-    const confirmado = await confirmar({
-      titulo: 'Remover resultado',
-      mensagem: `Isso apaga os produtos importados e os indicadores calculados${titulo ? ` de ${titulo}` : ' deste inventário'}. Deseja continuar?`,
-    });
-    if (!confirmado) return;
-
-    try {
-      await removerResultadoInventario(inventarioId, armazem);
-      setResultado(null);
-      showToast('Resultado removido.');
-      if (onImportado) onImportado();
-    } catch (erro) {
-      showToast(erro.message || 'Erro ao remover o resultado.', 'error');
-    }
-  };
-
+/** Indicadores calculados de um armazém já importado, ou o estado vazio se ainda não importou. */
+function ResultadoView({ resultado, carregando, titulo, canWrite, config, onRemover }) {
   const atingiuAcuracidade = resultado && config
     ? Number(resultado.percentualAcuracidade) >= Number(config.metaAcuracidade)
     : null;
@@ -113,9 +81,6 @@ function BlocoImportacao({ inventarioId, armazem, titulo, canWrite, config, conf
           <FileSpreadsheet className="w-10 h-10 text-dark-400 mx-auto mb-3" />
           <p className="text-dark-300 text-sm">
             Nenhum relatório importado {titulo ? `para ${titulo}` : 'para este inventário'}.
-          </p>
-          <p className="text-dark-400 text-xs mt-1">
-            Envie o relatório de conferência exportado do Protheus (.xml){titulo ? ' desse armazém' : ' desta filial'}.
           </p>
         </div>
       )}
@@ -184,27 +149,257 @@ function BlocoImportacao({ inventarioId, armazem, titulo, canWrite, config, conf
             {resultado.importadoPor && ` · importado por ${resultado.importadoPor}`}
             {resultado.importadoEm && ` em ${new Date(resultado.importadoEm).toLocaleString('pt-BR')}`}
           </p>
-        </>
-      )}
 
-      {canWrite && (
-        <div className="pt-4 border-t border-dark-700 space-y-3">
-          <label className="block text-sm font-medium text-dark-300">
-            {resultado ? 'Substituir por outro relatório' : 'Relatório do Protheus (.xml)'}
-          </label>
-          <input
-            type="file"
-            accept=".xml"
-            onChange={(e) => setArquivo(e.target.files?.[0] || null)}
-            className="input-field file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-dark-700 file:text-dark-200 file:text-sm"
-          />
-          <div className="flex justify-end gap-3">
-            {resultado && (
-              <button onClick={handleRemover} className="btn-danger">
+          {canWrite && (
+            <div className="flex justify-end">
+              <button onClick={onRemover} className="btn-danger">
                 <Trash2 className="w-4 h-4" />
                 Remover resultado
               </button>
-            )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Um seletor de arquivo com indicação do resultado da última tentativa de importação. */
+function SeletorArquivo({ titulo, arquivo, status, mensagemErro, onEscolher }) {
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-dark-300">
+        {titulo || 'Relatório do Protheus (.xml)'}
+      </label>
+      <input
+        type="file"
+        accept=".xml"
+        onChange={(e) => onEscolher(e.target.files?.[0] || null)}
+        disabled={status === 'importando'}
+        className="input-field file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-dark-700 file:text-dark-200 file:text-sm disabled:opacity-50"
+      />
+      {status === 'importando' && (
+        <p className="text-xs text-dark-400 flex items-center gap-1.5">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Importando...
+        </p>
+      )}
+      {status === 'sucesso' && (
+        <p className="text-xs text-green-400 flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Importado.
+        </p>
+      )}
+      {status === 'erro' && (
+        <p className="text-xs text-red-400 flex items-center gap-1.5">
+          <XCircle className="w-3.5 h-3.5 shrink-0" /> {mensagemErro || 'Erro ao importar.'}
+        </p>
+      )}
+      {!arquivo && status !== 'importando' && (
+        <p className="text-xs text-dark-500">Nenhum arquivo escolhido.</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Importa até duas planilhas (uma por armazém) num único fluxo: dois seletores de arquivo
+ * lado a lado e um botão "Importar" só, que envia as que estiverem selecionadas. Sequencial
+ * (não em paralelo) de propósito -- duas gravações concorrentes para o mesmo inventário
+ * arriscam esbarrar uma na outra no banco, então uma espera a outra terminar.
+ */
+function ImportadorDuplo({ inventarioId, canWrite, config, confirmar, onImportado, showToast }) {
+  const resultados = {
+    ARMAZEM_01: useResultado(inventarioId, 'ARMAZEM_01', showToast),
+    ARMAZEM_03: useResultado(inventarioId, 'ARMAZEM_03', showToast),
+  };
+
+  const [arquivos, setArquivos] = useState({ ARMAZEM_01: null, ARMAZEM_03: null });
+  const [status, setStatus] = useState({ ARMAZEM_01: 'idle', ARMAZEM_03: 'idle' });
+  const [erros, setErros] = useState({ ARMAZEM_01: null, ARMAZEM_03: null });
+
+  const escolherArquivo = (armazem) => (arquivo) => {
+    setArquivos((a) => ({ ...a, [armazem]: arquivo }));
+    setStatus((s) => ({ ...s, [armazem]: 'idle' }));
+  };
+
+  const handleRemover = (armazem, titulo) => async () => {
+    const confirmado = await confirmar({
+      titulo: 'Remover resultado',
+      mensagem: `Isso apaga os produtos importados e os indicadores calculados de ${titulo}. Deseja continuar?`,
+    });
+    if (!confirmado) return;
+
+    try {
+      await removerResultadoInventario(inventarioId, armazem);
+      showToast('Resultado removido.');
+      resultados[armazem].recarregar();
+      if (onImportado) onImportado();
+    } catch (erro) {
+      showToast(erro.message || 'Erro ao remover o resultado.', 'error');
+    }
+  };
+
+  const selecionados = ARMAZENS.filter(({ valor }) => arquivos[valor]);
+  const importandoGeral = selecionados.some(({ valor }) => status[valor] === 'importando');
+
+  const handleImportar = async () => {
+    if (selecionados.length === 0) {
+      showToast('Selecione ao menos um arquivo antes de importar.', 'error');
+      return;
+    }
+
+    const sucessos = [];
+    const falhas = [];
+
+    for (const { valor, titulo } of selecionados) {
+      setStatus((s) => ({ ...s, [valor]: 'importando' }));
+      try {
+        await importarResultadoInventario(inventarioId, arquivos[valor], valor);
+        setStatus((s) => ({ ...s, [valor]: 'sucesso' }));
+        setArquivos((a) => ({ ...a, [valor]: null }));
+        resultados[valor].recarregar();
+        sucessos.push(titulo);
+      } catch (erro) {
+        const mensagem = erro.message || 'Erro ao importar o relatório.';
+        setStatus((s) => ({ ...s, [valor]: 'erro' }));
+        setErros((e) => ({ ...e, [valor]: mensagem }));
+        falhas.push(`${titulo}: ${mensagem}`);
+      }
+    }
+
+    if (falhas.length === 0) {
+      showToast(
+        sucessos.length === 2
+          ? 'As duas planilhas foram importadas. O inventário foi marcado como realizado.'
+          : `${sucessos[0]} importado. O inventário foi marcado como realizado.`,
+      );
+    } else {
+      showToast(
+        [...sucessos.map((t) => `${t}: importado.`), ...falhas].join(' '),
+        'error',
+      );
+    }
+
+    if (sucessos.length > 0 && onImportado) onImportado();
+  };
+
+  return (
+    <div className="space-y-8">
+      <ResultadoView
+        resultado={resultados.ARMAZEM_01.resultado}
+        carregando={resultados.ARMAZEM_01.carregando}
+        titulo="Loja (armazém 01)"
+        canWrite={canWrite}
+        config={config}
+        onRemover={handleRemover('ARMAZEM_01', 'Loja (armazém 01)')}
+      />
+      <div className="border-t border-dark-700 pt-8">
+        <ResultadoView
+          resultado={resultados.ARMAZEM_03.resultado}
+          carregando={resultados.ARMAZEM_03.carregando}
+          titulo="Estoque (armazém 03)"
+          canWrite={canWrite}
+          config={config}
+          onRemover={handleRemover('ARMAZEM_03', 'Estoque (armazém 03)')}
+        />
+      </div>
+
+      {canWrite && (
+        <div className="pt-4 border-t border-dark-700 space-y-4">
+          <h3 className="font-semibold text-white">Importar relatórios do Protheus (.xml)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {ARMAZENS.map(({ valor, titulo }) => (
+              <SeletorArquivo
+                key={valor}
+                titulo={titulo}
+                arquivo={arquivos[valor]}
+                status={status[valor]}
+                mensagemErro={erros[valor]}
+                onEscolher={escolherArquivo(valor)}
+              />
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleImportar}
+              disabled={importandoGeral || selecionados.length === 0}
+              className="btn-primary disabled:opacity-50"
+            >
+              {importandoGeral ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importandoGeral
+                ? 'Importando...'
+                : selecionados.length === 2
+                  ? 'Importar as duas planilhas'
+                  : 'Importar'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Upload + resultado do inventário inteiro, para filiais sem estoque dividido (um armazém só). */
+function ImportadorUnico({ inventarioId, canWrite, config, confirmar, onImportado, showToast }) {
+  const { resultado, carregando, recarregar } = useResultado(inventarioId, null, showToast);
+  const [arquivo, setArquivo] = useState(null);
+  const [importando, setImportando] = useState(false);
+
+  const handleImportar = async () => {
+    if (!arquivo) {
+      showToast('Selecione o arquivo do relatório antes de importar.', 'error');
+      return;
+    }
+    try {
+      setImportando(true);
+      await importarResultadoInventario(inventarioId, arquivo, null);
+      recarregar();
+      setArquivo(null);
+      showToast('Relatório importado. O inventário foi marcado como realizado.');
+      if (onImportado) onImportado();
+    } catch (erro) {
+      showToast(erro.message || 'Erro ao importar o relatório.', 'error');
+    } finally {
+      setImportando(false);
+    }
+  };
+
+  const handleRemover = async () => {
+    const confirmado = await confirmar({
+      titulo: 'Remover resultado',
+      mensagem: 'Isso apaga os produtos importados e os indicadores calculados deste inventário. Deseja continuar?',
+    });
+    if (!confirmado) return;
+
+    try {
+      await removerResultadoInventario(inventarioId, null);
+      recarregar();
+      showToast('Resultado removido.');
+      if (onImportado) onImportado();
+    } catch (erro) {
+      showToast(erro.message || 'Erro ao remover o resultado.', 'error');
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <ResultadoView
+        resultado={resultado}
+        carregando={carregando}
+        titulo={null}
+        canWrite={canWrite}
+        config={config}
+        onRemover={handleRemover}
+      />
+
+      {canWrite && (
+        <div className="pt-4 border-t border-dark-700 space-y-3">
+          <SeletorArquivo
+            titulo={resultado ? 'Substituir por outro relatório' : 'Relatório do Protheus (.xml)'}
+            arquivo={arquivo}
+            status={importando ? 'importando' : 'idle'}
+            onEscolher={setArquivo}
+          />
+          <div className="flex justify-end">
             <button onClick={handleImportar} disabled={importando || !arquivo} className="btn-primary disabled:opacity-50">
               {importando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {importando ? 'Importando...' : 'Importar'}
@@ -238,21 +433,13 @@ export function InventoryResultPanel({ inventario, nomeFilial, estoqueDividido, 
 
       {inventario && (
         estoqueDividido ? (
-          <div className="space-y-8">
-            <BlocoImportacao
-              inventarioId={inventario.id} armazem="ARMAZEM_01" titulo="Loja (armazém 01)"
-              canWrite={canWrite} config={config} confirmar={confirmar} onImportado={onImportado} showToast={showToast}
-            />
-            <div className="border-t border-dark-700 pt-8">
-              <BlocoImportacao
-                inventarioId={inventario.id} armazem="ARMAZEM_03" titulo="Estoque (armazém 03)"
-                canWrite={canWrite} config={config} confirmar={confirmar} onImportado={onImportado} showToast={showToast}
-              />
-            </div>
-          </div>
+          <ImportadorDuplo
+            inventarioId={inventario.id}
+            canWrite={canWrite} config={config} confirmar={confirmar} onImportado={onImportado} showToast={showToast}
+          />
         ) : (
-          <BlocoImportacao
-            inventarioId={inventario.id} armazem={null} titulo={null}
+          <ImportadorUnico
+            inventarioId={inventario.id}
             canWrite={canWrite} config={config} confirmar={confirmar} onImportado={onImportado} showToast={showToast}
           />
         )

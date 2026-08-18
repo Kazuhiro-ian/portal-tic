@@ -7,10 +7,17 @@
 -- (duas planilhas, um dia só).
 --
 -- Rode isto manualmente contra o banco (o Flyway está desligado -- ver migrations/README.md).
--- Confira o nome real da constraint antiga antes de rodar:
---   psql "$DATABASE_URL" -c "\d inventario_resultados"
--- O nome usado abaixo (inventario_resultados_inventario_id_key) é o padrão que o Postgres dá
--- a uma coluna UNIQUE simples criada via Hibernate; ajuste se o seu banco tiver outro nome.
+--
+-- CORRIGIDO EM 2026-08-18: a primeira versão deste script chutava o nome da constraint antiga
+-- como `inventario_resultados_inventario_id_key` (o padrão que o *Postgres* usa para uma coluna
+-- UNIQUE simples). Mas essa constraint foi criada pelo *Hibernate* a partir de `unique = true`
+-- sem nome explícito, e o Hibernate gera um nome hash (ex: `uk33809s748qfpmy8onxy754tah`,
+-- diferente em cada banco). Resultado: o `DROP CONSTRAINT IF EXISTS` era sempre um no-op
+-- silencioso, a constraint antiga nunca saía, e a 2ª planilha (2º armazém) de qualquer
+-- inventário dividido passava a ser rejeitada pelo banco com "duplicate key value" assim que
+-- a 1ª já tivesse sido importada -- em produção e em qualquer ambiente que tenha rodado a
+-- versão antiga deste arquivo. O bloco abaixo descobre o nome real pelo catálogo do Postgres
+-- em vez de chutar, e é seguro rodar de novo mesmo num banco que já rodou a versão antiga.
 
 BEGIN;
 
@@ -25,7 +32,27 @@ ALTER TABLE inventario_itens ADD COLUMN IF NOT EXISTS armazem VARCHAR(20);
 -- Agora uma filial dividida tem até 2 resultados para o MESMO inventário (um por armazém),
 -- então a unicidade precisa ser composta. Postgres trata múltiplos NULL como distintos em
 -- UNIQUE, então isso não muda nada para filial não dividida (armazem sempre null).
-ALTER TABLE inventario_resultados DROP CONSTRAINT IF EXISTS inventario_resultados_inventario_id_key;
-ALTER TABLE inventario_resultados ADD CONSTRAINT uk_inv_resultado_armazem UNIQUE (inventario_id, armazem);
+DO $$
+DECLARE
+    constraint_antiga text;
+BEGIN
+    SELECT con.conname INTO constraint_antiga
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    WHERE rel.relname = 'inventario_resultados'
+      AND con.contype = 'u'
+      AND con.conkey = ARRAY[(
+          SELECT attnum FROM pg_attribute
+          WHERE attrelid = rel.oid AND attname = 'inventario_id'
+      )];
+
+    IF constraint_antiga IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE inventario_resultados DROP CONSTRAINT %I', constraint_antiga);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uk_inv_resultado_armazem') THEN
+        ALTER TABLE inventario_resultados ADD CONSTRAINT uk_inv_resultado_armazem UNIQUE (inventario_id, armazem);
+    END IF;
+END $$;
 
 COMMIT;

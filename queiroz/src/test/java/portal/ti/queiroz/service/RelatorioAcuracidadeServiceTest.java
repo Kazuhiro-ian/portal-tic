@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import portal.ti.queiroz.dto.DetalheFilialAcuracidadeResponse;
 import portal.ti.queiroz.dto.DivergenciaCruzada;
 import portal.ti.queiroz.dto.RelatorioAcuracidadeResponse;
 import portal.ti.queiroz.dto.ResumoFilialAcuracidade;
@@ -29,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -349,5 +351,62 @@ class RelatorioAcuracidadeServiceTest {
         assertThat(divergencias.get(0).codProduto()).isEqualTo("000001");
         assertThat(divergencias.get(0).divergenciaLoja()).isEqualByComparingTo("20");
         assertThat(divergencias.get(0).divergenciaEstoque()).isEqualByComparingTo("-20");
+    }
+
+    @Test
+    void detalheFilialCalculaAcuracidadeGeralComESemAsDivergenciasCruzadas() {
+        // P-CRUZADO tem sobra na Loja (+20) e falta idêntica no Estoque (-20): a mesclagem zera a
+        // divergência líquida dele e ele vira "acurado" no Geral, mesmo estando errado nos dois
+        // armazéns isoladamente. P-OK já bate sem precisar de nenhum ajuste; P-RUIM está errado e
+        // continua errado com ou sem o ajuste.
+        Filiais loja = filial(1L, 42, "Loja 42", TipoFilial.LOJA);
+        loja.setEstoqueDividido(true);
+        when(filiaisRepository.findById(1L)).thenReturn(Optional.of(loja));
+        when(filiaisRepository.findAllById(any())).thenReturn(List.of(loja));
+
+        YearMonth agosto = YearMonth.of(2026, 8);
+        Inventario inv = inventario(10L, 1L, LocalDate.of(2026, 8, 5));
+        when(inventarioRepository.findByDataBetween(agosto.atDay(1), agosto.atEndOfMonth()))
+                .thenReturn(List.of(inv));
+        semDadosNoMesAnterior(agosto);
+
+        InventarioResultado r01 = resultado(10L, 3, 1, 2, "1000", "-50", "20");
+        r01.setArmazem(Armazem.ARMAZEM_01);
+        InventarioResultado r03 = resultado(10L, 1, 0, 1, "200", "0", "20");
+        r03.setArmazem(Armazem.ARMAZEM_03);
+        when(resultadoRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_01)).thenReturn(Optional.of(r01));
+        when(resultadoRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_03)).thenReturn(Optional.of(r03));
+
+        InventarioItem cruzadoLoja = item(10L, "P-CRUZADO", "10", "100", "120", "20");
+        InventarioItem okLoja = item(10L, "P-OK", "10", "50", "50", "0");
+        InventarioItem ruimLoja = item(10L, "P-RUIM", "10", "80", "75", "-5");
+        InventarioItem cruzadoEstoque = item(10L, "P-CRUZADO", "10", "20", "0", "-20");
+
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_01))
+                .thenReturn(List.of(cruzadoLoja, okLoja, ruimLoja));
+        when(itemRepository.findByInventarioIdAndArmazem(10L, Armazem.ARMAZEM_03))
+                .thenReturn(List.of(cruzadoEstoque));
+
+        when(itemRepository.findByInventarioIdInAndValorDivergenciaLessThanOrderByValorDivergenciaAsc(any(), eq(BigDecimal.ZERO), any()))
+                .thenReturn(List.of());
+        when(itemRepository.findByInventarioIdInAndValorDivergenciaGreaterThanOrderByValorDivergenciaDesc(any(), eq(BigDecimal.ZERO), any()))
+                .thenReturn(List.of());
+
+        DetalheFilialAcuracidadeResponse detalhe = service.detalheFilial(1L, 2026, 8);
+
+        // Geral mesclado: 3 SKUs únicos, 2 acurados (P-CRUZADO com líquido zero + P-OK), 1 inacurado (P-RUIM).
+        assertThat(detalhe.geral().atual().getTotalProdutos()).isEqualTo(3);
+        assertThat(detalhe.geral().atual().getProdutosAcurados()).isEqualTo(2);
+        assertThat(detalhe.geral().atual().getProdutosInacurados()).isEqualTo(1);
+
+        assertThat(detalhe.divergenciasCruzadas()).hasSize(1);
+        assertThat(detalhe.divergenciasCruzadas().get(0).codProduto()).isEqualTo("P-CRUZADO");
+
+        // Sem considerar a transferência, P-CRUZADO volta a contar como inacurado.
+        assertThat(detalhe.produtosAcuradosGeralSemTransferencias()).isEqualTo(1);
+        assertThat(detalhe.produtosInacuradosGeralSemTransferencias()).isEqualTo(2);
+        assertThat(detalhe.percentualAcuracidadeGeralSemTransferencias()).isEqualByComparingTo("0.333333");
+        assertThat(detalhe.geral().atual().getPercentualAcuracidade())
+                .isGreaterThan(detalhe.percentualAcuracidadeGeralSemTransferencias());
     }
 }

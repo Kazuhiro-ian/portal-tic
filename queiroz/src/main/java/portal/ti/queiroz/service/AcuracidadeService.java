@@ -295,8 +295,12 @@ public class AcuracidadeService {
         return resultados.stream().map(campo).filter(java.util.Objects::nonNull).mapToInt(Integer::intValue).sum();
     }
 
-    /** Divisão protegida: denominador zero vira 0, como o IFERROR da planilha. */
-    private BigDecimal dividir(BigDecimal numerador, BigDecimal denominador) {
+    /**
+     * Divisão protegida: denominador zero vira 0, como o IFERROR da planilha. Pacote (não
+     * private) porque {@link RelatorioAcuracidadeService} reaproveita pra recalcular o "Geral"
+     * desconsiderando as divergências cruzadas, sem duplicar a lógica de arredondamento.
+     */
+    BigDecimal dividir(BigDecimal numerador, BigDecimal denominador) {
         if (denominador == null || denominador.signum() == 0) {
             return BigDecimal.ZERO.setScale(ESCALA_PERCENTUAL);
         }

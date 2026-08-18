@@ -4,7 +4,7 @@ import { SidePanel } from './SidePanel.jsx';
 import { ListaRanking } from './ListaRanking.jsx';
 import { ResultadoArmazemCard } from './ResultadoArmazemCard.jsx';
 import { buscarDetalheFilialAcuracidade, buscarConfiguracaoQualidade } from '../services/api.js';
-import { unidade } from '../utils/formato.js';
+import { percentual } from '../utils/formato.js';
 
 function rodapeImportacao(titulo, resumo) {
   if (!resumo) return null;
@@ -84,35 +84,27 @@ export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClo
           )}
 
           {detalhe.estoqueDividido && detalhe.divergenciasCruzadas?.length > 0 && (
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-              <h3 className="font-semibold text-amber-200 mb-2 flex items-center gap-2">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
+              <h3 className="font-semibold text-amber-200 flex items-center gap-2">
                 <ArrowLeftRight className="w-4 h-4" />
-                Possíveis transferências entre estoques
+                {detalhe.divergenciasCruzadas.length}{' '}
+                {detalhe.divergenciasCruzadas.length === 1 ? 'item' : 'itens'} com divergência entre armazéns
               </h3>
-              <p className="text-xs text-amber-200/80 mb-3">
-                Produtos com sobra num armazém e falta exatamente igual no outro. Não altera o
-                percentual de acuracidade — é só um alerta para revisar a movimentação.
+              <p className="text-xs text-amber-200/80">
+                Sobra num armazém e falta exatamente igual no outro — indício de transferência
+                entre Loja e Estoque não lançada no sistema. O &quot;Geral&quot; já conta esses
+                produtos como acurados.
               </p>
-              <div className="space-y-2">
-                {detalhe.divergenciasCruzadas.map((d) => (
-                  <div key={d.codProduto} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-dark-800/60 border border-dark-600">
-                    <div className="min-w-0">
-                      <p className="text-sm text-white truncate">{d.descricao || d.codProduto}</p>
-                      <p className="text-xs text-dark-400">{d.codProduto}</p>
-                    </div>
-                    <p className="text-xs text-right shrink-0">
-                      <span className="text-dark-300">Loja: </span>
-                      <span className={Number(d.divergenciaLoja) > 0 ? 'text-green-400' : 'text-red-400'}>
-                        {unidade(d.divergenciaLoja)}
-                      </span>
-                      <span className="text-dark-300"> · Estoque: </span>
-                      <span className={Number(d.divergenciaEstoque) > 0 ? 'text-green-400' : 'text-red-400'}>
-                        {unidade(d.divergenciaEstoque)}
-                      </span>
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-amber-200/80">
+                Acuracidade Geral sem considerar essas transferências:{' '}
+                <span className="font-semibold text-amber-100">
+                  {percentual(detalhe.percentualAcuracidadeGeralSemTransferencias)}
+                </span>
+                {' '}(com: {percentual(detalhe.geral?.atual?.percentualAcuracidade)})
+              </p>
+              <button onClick={abrirDashboard} className="text-xs text-amber-100 underline underline-offset-2 hover:text-white">
+                Ver os produtos no dashboard
+              </button>
             </div>
           )}
 
