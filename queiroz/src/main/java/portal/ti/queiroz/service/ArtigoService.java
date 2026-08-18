@@ -20,6 +20,9 @@ public class ArtigoService {
     }
 
     public Artigo salvar(Artigo artigo) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        artigo.setId(null);
         return repository.save(artigo);
     }
 

@@ -23,6 +23,9 @@ public class FiliaisServices {
 
     public Filiais salvar(Filiais filial) {
         validarEstoqueDividido(filial);
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        filial.setId(null);
         return repository.save(filial);
     }
 

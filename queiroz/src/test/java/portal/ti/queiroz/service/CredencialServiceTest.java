@@ -2,9 +2,11 @@ package portal.ti.queiroz.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import portal.ti.queiroz.dto.CredencialResponse;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Credencial;
 import portal.ti.queiroz.model.TipoAcaoCredencial;
@@ -45,10 +47,34 @@ class CredencialServiceTest {
         atualizacao.setUsername("admin");
         atualizacao.setPassword(""); // em branco: não deve sobrescrever
 
-        Credencial resultado = service.atualizar(1L, atualizacao);
+        CredencialResponse resultado = service.atualizar(1L, atualizacao);
 
-        assertThat(resultado.getPassword()).isEqualTo("senhaAntiga123");
-        assertThat(resultado.getName()).isEqualTo("Switch Core - Andar 2");
+        // A senha nunca deve vir na resposta -- CredencialResponse nem tem esse campo.
+        // Quem checa se ela foi preservada de verdade é o objeto salvo no repositório.
+        ArgumentCaptor<Credencial> captor = ArgumentCaptor.forClass(Credencial.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getPassword()).isEqualTo("senhaAntiga123");
+        assertThat(resultado.name()).isEqualTo("Switch Core - Andar 2");
+    }
+
+    @Test
+    void salvarZeraOIdRecebidoParaNuncaSobrescreverOutroRegistro() {
+        // Não define id na resposta simulada de propósito: o que este teste verifica é o
+        // estado do objeto NO MOMENTO da chamada a save() (via captor), então mutar o id
+        // depois, no próprio stub, mascararia o bug que o teste existe para pegar.
+        when(repository.save(any(Credencial.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Credencial comIdForjado = new Credencial();
+        comIdForjado.setId(999L); // simula um POST malicioso/com bug tentando sobrescrever o registro 999
+        comIdForjado.setName("Nova credencial");
+        comIdForjado.setUsername("user");
+        comIdForjado.setPassword("senha123");
+
+        service.salvar(comIdForjado);
+
+        ArgumentCaptor<Credencial> captor = ArgumentCaptor.forClass(Credencial.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getId()).isNull();
     }
 
     @Test

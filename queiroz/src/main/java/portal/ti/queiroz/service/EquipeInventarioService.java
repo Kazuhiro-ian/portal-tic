@@ -19,6 +19,9 @@ public class EquipeInventarioService {
     }
 
     public EquipeInventario salvar(EquipeInventario equipe) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        equipe.setId(null);
         return repository.save(equipe);
     }
 

@@ -21,8 +21,13 @@ public class ZebraCotaService {
     }
 
     public ZebraCota salvar(ZebraCota cota) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro (e, aqui, também driblaria a checagem
+        // de duplicidade abaixo) em vez de criar um novo -- edição de verdade já tem seu
+        // próprio endpoint em atualizar(id, ...).
+        cota.setId(null);
         Optional<ZebraCota> existente = repository.findByFilialId(cota.getFilialId());
-        if (existente.isPresent() && !existente.get().getId().equals(cota.getId())) {
+        if (existente.isPresent()) {
             throw new RegraDeNegocioException("Já existe uma cota para esta filial.");
         }
         return repository.save(cota);

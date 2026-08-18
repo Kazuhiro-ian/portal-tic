@@ -20,6 +20,9 @@ public class LinkUtilService {
     }
 
     public LinkUtil salvar(LinkUtil link) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        link.setId(null);
         return repository.save(link);
     }
 

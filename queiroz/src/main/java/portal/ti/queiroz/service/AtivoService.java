@@ -50,6 +50,10 @@ public class AtivoService {
     }
 
     public Ativo salvar(Ativo ativo) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo (o Spring
+        // Data decide insert/update pelo id vir nulo ou não).
+        ativo.setId(null);
         return repository.save(ativo);
     }
 

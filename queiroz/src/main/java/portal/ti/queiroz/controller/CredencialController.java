@@ -30,12 +30,12 @@ public class CredencialController {
     }
 
     @PostMapping
-    public Credencial criar(@RequestBody Credencial credencial) {
+    public CredencialResponse criar(@RequestBody Credencial credencial) {
         return service.salvar(credencial);
     }
 
     @PutMapping("/{id}")
-    public Credencial atualizar(@PathVariable Long id, @RequestBody Credencial credencial) {
+    public CredencialResponse atualizar(@PathVariable Long id, @RequestBody Credencial credencial) {
         return service.atualizar(id, credencial);
     }
 

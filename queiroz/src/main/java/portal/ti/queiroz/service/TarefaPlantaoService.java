@@ -21,6 +21,9 @@ public class TarefaPlantaoService {
     }
 
     public TarefaPlantao salvar(TarefaPlantao tarefa) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        tarefa.setId(null);
         if (tarefa.getStatus() == null) {
             tarefa.setStatus("PENDENTE");
         }

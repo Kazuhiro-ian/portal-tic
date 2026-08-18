@@ -23,6 +23,9 @@ public class ZebraEnvioService {
         if ("EXTRA".equalsIgnoreCase(envio.getTipoEnvio()) && (envio.getMotivoExtra() == null || envio.getMotivoExtra().trim().isEmpty())) {
             throw new RegraDeNegocioException("O motivo é obrigatório para envios extras.");
         }
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo.
+        envio.setId(null);
         return repository.save(envio);
     }
 

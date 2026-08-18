@@ -24,13 +24,17 @@ public class CredencialService {
         return repository.findAll().stream().map(CredencialResponse::fromEntity).toList();
     }
 
-    public Credencial salvar(Credencial credencial) {
+    public CredencialResponse salvar(Credencial credencial) {
+        // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
+        // vira UPDATE silencioso daquele registro em vez de criar um novo (o Spring
+        // Data decide insert/update pelo id vir nulo ou não).
+        credencial.setId(null);
         Credencial salva = repository.save(credencial);
         logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.CRIAR);
-        return salva;
+        return CredencialResponse.fromEntity(salva);
     }
 
-    public Credencial atualizar(Long id, Credencial credencialAtualizada) {
+    public CredencialResponse atualizar(Long id, Credencial credencialAtualizada) {
         Optional<Credencial> existente = repository.findById(id);
         if (existente.isPresent()) {
             Credencial c = existente.get();
@@ -45,7 +49,7 @@ public class CredencialService {
             c.setNotes(credencialAtualizada.getNotes());
             Credencial salva = repository.save(c);
             logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.EDITAR);
-            return salva;
+            return CredencialResponse.fromEntity(salva);
         }
         throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
     }
