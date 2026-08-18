@@ -26,6 +26,13 @@ function travar() {
     el.style.left = '0';
     el.style.right = '0';
     el.style.overflowY = 'hidden';
+    // position:fixed cria um novo stacking context para o <main>, o que prende o z-index
+    // de qualquer SidePanel/Modal renderizado dentro dele (mesmo que z-50) abaixo do
+    // header mobile e do BottomNav (z-30), que ficam FORA do <main>: sem isto, o botão
+    // "Importar"/"Salvar" no rodapé do painel fica escondido atrás do BottomNav e não
+    // dá pra clicar. z-45 fica acima de header/BottomNav (30) e abaixo do menu lateral
+    // e seu backdrop (40/50), que devem continuar por cima de tudo.
+    el.style.zIndex = '45';
   }
   lockCount += 1;
 }
@@ -39,6 +46,7 @@ function destravar() {
     el.style.left = '';
     el.style.right = '';
     el.style.overflowY = '';
+    el.style.zIndex = '';
     el.scrollTop = savedScrollY;
     window.scrollTo(0, 0);
   }
