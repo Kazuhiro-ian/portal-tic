@@ -51,6 +51,16 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- Reinicia a aplicação sozinha quando um .class muda (classpath do projeto), em vez de
+		     precisar matar e subir o processo manualmente a cada edição. O Spring Boot já exclui
+		     esta dependência do jar empacotado (repackage) automaticamente, então não afeta o
+		     artefato de produção; optional=true evita que ela se propague a quem depender deste
+		     módulo. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<optional>true</optional>
+		</dependency>
 		<!-- Controle de versão do schema. Vem desligado por padrão (spring.flyway.enabled=false):
 		     a ativação exige o baseline descrito em queiroz/migrations/README.md. -->
 		<dependency>

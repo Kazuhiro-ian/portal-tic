@@ -7,7 +7,7 @@ import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
 import {
   listarFiliais,
-  listarEstoqueItens, atualizarEstoqueItem,
+  listarEstoqueItens,
   listarZebraCotas, salvarZebraCota, atualizarZebraCota, deletarZebraCota,
   listarZebraEnvios, salvarZebraEnvio, deletarZebraEnvio
 } from '../services/api.js';
@@ -120,8 +120,9 @@ export function ZebraSupplies() {
     motivoExtra: '',
   });
 
+  // Só validação de campo (síncrona, antes de qualquer chamada) fica inline, perto do
+  // formulário -- o resultado da submissão em si (sucesso ou erro do backend) vira toast.
   const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
 
   // Modais
   const [showQuotaModal, setShowQuotaModal] = useState(false);
@@ -149,7 +150,7 @@ export function ZebraSupplies() {
       setStockItems(estoqueData);
     } catch (error) {
       console.error(error);
-      setFormError('Erro ao carregar dados do servidor.');
+      showToast('Erro ao carregar dados do servidor.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -214,12 +215,10 @@ export function ZebraSupplies() {
       motivoExtra: '',
     });
     setFormError('');
-    setFormSuccess('');
   };
 
   const handleRegisterDispatch = async () => {
     setFormError('');
-    setFormSuccess('');
 
     if (!dispatchForm.filialId && dispatchForm.filialId !== 0) {
       setFormError('Selecione a filial de destino.'); return;
@@ -238,43 +237,24 @@ export function ZebraSupplies() {
     }
 
     try {
-      // 1. Dar baixa no estoque real via API
-      let labelRemaining = dispatchForm.qtdEtiquetas;
-      let ribbonRemaining = dispatchForm.qtdRibbons;
-
-      for (let item of stockItems) {
-        const isLabel = item.categoriaZebra === 'ETIQUETA' || (!item.categoriaZebra && item.name.toLowerCase().includes('etiqueta'));
-        const isRibbon = item.categoriaZebra === 'RIBBON' || (!item.categoriaZebra && item.name.toLowerCase().includes('ribbon'));
-
-        if (isLabel && labelRemaining > 0) {
-          const deduct = Math.min(item.quantity, labelRemaining);
-          labelRemaining -= deduct;
-          await atualizarEstoqueItem(item.id, { ...item, quantity: item.quantity - deduct });
-        }
-        if (isRibbon && ribbonRemaining > 0) {
-          const deduct = Math.min(item.quantity, ribbonRemaining);
-          ribbonRemaining -= deduct;
-          await atualizarEstoqueItem(item.id, { ...item, quantity: item.quantity - deduct });
-        }
-      }
-
-      // 2. Registrar o envio no banco
+      // Uma única chamada: o backend dá baixa nos itens de estoque atingidos e grava o
+      // envio na mesma transação -- nada fica gravado pela metade se algo falhar no meio
+      // (antes, cada item de estoque era atualizado com um PUT solto, um por um, seguido
+      // de um POST separado pro envio).
       await salvarZebraEnvio(dispatchForm);
 
       const label = branchLabel(branches, dispatchForm.filialId);
-      setFormSuccess(`Envio (${dispatchForm.tipoEnvio}) para "${label}" registrado. Estoque atualizado!`);
-      
+      showToast(`Envio (${dispatchForm.tipoEnvio}) para "${label}" registrado. Estoque atualizado!`);
+
       setDispatchForm({
         filialId: '', qtdEtiquetas: 0, qtdRibbons: 0,
         dataEnvio: new Date().toISOString().split('T')[0],
         tipoEnvio: 'REGULAR', motivoExtra: '',
       });
-      
-      await carregarDados(); 
-      setTimeout(() => setFormSuccess(''), 5000);
 
+      await carregarDados();
     } catch (error) {
-      setFormError(error.message || 'Erro de comunicação ao salvar envio.');
+      showToast(error.message || 'Erro de comunicação ao salvar envio.', 'error');
     }
   };
 
@@ -289,7 +269,7 @@ export function ZebraSupplies() {
       await deletarZebraEnvio(id);
       await carregarDados();
     } catch (error) {
-      setFormError('Erro ao excluir registro.');
+      showToast('Erro ao excluir registro.', 'error');
     }
   };
 
@@ -418,8 +398,9 @@ export function ZebraSupplies() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Filial de Destino *</label>
+              <label htmlFor="zebra-filial" className="block text-sm font-medium text-dark-300 mb-2">Filial de Destino *</label>
               <select
+                id="zebra-filial"
                 value={dispatchForm.filialId}
                 onChange={(e) => handleBranchSelect(e.target.value)}
                 className="select-field"
@@ -441,8 +422,9 @@ export function ZebraSupplies() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Tipo de Envio</label>
+                <label htmlFor="zebra-tipo-envio" className="block text-sm font-medium text-dark-300 mb-2">Tipo de Envio</label>
                 <select
+                  id="zebra-tipo-envio"
                   value={dispatchForm.tipoEnvio}
                   onChange={(e) => {
                     const tipo = e.target.value;
@@ -462,8 +444,9 @@ export function ZebraSupplies() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Data do Envio *</label>
+                <label htmlFor="zebra-data-envio" className="block text-sm font-medium text-dark-300 mb-2">Data do Envio *</label>
                 <input
+                  id="zebra-data-envio"
                   type="date"
                   value={dispatchForm.dataEnvio}
                   onChange={(e) => setDispatchForm({ ...dispatchForm, dataEnvio: e.target.value })}
@@ -475,11 +458,12 @@ export function ZebraSupplies() {
             {/* Expansão para Motivo Extra */}
             {dispatchForm.tipoEnvio === 'EXTRA' && (
               <div className="p-3 bg-accent-500/10 border border-accent-500/30 rounded-lg animate-fade-in">
-                <label className="block text-sm font-medium text-accent-300 mb-2 flex items-center gap-2">
+                <label htmlFor="zebra-motivo-extra" className="block text-sm font-medium text-accent-300 mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Motivo do Envio Extra *
                 </label>
                 <input
+                  id="zebra-motivo-extra"
                   type="text"
                   value={dispatchForm.motivoExtra}
                   onChange={(e) => setDispatchForm({ ...dispatchForm, motivoExtra: e.target.value })}
@@ -491,10 +475,11 @@ export function ZebraSupplies() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-dark-600 pt-4">
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2 flex items-center gap-1.5">
+                <label htmlFor="zebra-qtd-etiquetas" className="block text-sm font-medium text-dark-300 mb-2 flex items-center gap-1.5">
                   <Tag className="w-4 h-4 text-primary-400" /> Etiquetas (rolos)
                 </label>
                 <input
+                  id="zebra-qtd-etiquetas"
                   type="number"
                   inputMode="numeric"
                   min="0"
@@ -508,10 +493,11 @@ export function ZebraSupplies() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2 flex items-center gap-1.5">
+                <label htmlFor="zebra-qtd-ribbons" className="block text-sm font-medium text-dark-300 mb-2 flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-accent-400" /> Ribbons (unid.)
                 </label>
                 <input
+                  id="zebra-qtd-ribbons"
                   type="number"
                   inputMode="numeric"
                   min="0"
@@ -529,12 +515,6 @@ export function ZebraSupplies() {
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
                 <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
                 <p className="text-sm text-red-300">{formError}</p>
-              </div>
-            )}
-            {formSuccess && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary-500/10 border border-primary-500/30">
-                <CheckCircle2 className="w-4 h-4 text-primary-400 shrink-0" />
-                <p className="text-sm text-primary-300">{formSuccess}</p>
               </div>
             )}
 
@@ -648,8 +628,9 @@ export function ZebraSupplies() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
+              <label htmlFor="cota-filial" className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
               <select
+                id="cota-filial"
                 value={quotaForm.filialId}
                 onChange={(e) => setQuotaForm({ ...quotaForm, filialId: e.target.value })}
                 className="select-field"
@@ -669,20 +650,20 @@ export function ZebraSupplies() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Etiquetas / Quinzena</label>
-              <input type="number" min="0" value={quotaForm.etiquetasPadrao} onChange={(e) => setQuotaForm({ ...quotaForm, etiquetasPadrao: parseInt(e.target.value) || 0 })} className="input-field" />
+              <label htmlFor="cota-etiquetas" className="block text-sm font-medium text-dark-300 mb-2">Etiquetas / Quinzena</label>
+              <input id="cota-etiquetas" type="number" min="0" value={quotaForm.etiquetasPadrao} onChange={(e) => setQuotaForm({ ...quotaForm, etiquetasPadrao: parseInt(e.target.value) || 0 })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">Ribbons / Quinzena</label>
-              <input type="number" min="0" value={quotaForm.ribbonsPadrao} onChange={(e) => setQuotaForm({ ...quotaForm, ribbonsPadrao: parseInt(e.target.value) || 0 })} className="input-field" />
+              <label htmlFor="cota-ribbons" className="block text-sm font-medium text-dark-300 mb-2">Ribbons / Quinzena</label>
+              <input id="cota-ribbons" type="number" min="0" value={quotaForm.ribbonsPadrao} onChange={(e) => setQuotaForm({ ...quotaForm, ribbonsPadrao: parseInt(e.target.value) || 0 })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">1º Envio (Dia do Mês)</label>
-              <input type="number" min="1" max="31" value={quotaForm.diaEnvio1} onChange={(e) => setQuotaForm({ ...quotaForm, diaEnvio1: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)) })} className="input-field" />
+              <label htmlFor="cota-dia-envio1" className="block text-sm font-medium text-dark-300 mb-2">1º Envio (Dia do Mês)</label>
+              <input id="cota-dia-envio1" type="number" min="1" max="31" value={quotaForm.diaEnvio1} onChange={(e) => setQuotaForm({ ...quotaForm, diaEnvio1: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)) })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">2º Envio (Dia do Mês)</label>
-              <input type="number" min="1" max="31" value={quotaForm.diaEnvio2} onChange={(e) => setQuotaForm({ ...quotaForm, diaEnvio2: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)) })} className="input-field" />
+              <label htmlFor="cota-dia-envio2" className="block text-sm font-medium text-dark-300 mb-2">2º Envio (Dia do Mês)</label>
+              <input id="cota-dia-envio2" type="number" min="1" max="31" value={quotaForm.diaEnvio2} onChange={(e) => setQuotaForm({ ...quotaForm, diaEnvio2: Math.min(31, Math.max(1, parseInt(e.target.value) || 1)) })} className="input-field" />
             </div>
           </div>
           <div className="flex items-center gap-3 mt-5">
