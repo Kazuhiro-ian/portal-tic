@@ -7,7 +7,6 @@ import portal.ti.queiroz.model.EstoqueItem;
 import portal.ti.queiroz.repository.EstoqueItemRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class EstoqueItemService {
@@ -27,22 +26,19 @@ public class EstoqueItemService {
     }
 
     public EstoqueItem atualizar(Long id, EstoqueItem itemAtualizado) {
-        Optional<EstoqueItem> itemExistente = repository.findById(id);
+        EstoqueItem item = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Item não encontrado no estoque com o ID: " + id));
 
-        if (itemExistente.isPresent()) {
-            EstoqueItem item = itemExistente.get();
-            item.setName(itemAtualizado.getName());
-            item.setCategory(itemAtualizado.getCategory());
-            item.setSubcategory(itemAtualizado.getSubcategory());
-            item.setQuantity(itemAtualizado.getQuantity());
-            item.setMinQuantity(itemAtualizado.getMinQuantity());
-            item.setLocation(itemAtualizado.getLocation());
-            item.setSerialNumber(itemAtualizado.getSerialNumber());
-            item.setResponsavel(itemAtualizado.getResponsavel());
+        item.setName(itemAtualizado.getName());
+        item.setCategory(itemAtualizado.getCategory());
+        item.setSubcategory(itemAtualizado.getSubcategory());
+        item.setQuantity(itemAtualizado.getQuantity());
+        item.setMinQuantity(itemAtualizado.getMinQuantity());
+        item.setLocation(itemAtualizado.getLocation());
+        item.setSerialNumber(itemAtualizado.getSerialNumber());
+        item.setResponsavel(itemAtualizado.getResponsavel());
 
-            return repository.save(item);
-        }
-        throw new RecursoNaoEncontradoException("Item não encontrado no estoque com o ID: " + id);
+        return repository.save(item);
     }
 
     public void deletar(Long id) {

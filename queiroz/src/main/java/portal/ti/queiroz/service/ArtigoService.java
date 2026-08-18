@@ -7,7 +7,6 @@ import portal.ti.queiroz.model.Artigo;
 import portal.ti.queiroz.repository.ArtigoRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ArtigoService {
@@ -27,17 +26,15 @@ public class ArtigoService {
     }
 
     public Artigo atualizar(Long id, Artigo artigoAtualizado) {
-        Optional<Artigo> existente = repository.findById(id);
-        if (existente.isPresent()) {
-            Artigo a = existente.get();
-            a.setTitle(artigoAtualizado.getTitle());
-            a.setCategory(artigoAtualizado.getCategory());
-            a.setSummary(artigoAtualizado.getSummary());
-            a.setContent(artigoAtualizado.getContent());
-            a.setAuthor(artigoAtualizado.getAuthor());
-            return repository.save(a);
-        }
-        throw new RecursoNaoEncontradoException("Artigo não encontrado: " + id);
+        Artigo a = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Artigo não encontrado: " + id));
+
+        a.setTitle(artigoAtualizado.getTitle());
+        a.setCategory(artigoAtualizado.getCategory());
+        a.setSummary(artigoAtualizado.getSummary());
+        a.setContent(artigoAtualizado.getContent());
+        a.setAuthor(artigoAtualizado.getAuthor());
+        return repository.save(a);
     }
 
     public void deletar(Long id) {

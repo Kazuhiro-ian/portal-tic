@@ -8,7 +8,6 @@ import portal.ti.queiroz.repository.TarefaPlantaoRepository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TarefaPlantaoService {
@@ -31,13 +30,10 @@ public class TarefaPlantaoService {
     }
 
     public TarefaPlantao atualizarStatus(Long id, String novoStatus) {
-        Optional<TarefaPlantao> opt = repository.findById(id);
-        if (opt.isPresent()) {
-            TarefaPlantao t = opt.get();
-            t.setStatus(novoStatus);
-            return repository.save(t);
-        }
-        throw new RecursoNaoEncontradoException("Tarefa não encontrada: " + id);
+        TarefaPlantao tarefa = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Tarefa não encontrada: " + id));
+        tarefa.setStatus(novoStatus);
+        return repository.save(tarefa);
     }
 
     public void deletar(Long id) {

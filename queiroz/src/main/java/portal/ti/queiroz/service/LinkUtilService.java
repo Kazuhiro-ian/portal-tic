@@ -7,7 +7,6 @@ import portal.ti.queiroz.model.LinkUtil;
 import portal.ti.queiroz.repository.LinkUtilRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class LinkUtilService {
@@ -27,18 +26,15 @@ public class LinkUtilService {
     }
 
     public LinkUtil atualizar(Long id, LinkUtil linkAtualizado) {
-        Optional<LinkUtil> linkExistente = repository.findById(id);
+        LinkUtil link = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Link não encontrado: " + id));
 
-        if (linkExistente.isPresent()) {
-            LinkUtil link = linkExistente.get();
-            link.setName(linkAtualizado.getName());
-            link.setUrl(linkAtualizado.getUrl());
-            link.setCategory(linkAtualizado.getCategory());
-            link.setTags(linkAtualizado.getTags());
+        link.setName(linkAtualizado.getName());
+        link.setUrl(linkAtualizado.getUrl());
+        link.setCategory(linkAtualizado.getCategory());
+        link.setTags(linkAtualizado.getTags());
 
-            return repository.save(link);
-        }
-        throw new RecursoNaoEncontradoException("Link não encontrado: " + id);
+        return repository.save(link);
     }
 
     public void deletar(Long id) {

@@ -7,7 +7,6 @@ import portal.ti.queiroz.model.Colaborador;
 import portal.ti.queiroz.repository.ColaboradorRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ColaboradorService {
@@ -27,17 +26,14 @@ public class ColaboradorService {
     }
 
     public Colaborador atualizar(Long id, Colaborador colaboradorAtualizado) {
-        Optional<Colaborador> colaboradorExistente = repository.findById(id);
+        Colaborador colaborador = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Colaborador não encontrado com o ID: " + id));
 
-        if (colaboradorExistente.isPresent()) {
-            Colaborador colaborador = colaboradorExistente.get();
-            colaborador.setName(colaboradorAtualizado.getName());
-            colaborador.setRole(colaboradorAtualizado.getRole());
-            colaborador.setIsOnCall(colaboradorAtualizado.getIsOnCall());
+        colaborador.setName(colaboradorAtualizado.getName());
+        colaborador.setRole(colaboradorAtualizado.getRole());
+        colaborador.setIsOnCall(colaboradorAtualizado.getIsOnCall());
 
-            return repository.save(colaborador);
-        }
-        throw new RecursoNaoEncontradoException("Colaborador não encontrado com o ID: " + id);
+        return repository.save(colaborador);
     }
 
     public void deletar(Long id) {

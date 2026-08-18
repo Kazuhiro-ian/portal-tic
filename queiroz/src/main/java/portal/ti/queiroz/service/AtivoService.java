@@ -16,7 +16,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,31 +57,28 @@ public class AtivoService {
     }
 
     public Ativo atualizar(Long id, Ativo ativoAtualizado) {
-        Optional<Ativo> ativoExistente = repository.findById(id);
+        Ativo ativo = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Ativo não encontrado com o ID: " + id));
 
-        if (ativoExistente.isPresent()) {
-            Ativo ativo = ativoExistente.get();
-            ativo.setTipo(ativoAtualizado.getTipo());
-            ativo.setMarca(ativoAtualizado.getMarca());
-            ativo.setModelo(ativoAtualizado.getModelo());
-            ativo.setStatus(ativoAtualizado.getStatus());
-            ativo.setEtiqueta(ativoAtualizado.getEtiqueta());
-            ativo.setIp(ativoAtualizado.getIp());
-            ativo.setNumeroSerie(ativoAtualizado.getNumeroSerie());
-            ativo.setMacAddress(ativoAtualizado.getMacAddress());
-            ativo.setImei(ativoAtualizado.getImei());
-            ativo.setFilialId(ativoAtualizado.getFilialId());
-            ativo.setSetor(ativoAtualizado.getSetor());
-            ativo.setResponsavelAtual(ativoAtualizado.getResponsavelAtual());
-            ativo.setObservacoes(ativoAtualizado.getObservacoes());
-            ativo.setLastMaintenance(ativoAtualizado.getLastMaintenance());
-            ativo.setProcessador(ativoAtualizado.getProcessador());
-            ativo.setMemoria(ativoAtualizado.getMemoria());
-            ativo.setArmazenamento(ativoAtualizado.getArmazenamento());
+        ativo.setTipo(ativoAtualizado.getTipo());
+        ativo.setMarca(ativoAtualizado.getMarca());
+        ativo.setModelo(ativoAtualizado.getModelo());
+        ativo.setStatus(ativoAtualizado.getStatus());
+        ativo.setEtiqueta(ativoAtualizado.getEtiqueta());
+        ativo.setIp(ativoAtualizado.getIp());
+        ativo.setNumeroSerie(ativoAtualizado.getNumeroSerie());
+        ativo.setMacAddress(ativoAtualizado.getMacAddress());
+        ativo.setImei(ativoAtualizado.getImei());
+        ativo.setFilialId(ativoAtualizado.getFilialId());
+        ativo.setSetor(ativoAtualizado.getSetor());
+        ativo.setResponsavelAtual(ativoAtualizado.getResponsavelAtual());
+        ativo.setObservacoes(ativoAtualizado.getObservacoes());
+        ativo.setLastMaintenance(ativoAtualizado.getLastMaintenance());
+        ativo.setProcessador(ativoAtualizado.getProcessador());
+        ativo.setMemoria(ativoAtualizado.getMemoria());
+        ativo.setArmazenamento(ativoAtualizado.getArmazenamento());
 
-            return repository.save(ativo);
-        }
-        throw new RecursoNaoEncontradoException("Ativo não encontrado com o ID: " + id);
+        return repository.save(ativo);
     }
 
     public void deletar(Long id) {

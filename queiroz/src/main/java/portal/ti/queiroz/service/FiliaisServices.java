@@ -9,7 +9,6 @@ import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.repository.FiliaisRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class FiliaisServices {
@@ -30,23 +29,20 @@ public class FiliaisServices {
     }
 
     public Filiais atualizar(Long id, Filiais filialAtualizada) {
-        Optional<Filiais> filialExistente = repository.findById(id);
+        Filiais filial = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Filial não encontrada com o ID: " + id));
 
-        if (filialExistente.isPresent()) {
-            validarEstoqueDividido(filialAtualizada);
+        validarEstoqueDividido(filialAtualizada);
 
-            Filiais filial = filialExistente.get();
-            filial.setNumeroFilial(filialAtualizada.getNumeroFilial());
-            filial.setNome(filialAtualizada.getNome());
-            filial.setCnpj(filialAtualizada.getCnpj());
-            filial.setEndereco(filialAtualizada.getEndereco());
-            filial.setGrupoRecebimento(filialAtualizada.getGrupoRecebimento());
-            filial.setTipoFilial(filialAtualizada.getTipoFilial());
-            filial.setEstoqueDividido(filialAtualizada.getEstoqueDividido());
+        filial.setNumeroFilial(filialAtualizada.getNumeroFilial());
+        filial.setNome(filialAtualizada.getNome());
+        filial.setCnpj(filialAtualizada.getCnpj());
+        filial.setEndereco(filialAtualizada.getEndereco());
+        filial.setGrupoRecebimento(filialAtualizada.getGrupoRecebimento());
+        filial.setTipoFilial(filialAtualizada.getTipoFilial());
+        filial.setEstoqueDividido(filialAtualizada.getEstoqueDividido());
 
-            return repository.save(filial);
-        }
-        throw new RecursoNaoEncontradoException("Filial não encontrada com o ID: " + id);
+        return repository.save(filial);
     }
 
     /** Estoque dividido em armazéns (01/03) só faz sentido para Lojas. */

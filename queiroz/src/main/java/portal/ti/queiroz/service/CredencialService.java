@@ -9,7 +9,6 @@ import portal.ti.queiroz.model.TipoAcaoCredencial;
 import portal.ti.queiroz.repository.CredencialRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class CredencialService {
@@ -35,23 +34,21 @@ public class CredencialService {
     }
 
     public CredencialResponse atualizar(Long id, Credencial credencialAtualizada) {
-        Optional<Credencial> existente = repository.findById(id);
-        if (existente.isPresent()) {
-            Credencial c = existente.get();
-            c.setName(credencialAtualizada.getName());
-            c.setUsername(credencialAtualizada.getUsername());
-            // Só sobrescreve a senha se vier preenchida -- a listagem não traz mais a
-            // senha atual, então o formulário de edição não pode pré-carregá-la; se
-            // salvássemos sempre, um PUT de "só mudei o nome" apagaria a senha existente.
-            if (credencialAtualizada.getPassword() != null && !credencialAtualizada.getPassword().isBlank()) {
-                c.setPassword(credencialAtualizada.getPassword());
-            }
-            c.setNotes(credencialAtualizada.getNotes());
-            Credencial salva = repository.save(c);
-            logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.EDITAR);
-            return CredencialResponse.fromEntity(salva);
+        Credencial c = repository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Credencial não encontrada: " + id));
+
+        c.setName(credencialAtualizada.getName());
+        c.setUsername(credencialAtualizada.getUsername());
+        // Só sobrescreve a senha se vier preenchida -- a listagem não traz mais a
+        // senha atual, então o formulário de edição não pode pré-carregá-la; se
+        // salvássemos sempre, um PUT de "só mudei o nome" apagaria a senha existente.
+        if (credencialAtualizada.getPassword() != null && !credencialAtualizada.getPassword().isBlank()) {
+            c.setPassword(credencialAtualizada.getPassword());
         }
-        throw new RecursoNaoEncontradoException("Credencial não encontrada: " + id);
+        c.setNotes(credencialAtualizada.getNotes());
+        Credencial salva = repository.save(c);
+        logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.EDITAR);
+        return CredencialResponse.fromEntity(salva);
     }
 
     public void deletar(Long id) {

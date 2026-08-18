@@ -7,7 +7,6 @@ import portal.ti.queiroz.repository.EscalaRepository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class EscalaService {
@@ -20,15 +19,13 @@ public class EscalaService {
     }
 
     public Escala salvarOuAtualizar(Escala escala) {
-        // Se já existir uma escala para esse colaborador nesse dia, ele atualiza o turno existente
-        Optional<Escala> existente = repository.findByColaboradorIdAndData(escala.getColaboradorId(), escala.getData());
-
-        if (existente.isPresent()) {
-            Escala e = existente.get();
-            e.setTurno(escala.getTurno());
-            return repository.save(e);
-        } else {
-            return repository.save(escala);
-        }
+        // Se já existir uma escala para esse colaborador nesse dia, atualiza o turno existente
+        // em vez de inserir uma segunda linha para o mesmo par colaborador/data.
+        return repository.findByColaboradorIdAndData(escala.getColaboradorId(), escala.getData())
+                .map(existente -> {
+                    existente.setTurno(escala.getTurno());
+                    return repository.save(existente);
+                })
+                .orElseGet(() -> repository.save(escala));
     }
 }

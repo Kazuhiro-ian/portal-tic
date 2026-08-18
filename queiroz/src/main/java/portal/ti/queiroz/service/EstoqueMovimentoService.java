@@ -23,10 +23,7 @@ public class EstoqueMovimentoService {
     private EstoqueItemRepository itemRepository;
 
     public List<EstoqueMovimento> listarTodos() {
-        // Retorna todos ordenados do mais recente para o mais antigo (opcional, mas recomendado)
-        return repository.findAll().stream()
-                .sorted((m1, m2) -> m2.getDate().compareTo(m1.getDate()))
-                .toList();
+        return repository.findByOrderByDateDesc();
     }
 
     /**
