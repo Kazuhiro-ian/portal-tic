@@ -14,14 +14,15 @@ import java.time.LocalDate;
  */
 @Data
 @Entity
-@Table(name = "dias_recebimento")
+@Table(name = "dias_recebimento",
+        uniqueConstraints = @UniqueConstraint(name = "uk_dias_recebimento_data", columnNames = "data"))
 public class DiaRecebimento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private LocalDate data;
 
     @Enumerated(EnumType.STRING)

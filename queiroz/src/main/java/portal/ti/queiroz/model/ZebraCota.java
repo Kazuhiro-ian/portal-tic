@@ -5,14 +5,15 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "zebra_cotas")
+@Table(name = "zebra_cotas",
+        uniqueConstraints = @UniqueConstraint(name = "uk_zebra_cotas_filial_id", columnNames = "filial_id"))
 public class ZebraCota {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private Long filialId;
 
     @Column(nullable = false)

@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuarios",
+        uniqueConstraints = @UniqueConstraint(name = "uk_usuarios_username", columnNames = "username"))
 public class Usuario {
 
     @Id
@@ -18,7 +19,7 @@ public class Usuario {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String username;
 
     @Column(name = "password_hash", nullable = false)
