@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
+import { FiltroBar } from './FiltroBar.jsx';
 import { listarLinks, salvarLink, atualizarLink, deletarLink } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
@@ -155,31 +156,25 @@ export function LinksManager() {
       </div>
 
       <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou tag..."
-              aria-label="Buscar por nome ou tag"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-10"
-            />
-          </div>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="select-field sm:w-48"
-          >
-            <option value="all">Todas Categorias</option>
-            {Object.entries(categoryLabels).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FiltroBar
+          busca={search}
+          onBuscaChange={setSearch}
+          placeholderBusca="Buscar por nome ou tag..."
+          filtros={[
+            {
+              chave: 'categoria',
+              label: 'Categoria',
+              tipo: 'select',
+              valor: filterCategory,
+              valorPadrao: 'all',
+              opcoes: [
+                { value: 'all', label: 'Todas Categorias' },
+                ...Object.entries(categoryLabels).map(([key, label]) => ({ value: key, label })),
+              ],
+              onChange: setFilterCategory,
+            },
+          ]}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading ? (
