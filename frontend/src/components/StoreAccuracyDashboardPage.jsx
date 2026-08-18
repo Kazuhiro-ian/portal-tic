@@ -1,36 +1,64 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronRight, ArrowLeftRight, ArrowLeft,
-  Layers, Store, Warehouse, BarChart3,
+  ChevronLeft, ChevronRight, ArrowLeftRight, ArrowLeft, ArrowDown, ArrowUp,
+  Layers, Store, Warehouse, BarChart3, PieChart,
 } from 'lucide-react';
 import { ResultadoArmazemCard } from './ResultadoArmazemCard.jsx';
+import { DeltaBadge } from './DeltaBadge.jsx';
 import { Toast } from './Toast.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { buscarDetalheFilialAcuracidade, buscarConfiguracaoQualidade } from '../services/api.js';
 import { moeda, percentual, inteiro, unidade } from '../utils/formato.js';
 import { MESES } from '../utils/datas.js';
 
+/**
+ * Duas séries (Loja/Estoque) são identidade, não status -- por isso ganham cores
+ * categóricas (azul/violeta) em vez de verde/vermelho, que na mesma tela já
+ * significam "acurado/inacurado" na rosca e nos KPIs. Reaproveitar verde aqui
+ * criaria duas leituras diferentes pra mesma cor na mesma tela.
+ */
+const COR_LOJA = { bar: 'bg-blue-400', dot: 'bg-blue-400', texto: 'text-blue-300' };
+const COR_ESTOQUE = { bar: 'bg-violet-400', dot: 'bg-violet-400', texto: 'text-violet-300' };
+
+/** Grande número de destaque (KPI) com meta e variação vs mês anterior. */
+function HeroKpi({ titulo, valor, atingiu, meta, delta }) {
+  const cor = atingiu == null ? 'text-white' : atingiu ? 'text-green-400' : 'text-red-400';
+  return (
+    <div className="min-w-0">
+      <p className="text-xs uppercase tracking-wider text-dark-400">{titulo}</p>
+      <p className={`text-4xl sm:text-5xl font-bold mt-1 tabular-nums ${cor}`}>{valor}</p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {delta}
+        {meta && <span className="text-xs text-dark-500">{meta}</span>}
+      </div>
+    </div>
+  );
+}
+
 /** Comparação Loja x Estoque de um indicador, em barras horizontais finas. */
 function BarraComparativa({ rotulo, valorLoja, valorEstoque, formatador }) {
   const max = Math.max(Number(valorLoja) || 0, Number(valorEstoque) || 0, 0.0001);
   const series = [
-    { nome: 'Loja', valor: valorLoja, cor: 'bg-primary-400' },
-    { nome: 'Estoque', valor: valorEstoque, cor: 'bg-amber-400' },
+    { nome: 'Loja', valor: valorLoja, ...COR_LOJA },
+    { nome: 'Estoque', valor: valorEstoque, ...COR_ESTOQUE },
   ];
   return (
     <div className="space-y-2">
       <p className="text-xs text-dark-400 uppercase tracking-wider">{rotulo}</p>
       {series.map((s) => (
-        <div key={s.nome} className="flex items-center gap-3">
-          <span className="w-16 text-xs text-dark-300 shrink-0">{s.nome}</span>
+        <div key={s.nome} className="flex items-center gap-3" title={`${s.nome}: ${formatador(s.valor)}`}>
+          <span className="w-16 text-xs text-dark-300 shrink-0 flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
+            {s.nome}
+          </span>
           <div className="flex-1 h-2 rounded-full bg-dark-700 overflow-hidden">
             <div
-              className={`h-full rounded-full ${s.cor}`}
+              className={`h-full rounded-full ${s.bar} transition-[width] duration-500`}
               style={{ width: `${Math.max((Number(s.valor) || 0) / max * 100, 2)}%` }}
             />
           </div>
-          <span className="w-16 text-xs text-dark-200 text-right shrink-0">{formatador(s.valor)}</span>
+          <span className="w-16 text-xs text-dark-200 text-right shrink-0 tabular-nums">{formatador(s.valor)}</span>
         </div>
       ))}
     </div>
@@ -63,31 +91,48 @@ function RoscaProdutos({ resultado }) {
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6">
-      <svg viewBox="0 0 160 160" className="w-40 h-40 shrink-0" role="img" aria-label="Distribuição de produtos por acuracidade">
-        <circle cx="80" cy="80" r={raio} fill="none" stroke="currentColor" strokeWidth="20" className="text-dark-700" />
-        {segmentos.filter((s) => s.valor > 0).map((s) => {
-          const comprimentoTotal = (s.valor / total) * circunferencia;
-          const comprimentoVisivel = Math.max(comprimentoTotal - 3, 0);
-          const elemento = (
-            <circle
-              key={s.rotulo}
-              cx="80" cy="80" r={raio} fill="none" stroke="currentColor" strokeWidth="20"
-              className={s.corTexto}
-              strokeDasharray={`${comprimentoVisivel} ${circunferencia}`}
-              strokeDashoffset={-acumulado}
-              transform="rotate(-90 80 80)"
-            />
-          );
-          acumulado += comprimentoTotal;
-          return elemento;
-        })}
-      </svg>
-      <div className="space-y-2">
+      <div className="relative shrink-0">
+        <svg viewBox="0 0 160 160" className="w-40 h-40" role="img" aria-label="Distribuição de produtos por acuracidade">
+          <circle cx="80" cy="80" r={raio} fill="none" stroke="currentColor" strokeWidth="20" className="text-dark-700" />
+          {segmentos.filter((s) => s.valor > 0).map((s) => {
+            const comprimentoTotal = (s.valor / total) * circunferencia;
+            const comprimentoVisivel = Math.max(comprimentoTotal - 3, 0);
+            const elemento = (
+              <circle
+                key={s.rotulo}
+                cx="80" cy="80" r={raio} fill="none" stroke="currentColor" strokeWidth="20"
+                className={`${s.corTexto} transition-[stroke-dasharray] duration-500`}
+                strokeDasharray={`${comprimentoVisivel} ${circunferencia}`}
+                strokeDashoffset={-acumulado}
+                strokeLinecap="round"
+                transform="rotate(-90 80 80)"
+              >
+                <title>{s.rotulo}: {inteiro(s.valor)} ({percentual(total > 0 ? s.valor / total : 0)})</title>
+              </circle>
+            );
+            acumulado += comprimentoTotal;
+            return elemento;
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-2xl font-bold text-white tabular-nums">{inteiro(total)}</span>
+          <span className="text-[11px] text-dark-400 uppercase tracking-wider">produtos</span>
+        </div>
+      </div>
+      <div className="space-y-2.5 w-full">
         {segmentos.map((s) => (
           <div key={s.rotulo} className="flex items-center gap-2 text-sm">
-            <span className={`w-3 h-3 rounded-full shrink-0 bg-current ${s.corTexto}`} />
-            <span className="text-dark-300 w-20">{s.rotulo}</span>
-            <span className="text-dark-100 font-medium">{s.valor} ({percentual(total > 0 ? s.valor / total : 0)})</span>
+            <span className={`w-2.5 h-2.5 rounded-full shrink-0 bg-current ${s.corTexto}`} />
+            <span className="text-dark-300 w-20 shrink-0">{s.rotulo}</span>
+            <div className="flex-1 h-1.5 rounded-full bg-dark-700 overflow-hidden hidden sm:block">
+              <div
+                className={`h-full rounded-full bg-current ${s.corTexto}`}
+                style={{ width: `${total > 0 ? (s.valor / total) * 100 : 0}%` }}
+              />
+            </div>
+            <span className="text-dark-100 font-medium tabular-nums shrink-0">
+              {inteiro(s.valor)} <span className="text-dark-400">({percentual(total > 0 ? s.valor / total : 0)})</span>
+            </span>
           </div>
         ))}
       </div>
@@ -96,11 +141,14 @@ function RoscaProdutos({ resultado }) {
 }
 
 /** Ranking de maiores divergências como barras horizontais de magnitude. */
-function RankingBarras({ titulo, itens, cor }) {
+function RankingBarras({ titulo, icon: Icon, itens, cor }) {
   const corBarra = cor === 'text-red-400' ? 'bg-red-400' : 'bg-green-400';
   return (
     <div className="card">
-      <h3 className="font-semibold text-white mb-4">{titulo}</h3>
+      <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+        {Icon && <Icon className={`w-4 h-4 ${cor}`} />}
+        {titulo}
+      </h3>
       {!itens || itens.length === 0 ? (
         <p className="text-dark-400 text-sm text-center py-8">Nada nesse período.</p>
       ) : (
@@ -108,14 +156,18 @@ function RankingBarras({ titulo, itens, cor }) {
           {(() => {
             const max = Math.max(...itens.map((i) => Math.abs(Number(i.valorDivergencia) || 0)), 0.0001);
             return itens.map((item, idx) => (
-              <div key={`${item.codProduto}-${idx}`} className="space-y-1">
+              <div
+                key={`${item.codProduto}-${idx}`}
+                className="space-y-1"
+                title={`${item.descricao || item.codProduto}: ${moeda(item.valorDivergencia)}`}
+              >
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-dark-200 truncate">{item.descricao || item.codProduto}</span>
-                  <span className={`shrink-0 font-medium ${cor}`}>{moeda(item.valorDivergencia)}</span>
+                  <span className={`shrink-0 font-medium tabular-nums ${cor}`}>{moeda(item.valorDivergencia)}</span>
                 </div>
                 <div className="h-2 rounded-full bg-dark-700 overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${corBarra}`}
+                    className={`h-full rounded-full ${corBarra} transition-[width] duration-500`}
                     style={{ width: `${Math.max(Math.abs(Number(item.valorDivergencia) || 0) / max * 100, 2)}%` }}
                   />
                 </div>
@@ -167,13 +219,25 @@ export function StoreAccuracyDashboardPage() {
   };
 
   if (carregando) {
-    return <p className="text-dark-400 text-center py-16">Carregando...</p>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
   if (!detalhe) return null;
 
   const geral = detalhe.geral?.atual;
+  const geralAnterior = detalhe.geral?.anterior;
   const armazem01 = detalhe.armazem01?.atual;
   const armazem03 = detalhe.armazem03?.atual;
+
+  const atingiuAcuracidade = geral && config?.metaAcuracidade != null
+    ? Number(geral.percentualAcuracidade) >= Number(config.metaAcuracidade)
+    : null;
+  const atingiuAjuste = geral && config?.metaInacuracia != null
+    ? Number(geral.percentualInacuracia) <= Number(config.metaInacuracia)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -205,20 +269,49 @@ export function StoreAccuracyDashboardPage() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 ${detalhe.estoqueDividido ? 'lg:grid-cols-3' : ''} gap-4`}>
-        <ResultadoArmazemCard titulo="Geral" icon={Layers} resultado={geral} anterior={detalhe.geral?.anterior} config={config} />
-        {detalhe.estoqueDividido && (
-          <>
-            <ResultadoArmazemCard titulo="Loja" icon={Store} resultado={armazem01} anterior={detalhe.armazem01?.anterior} config={config} />
-            <ResultadoArmazemCard titulo="Estoque" icon={Warehouse} resultado={armazem03} anterior={detalhe.armazem03?.anterior} config={config} />
-          </>
-        )}
+      {/* Hero: o número que importa, em destaque -- Loja/Estoque (mais abaixo) são o
+          detalhamento, não a manchete. */}
+      <div className="card border-primary-500/25 bg-gradient-to-br from-dark-800 to-dark-800/40">
+        <div className="flex items-center gap-2 mb-5">
+          <Layers className="w-5 h-5 text-primary-400" />
+          <h2 className="font-semibold text-white text-lg">Acuracidade Geral</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+          <HeroKpi
+            titulo="Acuracidade"
+            valor={percentual(geral?.percentualAcuracidade)}
+            atingiu={atingiuAcuracidade}
+            meta={config ? `Meta: mínimo ${percentual(config.metaAcuracidade)}` : null}
+            delta={geralAnterior && (
+              <DeltaBadge atual={geral?.percentualAcuracidade} anterior={geralAnterior.percentualAcuracidade} />
+            )}
+          />
+          <HeroKpi
+            titulo="Ajuste (R$)"
+            valor={percentual(geral?.percentualInacuracia)}
+            atingiu={atingiuAjuste}
+            meta={config ? `Meta: máximo ${percentual(config.metaInacuracia)}` : null}
+            delta={geralAnterior && (
+              <DeltaBadge atual={geral?.percentualInacuracia} anterior={geralAnterior.percentualInacuracia} invertido />
+            )}
+          />
+        </div>
       </div>
+
+      {detalhe.estoqueDividido && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ResultadoArmazemCard titulo="Loja" icon={Store} resultado={armazem01} anterior={detalhe.armazem01?.anterior} config={config} />
+          <ResultadoArmazemCard titulo="Estoque" icon={Warehouse} resultado={armazem03} anterior={detalhe.armazem03?.anterior} config={config} />
+        </div>
+      )}
 
       <div className={`grid grid-cols-1 ${detalhe.estoqueDividido ? 'lg:grid-cols-2' : ''} gap-4`}>
         {detalhe.estoqueDividido && (
           <div className="card">
-            <h3 className="font-semibold text-white mb-4">Loja x Estoque</h3>
+            <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+              <ArrowLeftRight className="w-4 h-4 text-primary-400" />
+              Loja x Estoque
+            </h3>
             <div className="space-y-5">
               <BarraComparativa
                 rotulo="Acuracidade"
@@ -237,7 +330,10 @@ export function StoreAccuracyDashboardPage() {
         )}
 
         <div className="card">
-          <h3 className="font-semibold text-white mb-4">Distribuição de produtos (Geral)</h3>
+          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-primary-400" />
+            Distribuição de produtos (Geral)
+          </h3>
           <RoscaProdutos resultado={geral} />
         </div>
       </div>
@@ -262,14 +358,14 @@ export function StoreAccuracyDashboardPage() {
               <p className="text-xs text-dark-400 uppercase tracking-wider">
                 Acuracidade Geral · considerando as transferências
               </p>
-              <p className="text-2xl font-bold text-white mt-1">{percentual(geral?.percentualAcuracidade)}</p>
+              <p className="text-2xl font-bold text-white mt-1 tabular-nums">{percentual(geral?.percentualAcuracidade)}</p>
               <p className="text-xs text-dark-400 mt-1">{inteiro(geral?.produtosAcurados)} produtos acurados</p>
             </div>
             <div className="p-4 rounded-xl bg-dark-800/60 border border-dark-600">
               <p className="text-xs text-dark-400 uppercase tracking-wider">
                 Acuracidade Geral · sem considerar as transferências
               </p>
-              <p className="text-2xl font-bold text-amber-300 mt-1">
+              <p className="text-2xl font-bold text-amber-300 mt-1 tabular-nums">
                 {percentual(detalhe.percentualAcuracidadeGeralSemTransferencias)}
               </p>
               <p className="text-xs text-dark-400 mt-1">
@@ -300,8 +396,8 @@ export function StoreAccuracyDashboardPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RankingBarras titulo="Maiores Faltas" itens={detalhe.maioresFaltas} cor="text-red-400" />
-        <RankingBarras titulo="Maiores Sobras" itens={detalhe.maioresSobras} cor="text-green-400" />
+        <RankingBarras titulo="Maiores Faltas" icon={ArrowDown} itens={detalhe.maioresFaltas} cor="text-red-400" />
+        <RankingBarras titulo="Maiores Sobras" icon={ArrowUp} itens={detalhe.maioresSobras} cor="text-green-400" />
       </div>
     </div>
   );

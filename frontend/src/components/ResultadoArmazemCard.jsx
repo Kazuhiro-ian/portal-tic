@@ -1,4 +1,5 @@
 import { moeda, percentual, inteiro, unidade } from '../utils/formato.js';
+import { DeltaBadge } from './DeltaBadge.jsx';
 
 function Linha({ rotulo, valor, destaque }) {
   return (
@@ -77,9 +78,9 @@ export function ResultadoArmazemCard({ titulo, icon: Icon, resultado, anterior, 
           </div>
 
           {anterior && (
-            <p className="text-xs text-dark-400 pt-2 border-t border-dark-700/50">
-              Mês anterior: {percentual(anterior.percentualAcuracidade)} de acuracidade.
-            </p>
+            <div className="pt-2 border-t border-dark-700/50">
+              <DeltaBadge atual={resultado.percentualAcuracidade} anterior={anterior.percentualAcuracidade} />
+            </div>
           )}
         </div>
       )}
