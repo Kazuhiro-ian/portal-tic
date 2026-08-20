@@ -371,12 +371,15 @@ public class RelatorioAcuracidadeService {
         Inventario invAtual = inventariosMaisRecentesPorFilial(mesAtual).get(filialId);
         Inventario invAnterior = inventariosMaisRecentesPorFilial(mesAnterior).get(filialId);
 
-        InventarioResultado r01Atual = resultadoDe(invAtual, Armazem.ARMAZEM_01);
-        InventarioResultado r03Atual = resultadoDe(invAtual, Armazem.ARMAZEM_03);
-        InventarioResultado r01Anterior = resultadoDe(invAnterior, Armazem.ARMAZEM_01);
-        InventarioResultado r03Anterior = resultadoDe(invAnterior, Armazem.ARMAZEM_03);
-
         boolean dividida = Boolean.TRUE.equals(filial.getEstoqueDividido());
+
+        // Filial não dividida grava o resultado com armazem = null (ver
+        // AcuracidadeService.validarArmazem) -- buscar direto por ARMAZEM_01 nesse caso
+        // nunca acharia nada, já que "armazem = 'ARMAZEM_01'" não bate com uma linha NULL.
+        InventarioResultado r01Atual = resultadoDe(invAtual, dividida ? Armazem.ARMAZEM_01 : null);
+        InventarioResultado r03Atual = resultadoDe(invAtual, Armazem.ARMAZEM_03);
+        InventarioResultado r01Anterior = resultadoDe(invAnterior, dividida ? Armazem.ARMAZEM_01 : null);
+        InventarioResultado r03Anterior = resultadoDe(invAnterior, Armazem.ARMAZEM_03);
 
         InventarioResultado geralAtual = geral(invAtual, r01Atual, r03Atual, limiteZerados);
         ResultadoArmazem geral = new ResultadoArmazem(
