@@ -308,11 +308,13 @@ export function AccuracyDashboard({ detalhe, config, carregando }) {
         </div>
       </div>
 
-      {detalhe.estoqueDividido && (
+      {detalhe.estoqueDividido ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ResultadoArmazemCard titulo="Loja" icon={Store} resultado={armazem01} anterior={detalhe.armazem01?.anterior} config={config} />
           <ResultadoArmazemCard titulo="Estoque" icon={Warehouse} resultado={armazem03} anterior={detalhe.armazem03?.anterior} config={config} />
         </div>
+      ) : (
+        <ResultadoArmazemCard titulo="Detalhamento" icon={Layers} resultado={geral} anterior={geralAnterior} config={config} />
       )}
 
       {linhasFaltaSobra.length > 0 && (
