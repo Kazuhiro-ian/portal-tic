@@ -6,6 +6,7 @@ import { InventoryPlan } from './InventoryPlan.jsx';
 import { EquipeInventarioManagement } from './EquipeInventarioManagement.jsx';
 import { EquipeCalendarManagement } from './EquipeCalendarManagement.jsx';
 import { AccuracyReport } from './AccuracyReport.jsx';
+import { QualityDashboards } from './QualityDashboards.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 
@@ -13,6 +14,7 @@ const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
   { id: 'plano', label: 'Plano de Inventário' },
   { id: 'acuracidade', label: 'Acuracidade' },
+  { id: 'dashboards', label: 'Dashboards' },
   { id: 'equipes', label: 'Equipes' },
   { id: 'equipe-calendario', label: 'Calendário da Equipe' },
 ];
@@ -27,6 +29,14 @@ export function QualityPlanning() {
 
   // Conflitos devolvidos pela aplicação do padrão, repassados para a aba do plano.
   const [conflitosExternos, setConflitosExternos] = useState(null);
+
+  // Pré-seleção da aba Dashboards, disparada pelo botão "Ver dashboard completo" da
+  // Acuracidade -- troca de aba e já abre o dashboard da filial escolhida.
+  const [selecaoDashboard, setSelecaoDashboard] = useState(null);
+  const abrirDashboard = (selecao) => {
+    setSelecaoDashboard(selecao);
+    setAba('dashboards');
+  };
 
   const { toast, showToast, hideToast } = useToast();
 
@@ -117,7 +127,9 @@ export function QualityPlanning() {
           conflitosExternos={conflitosExternos}
         />
       ) : aba === 'acuracidade' ? (
-        <AccuracyReport ano={ano} mes={mes} showToast={showToast} />
+        <AccuracyReport ano={ano} mes={mes} showToast={showToast} onAbrirDashboard={abrirDashboard} />
+      ) : aba === 'dashboards' ? (
+        <QualityDashboards ano={ano} mes={mes} showToast={showToast} selecaoExterna={selecaoDashboard} />
       ) : aba === 'equipes' ? (
         <EquipeInventarioManagement />
       ) : (

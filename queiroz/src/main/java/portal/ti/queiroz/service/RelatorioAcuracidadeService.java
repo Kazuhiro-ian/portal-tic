@@ -329,6 +329,35 @@ public class RelatorioAcuracidadeService {
         return valor == null ? BigDecimal.ZERO : valor;
     }
 
+    // --- Detalhe por grupo (aba Dashboards: Lojas, CDs ou Geral) ---
+
+    /**
+     * Mesmo formato de {@link #detalheFilial}, mas agregado por grupo em vez de uma única
+     * filial -- reaproveita os agregados já calculados em {@link #relatorioMensal} (cds/lojas/
+     * geral) e o {@link #ranking} filtrado por tipo. Sem armazém01/03 nem divergências cruzadas:
+     * esse detalhamento por Loja/Estoque só faz sentido dentro de uma única filial dividida, não
+     * ao somar várias filiais diferentes.
+     *
+     * @param tipo restringe a CD ou LOJA; null = Geral (todas as filiais)
+     */
+    public DetalheFilialAcuracidadeResponse detalheGrupo(TipoFilial tipo, int ano, int mes) {
+        RelatorioAcuracidadeResponse relatorio = relatorioMensal(ano, mes);
+        ResumoFilialAcuracidade resumo = tipo == TipoFilial.CD ? relatorio.cds()
+                : tipo == TipoFilial.LOJA ? relatorio.lojas()
+                : relatorio.geral();
+
+        Ranking ranking = ranking(ano, mes, tipo, null, null);
+
+        return new DetalheFilialAcuracidadeResponse(
+                null, null, resumo.nome(), tipo, false,
+                new ResultadoArmazem(resumo.atual(), resumo.anterior()),
+                null, null,
+                List.of(),
+                null, null, null,
+                ranking.maioresFaltas(), ranking.maioresSobras(),
+                null, null);
+    }
+
     // --- Detalhe por filial (painel lateral / dashboard da tela de Acuracidade) ---
 
     public DetalheFilialAcuracidadeResponse detalheFilial(Long filialId, int ano, int mes) {

@@ -42,4 +42,12 @@ public class RelatorioAcuracidadeController {
             @PathVariable Long filialId, @RequestParam Integer ano, @RequestParam Integer mes) {
         return service.detalheFilial(filialId, ano, mes);
     }
+
+    // GET /api/qualidade/acuracidade/grupo?tipo=LOJA&ano=2026&mes=8 (tipo omitido = Geral)
+    @GetMapping("/grupo")
+    public DetalheFilialAcuracidadeResponse detalheGrupo(
+            @RequestParam(required = false) TipoFilial tipo,
+            @RequestParam Integer ano, @RequestParam Integer mes) {
+        return service.detalheGrupo(tipo, ano, mes);
+    }
 }

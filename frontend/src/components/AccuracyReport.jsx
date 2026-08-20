@@ -157,7 +157,7 @@ const COLUNAS = [
   },
 ];
 
-export function AccuracyReport({ ano, mes, showToast }) {
+export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
   const [relatorio, setRelatorio] = useState(null);
   const [ranking, setRanking] = useState(null);
   const [config, setConfig] = useState(null);
@@ -223,6 +223,7 @@ export function AccuracyReport({ ano, mes, showToast }) {
           mes={mes}
           onClose={() => setFilialSelecionada(null)}
           showToast={showToast}
+          onAbrirDashboard={onAbrirDashboard}
         />
       )}
     </div>

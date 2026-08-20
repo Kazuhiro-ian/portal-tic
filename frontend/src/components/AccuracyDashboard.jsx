@@ -1,16 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useState } from 'react';
 import {
-  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowLeftRight, ArrowLeft, ArrowDown, ArrowUp,
-  Layers, Store, Warehouse, BarChart3, PieChart, Scale,
+  ChevronDown, ChevronUp, ArrowLeftRight, ArrowDown, ArrowUp,
+  Layers, Store, Warehouse, PieChart, Scale,
 } from 'lucide-react';
 import { ResultadoArmazemCard } from './ResultadoArmazemCard.jsx';
 import { DeltaBadge } from './DeltaBadge.jsx';
-import { Toast } from './Toast.jsx';
-import { useToast } from '../hooks/useToast.js';
-import { buscarDetalheFilialAcuracidade, buscarConfiguracaoQualidade } from '../services/api.js';
 import { moeda, percentual, inteiro, unidade } from '../utils/formato.js';
-import { MESES } from '../utils/datas.js';
 
 /**
  * Duas séries (Loja/Estoque) são identidade, não status -- por isso ganham cores
@@ -230,45 +225,15 @@ function RankingBarras({ titulo, icon: Icon, itens, cor }) {
   );
 }
 
-export function StoreAccuracyDashboardPage() {
-  const { filialId } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { toast, showToast, hideToast } = useToast();
-
-  const hoje = new Date();
-  const ano = Number(searchParams.get('ano')) || hoje.getFullYear();
-  const mes = Number(searchParams.get('mes')) || hoje.getMonth() + 1;
-
-  const [detalhe, setDetalhe] = useState(null);
-  const [config, setConfig] = useState(null);
-  const [carregando, setCarregando] = useState(true);
+/**
+ * Corpo visual do dashboard de acuracidade (KPIs, comparativo Loja x Estoque, rosca de
+ * produtos, rankings) -- sem cabeçalho nem navegação de mês, que ficam a cargo de quem
+ * usa este componente (aba Dashboards de Qualidade). `detalhe` tem o mesmo formato tanto
+ * para uma filial quanto para um grupo (Lojas/CDs/Geral), vindo de
+ * `buscarDetalheFilialAcuracidade`/`buscarDetalheGrupoAcuracidade`.
+ */
+export function AccuracyDashboard({ detalhe, config, carregando }) {
   const [divergenciasExpandidas, setDivergenciasExpandidas] = useState(false);
-
-  const carregar = useCallback(async () => {
-    try {
-      setCarregando(true);
-      const [dadosDetalhe, dadosConfig] = await Promise.all([
-        buscarDetalheFilialAcuracidade(filialId, ano, mes),
-        buscarConfiguracaoQualidade(),
-      ]);
-      setDetalhe(dadosDetalhe);
-      setConfig(dadosConfig);
-      setDivergenciasExpandidas(false);
-    } catch (erro) {
-      showToast(erro.message || 'Erro ao carregar o dashboard da filial.', 'error');
-    } finally {
-      setCarregando(false);
-    }
-  }, [filialId, ano, mes, showToast]);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
-  const mudarMes = (delta) => {
-    const d = new Date(ano, mes - 1 + delta, 1);
-    setSearchParams({ ano: String(d.getFullYear()), mes: String(d.getMonth() + 1) });
-  };
 
   if (carregando) {
     return (
@@ -277,7 +242,9 @@ export function StoreAccuracyDashboardPage() {
       </div>
     );
   }
-  if (!detalhe) return null;
+  if (!detalhe) {
+    return <p className="text-dark-400 text-center py-16">Sem dados no período.</p>;
+  }
 
   const geral = detalhe.geral?.atual;
   const geralAnterior = detalhe.geral?.anterior;
@@ -304,34 +271,6 @@ export function StoreAccuracyDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <Toast toast={toast} onClose={hideToast} />
-
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <Link to="/qualidade" className="text-sm text-dark-400 hover:text-white inline-flex items-center gap-1 mb-2">
-            <ArrowLeft className="w-4 h-4" />
-            Voltar para Qualidade
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-primary-400" />
-            {detalhe.numeroFilial} — {detalhe.nome}
-          </h1>
-          <p className="text-dark-400 mt-1">Dashboard de acuracidade de estoque</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => mudarMes(-1)} className="btn-secondary px-3 py-2" title="Mês anterior" aria-label="Mês anterior">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="px-4 py-2 rounded-lg bg-dark-800 border border-dark-700 min-w-44 text-center">
-            <span className="text-white font-semibold">{MESES[mes - 1]} {ano}</span>
-          </div>
-          <button onClick={() => mudarMes(1)} className="btn-secondary px-3 py-2" title="Próximo mês" aria-label="Próximo mês">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Hero: o número que importa, em destaque -- Loja/Estoque (mais abaixo) são o
           detalhamento, não a manchete. */}
       <div className="card border-primary-500/25 bg-gradient-to-br from-dark-800 to-dark-800/40">

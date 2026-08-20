@@ -208,6 +208,11 @@ export const buscarRankingAcuracidade = (ano, mes, { tipoFilial, filialId, limit
 };
 export const buscarDetalheFilialAcuracidade = (filialId, ano, mes) =>
   apiGet(`/api/qualidade/acuracidade/filial/${filialId}?ano=${ano}&mes=${mes}`);
+export const buscarDetalheGrupoAcuracidade = (tipo, ano, mes) => {
+  const params = new URLSearchParams({ ano, mes });
+  if (tipo) params.set('tipo', tipo);
+  return apiGet(`/api/qualidade/acuracidade/grupo?${params.toString()}`);
+};
 
 // --- ROTAS DE EQUIPES DE INVENTÁRIO ---
 export const listarEquipesInventario = () => apiGet('/api/qualidade/equipes');

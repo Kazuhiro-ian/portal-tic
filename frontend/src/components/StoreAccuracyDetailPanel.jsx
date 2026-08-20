@@ -17,7 +17,7 @@ function rodapeImportacao(titulo, resumo) {
   );
 }
 
-export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClose, showToast }) {
+export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClose, showToast, onAbrirDashboard }) {
   const [detalhe, setDetalhe] = useState(null);
   const [config, setConfig] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -44,7 +44,8 @@ export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClo
   }, [carregar]);
 
   const abrirDashboard = () => {
-    window.open(`/qualidade/acuracidade/loja/${filialId}?ano=${ano}&mes=${mes}`, '_blank');
+    onAbrirDashboard({ tipo: 'FILIAL', filialId });
+    onClose();
   };
 
   return (
