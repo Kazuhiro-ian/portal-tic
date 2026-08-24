@@ -1,6 +1,7 @@
 package portal.ti.queiroz.dto;
 
 import portal.ti.queiroz.model.InventarioResultado;
+import portal.ti.queiroz.model.PeriodicidadeInventario;
 import portal.ti.queiroz.model.TipoFilial;
 
 /**
@@ -19,6 +20,9 @@ public record ResumoFilialAcuracidade(
         Integer numeroFilial,
         String nome,
         TipoFilial tipoFilial,
+        // Null nos agregados (CDs/Lojas/Geral) e nas filiais MENSAL/BIMESTRAL. SEMANAL diz pro
+        // frontend buscar o dashboard por semana em vez do detalhe mês-a-mês de sempre.
+        PeriodicidadeInventario periodicidadeInventario,
         InventarioResultado atual,
         InventarioResultado anterior,
         ResultadoArmazem armazem01,

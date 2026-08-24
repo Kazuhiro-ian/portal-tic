@@ -5,18 +5,22 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import portal.ti.queiroz.dto.DetalheFilialAcuracidadeResponse;
+import portal.ti.queiroz.dto.DetalheFilialSemanalAcuracidadeResponse;
 import portal.ti.queiroz.dto.DivergenciaCruzada;
 import portal.ti.queiroz.dto.InventarioResumo;
 import portal.ti.queiroz.dto.ItemRanking;
 import portal.ti.queiroz.dto.RelatorioAcuracidadeResponse;
 import portal.ti.queiroz.dto.ResultadoArmazem;
 import portal.ti.queiroz.dto.ResumoFilialAcuracidade;
+import portal.ti.queiroz.dto.SemanaAcuracidade;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
+import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.Armazem;
 import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.model.Inventario;
 import portal.ti.queiroz.model.InventarioItem;
 import portal.ti.queiroz.model.InventarioResultado;
+import portal.ti.queiroz.model.PeriodicidadeInventario;
 import portal.ti.queiroz.model.StatusInventario;
 import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.repository.FiliaisRepository;
@@ -41,13 +45,14 @@ import java.util.stream.Stream;
  * ranking dos produtos com maior sobra/falta, e o detalhamento por armazém (Loja/
  * Estoque) das filiais que aderiram ao estoque dividido.
  *
- * Para cada filial, "o resultado do mês" é o do upload mais recente no período —
- * não a soma de vários uploads da mesma filial. O Protheus já consolida contagens
- * feitas em datas diferentes (ex: os sábados do CD 00) quando a consulta roda com
- * o intervalo do mês inteiro, então re-somar itens de inventários diferentes da
- * MESMA filial aqui duplicaria contagem. Já os agregados por grupo (CDs/Lojas/
- * Geral) somam entre filiais DIFERENTES, o que é seguro — cada filial é um
- * estoque genuinamente separado.
+ * Para filiais de periodicidade MENSAL/BIMESTRAL, "o resultado do mês" é o do upload mais
+ * recente no período — não a soma de vários uploads da mesma filial (não haveria por quê:
+ * a filial só tem um inventário planejado por mês). Filiais SEMANAL (ex: CD 00) são a
+ * exceção: cada sábado sobe um relatório PARCIAL (um subconjunto do catálogo), não o mês
+ * inteiro consolidado, então "o resultado do mês" precisa fundir todos os sábados por
+ * produto -- ver {@link #geralSemanal}. Já os agregados por grupo (CDs/Lojas/Geral) somam
+ * entre filiais DIFERENTES, o que continua seguro independente da periodicidade — cada
+ * filial é um estoque genuinamente separado.
  *
  * Filiais com estoque dividido são a exceção dentro da própria filial: Loja e Estoque são
  * contados no MESMO dia (um único {@link Inventario}), só que em duas planilhas separadas —
@@ -118,10 +123,18 @@ public class RelatorioAcuracidadeService {
             InventarioResultado r01Anterior = resultadoAnterior01.get(f.getId());
             InventarioResultado r03Anterior = resultadoAnterior03.get(f.getId());
 
-            InventarioResultado rGeralAtual = geral(inventariosAtual.get(f.getId()), r01Atual, r03Atual, limiteZerados,
-                    itens01PorInventario, itens03PorInventario);
-            InventarioResultado rGeralAnterior = geral(inventariosAnterior.get(f.getId()), r01Anterior, r03Anterior, limiteZerados,
-                    itens01PorInventario, itens03PorInventario);
+            PeriodicidadeInventario periodicidade = periodicidadeDe(f);
+            InventarioResultado rGeralAtual;
+            InventarioResultado rGeralAnterior;
+            if (periodicidade == PeriodicidadeInventario.SEMANAL) {
+                rGeralAtual = geralSemanal(f, mesAtual, limiteZerados);
+                rGeralAnterior = geralSemanal(f, mesAnterior, limiteZerados);
+            } else {
+                rGeralAtual = geral(inventariosAtual.get(f.getId()), r01Atual, r03Atual, limiteZerados,
+                        itens01PorInventario, itens03PorInventario);
+                rGeralAnterior = geral(inventariosAnterior.get(f.getId()), r01Anterior, r03Anterior, limiteZerados,
+                        itens01PorInventario, itens03PorInventario);
+            }
             if (rGeralAtual != null) geralAtual.put(f.getId(), rGeralAtual);
             if (rGeralAnterior != null) geralAnterior.put(f.getId(), rGeralAnterior);
 
@@ -139,7 +152,7 @@ public class RelatorioAcuracidadeService {
             }
 
             linhas.add(new ResumoFilialAcuracidade(
-                    f.getId(), f.getNumeroFilial(), f.getNome(), f.getTipoFilial(),
+                    f.getId(), f.getNumeroFilial(), f.getNome(), f.getTipoFilial(), periodicidade,
                     rGeralAtual, rGeralAnterior, armazem01, armazem03, divergenciasCruzadas));
         }
 
@@ -158,7 +171,7 @@ public class RelatorioAcuracidadeService {
                 .map(Filiais::getId)
                 .toList();
 
-        return new ResumoFilialAcuracidade(null, null, nome, tipo,
+        return new ResumoFilialAcuracidade(null, null, nome, tipo, null,
                 somarSeExistir(idsDoGrupo, atual), somarSeExistir(idsDoGrupo, anterior),
                 null, null, null);
     }
@@ -206,6 +219,38 @@ public class RelatorioAcuracidadeService {
 
     private InventarioResultado geralDosItens(List<InventarioItem> itens01, List<InventarioItem> itens03, int limiteZerados) {
         List<InventarioItem> mesclados = acuracidadeService.mesclarPorProduto(itens01, itens03);
+        return acuracidadeService.calcular(mesclados, limiteZerados);
+    }
+
+    /** Periodicidade da filial; null (filial ainda não configurada) é tratado como MENSAL. */
+    private PeriodicidadeInventario periodicidadeDe(Filiais filial) {
+        return filial.getPeriodicidadeInventario() != null
+                ? filial.getPeriodicidadeInventario()
+                : PeriodicidadeInventario.MENSAL;
+    }
+
+    /**
+     * "Geral" do mês de uma filial SEMANAL (ex: CD 00): funde todos os inventários REALIZADO
+     * do mês por produto, mantendo o valor da semana mais recente quando um SKU se repete (ver
+     * {@link AcuracidadeService#mesclarMaisRecentePorProduto}). Sem continuidade entre meses --
+     * cada chamada só olha os inventários daquele mês específico.
+     */
+    private InventarioResultado geralSemanal(Filiais filial, YearMonth mes, int limiteZerados) {
+        List<Inventario> semanas = inventarioRepository
+                .findByFilialIdAndDataBetween(filial.getId(), mes.atDay(1), mes.atEndOfMonth()).stream()
+                .filter(i -> i.getStatus() == StatusInventario.REALIZADO)
+                .sorted(Comparator.comparing(Inventario::getData))
+                .toList();
+
+        if (semanas.isEmpty()) {
+            return null;
+        }
+
+        List<List<InventarioItem>> itensPorSemana = semanas.stream()
+                .map(inv -> itemRepository.findByInventarioIdAndArmazem(inv.getId(), null))
+                .toList();
+
+        List<InventarioItem> mesclados = acuracidadeService.mesclarMaisRecentePorProduto(itensPorSemana);
         return acuracidadeService.calcular(mesclados, limiteZerados);
     }
 
@@ -372,6 +417,7 @@ public class RelatorioAcuracidadeService {
         Inventario invAnterior = inventariosMaisRecentesPorFilial(mesAnterior).get(filialId);
 
         boolean dividida = Boolean.TRUE.equals(filial.getEstoqueDividido());
+        boolean semanal = periodicidadeDe(filial) == PeriodicidadeInventario.SEMANAL;
 
         // Filial não dividida grava o resultado com armazem = null (ver
         // AcuracidadeService.validarArmazem) -- buscar direto por ARMAZEM_01 nesse caso
@@ -381,11 +427,17 @@ public class RelatorioAcuracidadeService {
         InventarioResultado r01Anterior = resultadoDe(invAnterior, dividida ? Armazem.ARMAZEM_01 : null);
         InventarioResultado r03Anterior = resultadoDe(invAnterior, Armazem.ARMAZEM_03);
 
-        InventarioResultado geralAtual = geral(invAtual, r01Atual, r03Atual, limiteZerados);
-        ResultadoArmazem geral = new ResultadoArmazem(
-                geralAtual,
-                geral(invAnterior, r01Anterior, r03Anterior, limiteZerados));
-        ResultadoArmazem armazem01 = new ResultadoArmazem(r01Atual, r01Anterior);
+        // Filial semanal: "geral" é a fusão dos sábados do mês (geralSemanal), não o
+        // inventário mais recente -- ver o Javadoc de classe. O detalhamento por semana em
+        // si vive só no novo endpoint (detalheSemanalFilial), não aqui.
+        InventarioResultado geralAtual = semanal
+                ? geralSemanal(filial, mesAtual, limiteZerados)
+                : geral(invAtual, r01Atual, r03Atual, limiteZerados);
+        InventarioResultado geralAnteriorResultado = semanal
+                ? geralSemanal(filial, mesAnterior, limiteZerados)
+                : geral(invAnterior, r01Anterior, r03Anterior, limiteZerados);
+        ResultadoArmazem geral = new ResultadoArmazem(geralAtual, geralAnteriorResultado);
+        ResultadoArmazem armazem01 = semanal ? null : new ResultadoArmazem(r01Atual, r01Anterior);
         ResultadoArmazem armazem03 = dividida ? new ResultadoArmazem(r03Atual, r03Anterior) : null;
 
         List<DivergenciaCruzada> divergencias = dividida ? divergenciasCruzadas(invAtual) : List.of();
@@ -400,7 +452,69 @@ public class RelatorioAcuracidadeService {
                 produtosAcuradosSemTransferencias(geralAtual, divergencias.size()),
                 produtosInacuradosSemTransferencias(geralAtual, divergencias.size()),
                 ranking.maioresFaltas(), ranking.maioresSobras(),
-                resumoDe(invAtual, r01Atual), dividida ? resumoDe(invAtual, r03Atual) : null);
+                semanal ? null : resumoDe(invAtual, r01Atual), dividida ? resumoDe(invAtual, r03Atual) : null);
+    }
+
+    // --- Detalhe por semana (dashboard específico de filiais SEMANAL, ex: CD 00) ---
+
+    /**
+     * Cada sábado do mês individualmente, mais o "Geral" (fusão de todos por produto, mantendo
+     * o valor mais recente quando um SKU se repete). Só faz sentido para filiais SEMANAL.
+     */
+    public DetalheFilialSemanalAcuracidadeResponse detalheSemanalFilial(Long filialId, int ano, int mes) {
+        Filiais filial = filiaisRepository.findById(filialId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Filial não encontrada com o ID: " + filialId));
+
+        if (periodicidadeDe(filial) != PeriodicidadeInventario.SEMANAL) {
+            throw new RegraDeNegocioException(
+                    "A filial %s - %s não tem periodicidade semanal.".formatted(filial.getNumeroFilial(), filial.getNome()));
+        }
+
+        YearMonth mesAlvo = YearMonth.of(ano, mes);
+        int limiteZerados = acuracidadeService.configuracaoAtual().getLimiteZerados();
+
+        List<Inventario> semanas = inventarioRepository
+                .findByFilialIdAndDataBetween(filial.getId(), mesAlvo.atDay(1), mesAlvo.atEndOfMonth()).stream()
+                .filter(i -> i.getStatus() == StatusInventario.REALIZADO)
+                .sorted(Comparator.comparing(Inventario::getData))
+                .toList();
+
+        List<SemanaAcuracidade> semanasResposta = new ArrayList<>();
+        List<List<InventarioItem>> itensPorSemana = new ArrayList<>();
+        for (int i = 0; i < semanas.size(); i++) {
+            Inventario inv = semanas.get(i);
+            InventarioResultado resultado = resultadoDe(inv, null);
+            semanasResposta.add(new SemanaAcuracidade(i + 1, inv.getData(), resumoDe(inv, resultado), resultado));
+            itensPorSemana.add(itemRepository.findByInventarioIdAndArmazem(inv.getId(), null));
+        }
+
+        List<InventarioItem> mesclados = itensPorSemana.isEmpty()
+                ? List.of()
+                : acuracidadeService.mesclarMaisRecentePorProduto(itensPorSemana);
+        InventarioResultado geralDoMes = mesclados.isEmpty() ? null : acuracidadeService.calcular(mesclados, limiteZerados);
+
+        List<ItemRanking> maioresFaltas = mesclados.stream()
+                .filter(i -> i.getValorDivergencia() != null && i.getValorDivergencia().signum() < 0)
+                .sorted(Comparator.comparing(InventarioItem::getValorDivergencia))
+                .limit(LIMITE_RANKING_PADRAO)
+                .map(i -> paraRankingSemFilial(i, filial))
+                .toList();
+        List<ItemRanking> maioresSobras = mesclados.stream()
+                .filter(i -> i.getValorDivergencia() != null && i.getValorDivergencia().signum() > 0)
+                .sorted(Comparator.comparing(InventarioItem::getValorDivergencia, Comparator.reverseOrder()))
+                .limit(LIMITE_RANKING_PADRAO)
+                .map(i -> paraRankingSemFilial(i, filial))
+                .toList();
+
+        return new DetalheFilialSemanalAcuracidadeResponse(
+                filial.getId(), filial.getNumeroFilial(), filial.getNome(), ano, mes,
+                semanasResposta, geralDoMes, maioresFaltas, maioresSobras);
+    }
+
+    private ItemRanking paraRankingSemFilial(InventarioItem item, Filiais filial) {
+        return new ItemRanking(
+                item.getCodProduto(), item.getDescricao(), item.getDivergencia(), item.getValorDivergencia(),
+                filial.getId(), filial.getNumeroFilial(), filial.getNome());
     }
 
     /**

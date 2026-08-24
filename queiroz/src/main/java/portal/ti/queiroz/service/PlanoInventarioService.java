@@ -14,15 +14,22 @@ import portal.ti.queiroz.repository.InventarioRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
  * Gera a proposta de plano mensal de inventários.
  *
  * Critério definido pelo setor de Qualidade: repetir o mesmo dia do mês anterior,
- * deslocando apenas quando a data bater com um dia de recebimento do grupo da filial
- * ou com um dia marcado no Calendário da Equipe (DSR/Folga/Reunião/Feriado).
+ * deslocando quando a data bater com um dia de recebimento do grupo da filial, com um dia
+ * marcado no Calendário da Equipe (DSR/Folga/Reunião/Feriado), ou -- preferencialmente --
+ * quando outra filial já ficou com aquele dia neste mesmo plano.
+ *
+ * Filiais BIMESTRAL fora do ciclo do mês nem entram na lista; filiais SEMANAL (contagem
+ * parcial, ex: CD 00) não passam por este fluxo de "1 dia por mês" e aparecem só como
+ * aviso para agendamento manual sábado a sábado.
  */
 @Service
 public class PlanoInventarioService {
@@ -66,14 +73,35 @@ public class PlanoInventarioService {
                         Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
 
-        // Quantas filiais já caíram em cada data — usado para distribuir as sem histórico.
+        // Quantas filiais já caíram em cada data — usado para distribuir as sem histórico e
+        // para o gerador preferir não repetir uma data já usada por outra filial.
         Map<LocalDate, Integer> carga = new HashMap<>();
         List<PropostaInventario> itens = new ArrayList<>();
         int semGrupo = 0;
+        int semReferenciaBimestral = 0;
 
         for (Filiais filial : filiais) {
             Inventario atual = noMesAlvo.get(filial.getId());
             LocalDate dataAtual = atual != null ? atual.getData() : null;
+
+            PeriodicidadeInventario periodicidade = periodicidadeDe(filial);
+
+            if (periodicidade == PeriodicidadeInventario.BIMESTRAL) {
+                if (filial.getReferenciaBimestral() == null) {
+                    // Sem referência configurada: trata como sempre ativa (mensal) em vez de
+                    // sumir a filial do plano por erro de configuração, e avisa no rodapé.
+                    semReferenciaBimestral++;
+                } else if (!cicloBimestralAtivo(filial, alvo)) {
+                    continue; // mês "não" do ciclo -- fora do plano deste mês, de propósito
+                }
+            }
+
+            if (periodicidade == PeriodicidadeInventario.SEMANAL) {
+                itens.add(new PropostaInventario(filial.getId(), filial.getNumeroFilial(), filial.getNome(),
+                        filial.getGrupoRecebimento(), null, dataAtual, null, MotivoProposta.PERIODICIDADE_SEMANAL,
+                        "Periodicidade semanal — agende cada sábado manualmente na aba de inventários.", false));
+                continue;
+            }
 
             if (filial.getGrupoRecebimento() == null) {
                 semGrupo++;
@@ -109,7 +137,7 @@ public class PlanoInventarioService {
 
             PropostaInventario proposta = (ancora == null)
                     ? semear(filial, alvo, validos, carga, dataAtual)
-                    : repetirAncora(filial, alvo, ancora, validos, calendario, diasEquipe, dataAtual);
+                    : repetirAncora(filial, alvo, ancora, validos, calendario, diasEquipe, carga, dataAtual);
 
             if (proposta.dataSugerida() != null) {
                 carga.merge(proposta.dataSugerida(), 1, Integer::sum);
@@ -122,6 +150,14 @@ public class PlanoInventarioService {
                     .formatted(semGrupo,
                             semGrupo == 1 ? "filial" : "filiais",
                             semGrupo == 1 ? "ficou" : "ficaram"));
+        }
+        if (semReferenciaBimestral > 0) {
+            avisos.add("%d %s bimestral%s sem mês de referência configurado %s tratada%s como mensal neste plano."
+                    .formatted(semReferenciaBimestral,
+                            semReferenciaBimestral == 1 ? "filial" : "filiais",
+                            semReferenciaBimestral == 1 ? "" : "is",
+                            semReferenciaBimestral == 1 ? "foi" : "foram",
+                            semReferenciaBimestral == 1 ? "" : "s"));
         }
 
         return new PlanoMensalResponse(alvo.getYear(), alvo.getMonthValue(), itens, avisos);
@@ -152,17 +188,26 @@ public class PlanoInventarioService {
      *
      * O diaPreferencial devolvido é sempre a ÂNCORA, nunca a data efetiva: assim um
      * deslocamento pontual não vira o novo padrão permanente da loja.
+     *
+     * @param carga quantas filiais (já processadas neste plano) ficaram em cada data --
+     *              usado só como preferência (evitar repetir o dia de outra filial), nunca
+     *              bloqueia: se não sobrar dia livre E desocupado, cai de volta para
+     *              qualquer dia livre, igual ao comportamento antes desta preferência existir.
      */
     private PropostaInventario repetirAncora(Filiais filial, YearMonth alvo, int ancora,
                                              List<LocalDate> validos,
                                              Map<LocalDate, TipoDiaRecebimento> calendario,
                                              Set<LocalDate> diasEquipe,
+                                             Map<LocalDate, Integer> carga,
                                              LocalDate dataAtual) {
         int ultimoDia = alvo.lengthOfMonth();
         boolean mesCurto = ancora > ultimoDia;
         LocalDate candidata = alvo.atDay(Math.min(ancora, ultimoDia));
 
-        if (diaLivre(candidata, filial.getGrupoRecebimento(), calendario, diasEquipe)) {
+        boolean candidataLivre = diaLivre(candidata, filial.getGrupoRecebimento(), calendario, diasEquipe);
+        boolean candidataOcupada = carga.getOrDefault(candidata, 0) > 0;
+
+        if (candidataLivre && !candidataOcupada) {
             MotivoProposta motivo = mesCurto ? MotivoProposta.AJUSTADO_MES_CURTO : MotivoProposta.MANTIDO;
             String descricao = mesCurto
                     ? "Dia %d não existe em %02d/%d — ajustado para o último dia do mês."
@@ -173,32 +218,71 @@ public class PlanoInventarioService {
                     filial.getGrupoRecebimento(), candidata, dataAtual, ancora, motivo, descricao, true);
         }
 
-        LocalDate encontrada = buscarMaisProxima(candidata, alvo, filial.getGrupoRecebimento(), calendario, diasEquipe);
+        LocalDate encontrada = buscarMaisProxima(candidata, alvo, filial.getGrupoRecebimento(), calendario, diasEquipe, carga);
 
         if (encontrada == null) {
             // A lista de dias válidos não é vazia (já checado), então isto é defensivo.
             encontrada = validos.get(0);
         }
 
+        // candidataLivre continua true aqui quando o único problema foi a colisão com outra
+        // filial -- distingue a mensagem desse caso do de recebimento/equipe.
+        String descricao = candidataLivre
+                ? "Dia %d já tinha outra filial agendada — movido para %s (preferência de uma filial por dia)."
+                        .formatted(candidata.getDayOfMonth(), encontrada.format(BR))
+                : "Dia %d é recebimento do grupo ou está marcado no Calendário da Equipe — movido para %s."
+                        .formatted(candidata.getDayOfMonth(), encontrada.format(BR));
+
         return new PropostaInventario(filial.getId(), filial.getNumeroFilial(), filial.getNome(),
                 filial.getGrupoRecebimento(), encontrada, dataAtual, ancora, MotivoProposta.DESLOCADO,
-                "Dia %d é recebimento do grupo ou está marcado no Calendário da Equipe — movido para %s."
-                        .formatted(candidata.getDayOfMonth(), encontrada.format(BR)),
-                true);
+                descricao, true);
     }
 
-    /** Busca em espiral a partir da candidata: +1, -1, +2, -2… sem sair do mês. */
+    /**
+     * Busca em espiral a partir da candidata: +1, -1, +2, -2… sem sair do mês, em duas
+     * passadas. A primeira evita dias já ocupados por outra filial (preferência de uma
+     * filial por dia); se ela não achar nada no mês inteiro, a segunda repete a busca só
+     * exigindo o dia livre (ignora ocupação) -- a preferência nunca pode transformar um
+     * caso hoje resolvível (DESLOCADO) em SEM_DIA_VALIDO.
+     */
     private LocalDate buscarMaisProxima(LocalDate candidata, YearMonth alvo, GrupoRecebimento grupo,
-                                        Map<LocalDate, TipoDiaRecebimento> calendario, Set<LocalDate> diasEquipe) {
+                                        Map<LocalDate, TipoDiaRecebimento> calendario, Set<LocalDate> diasEquipe,
+                                        Map<LocalDate, Integer> carga) {
+        LocalDate semColisao = buscarMaisProxima(candidata, alvo,
+                data -> diaLivre(data, grupo, calendario, diasEquipe) && carga.getOrDefault(data, 0) == 0);
+        if (semColisao != null) {
+            return semColisao;
+        }
+        return buscarMaisProxima(candidata, alvo, data -> diaLivre(data, grupo, calendario, diasEquipe));
+    }
+
+    private LocalDate buscarMaisProxima(LocalDate candidata, YearMonth alvo, Predicate<LocalDate> aceitavel) {
         for (int offset = 1; offset <= alvo.lengthOfMonth(); offset++) {
             for (int sinal : new int[]{1, -1}) {
                 LocalDate tentativa = candidata.plusDays((long) offset * sinal);
-                if (YearMonth.from(tentativa).equals(alvo) && diaLivre(tentativa, grupo, calendario, diasEquipe)) {
+                if (YearMonth.from(tentativa).equals(alvo) && aceitavel.test(tentativa)) {
                     return tentativa;
                 }
             }
         }
         return null;
+    }
+
+    /** Periodicidade da filial; null (filial ainda não configurada) é tratado como MENSAL. */
+    private PeriodicidadeInventario periodicidadeDe(Filiais filial) {
+        return filial.getPeriodicidadeInventario() != null
+                ? filial.getPeriodicidadeInventario()
+                : PeriodicidadeInventario.MENSAL;
+    }
+
+    /**
+     * Paridade do ciclo bimestral: o mês de referência (referenciaBimestral) é "sim", e a
+     * cada mês a paridade alterna. Só chamar com referenciaBimestral não nula.
+     */
+    private boolean cicloBimestralAtivo(Filiais filial, YearMonth alvo) {
+        YearMonth referencia = YearMonth.from(filial.getReferenciaBimestral());
+        long diferencaMeses = ChronoUnit.MONTHS.between(referencia, alvo);
+        return Math.floorMod(diferencaMeses, 2) == 0;
     }
 
     // ------------------------------------------------------------------

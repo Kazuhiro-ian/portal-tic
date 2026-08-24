@@ -2,9 +2,12 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import portal.ti.queiroz.dto.ConflitoInventario;
 import portal.ti.queiroz.dto.PadraoMensalRequest;
 import portal.ti.queiroz.dto.PadraoMensalResponse;
+import portal.ti.queiroz.dto.SalvarDiasRecebimentoRequest;
+import portal.ti.queiroz.dto.SalvarDiasRecebimentoResponse;
 import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.*;
 import portal.ti.queiroz.repository.DiaRecebimentoRepository;
@@ -99,28 +102,47 @@ public class RecebimentoService {
     }
 
     /**
-     * Sobrescrita pontual de um dia (feriado, entrega extra). Marca ajusteManual
-     * para que a próxima aplicação do padrão semanal não apague o ajuste.
+     * Salva de uma vez os dias que o usuário marcou clicando no calendário (um tipo
+     * escolhido como "pincel", vários dias pintados, um único save no final). Cada dia vira
+     * uma sobrescrita pontual (ajusteManual = true), para que a próxima aplicação do padrão
+     * semanal não apague o ajuste. Leva @Transactional pelo mesmo motivo de
+     * {@link PlanoInventarioService#salvarPlano}: sem ela, uma falha no meio da lista deixaria
+     * parte dos dias salvos e parte não, sem o usuário saber quais.
      */
-    public DiaRecebimento salvarDia(LocalDate data, TipoDiaRecebimento tipo, String observacao) {
-        if (data == null) {
-            throw new RegraDeNegocioException("Informe a data do dia de recebimento.");
+    @Transactional
+    public SalvarDiasRecebimentoResponse salvarDias(SalvarDiasRecebimentoRequest request) {
+        List<SalvarDiasRecebimentoRequest.ItemDiaRecebimento> itens = request.itens();
+        if (itens == null || itens.isEmpty()) {
+            throw new RegraDeNegocioException("Nenhum dia selecionado para salvar.");
         }
-        if (tipo == null) {
-            throw new RegraDeNegocioException("Informe o tipo do dia de recebimento.");
+        for (var item : itens) {
+            if (item.data() == null || item.tipo() == null) {
+                throw new RegraDeNegocioException("Informe a data e o tipo de cada dia selecionado.");
+            }
         }
 
-        DiaRecebimento dia = repository.findByData(data).orElseGet(() -> {
-            DiaRecebimento novo = new DiaRecebimento();
-            novo.setData(data);
-            return novo;
-        });
+        LocalDate minData = itens.stream().map(SalvarDiasRecebimentoRequest.ItemDiaRecebimento::data)
+                .min(LocalDate::compareTo).orElseThrow();
+        LocalDate maxData = itens.stream().map(SalvarDiasRecebimentoRequest.ItemDiaRecebimento::data)
+                .max(LocalDate::compareTo).orElseThrow();
 
-        dia.setTipo(tipo);
-        dia.setAjusteManual(true);
-        dia.setObservacao(observacao);
+        Map<LocalDate, DiaRecebimento> existentes = repository.findByDataBetween(minData, maxData).stream()
+                .collect(Collectors.toMap(DiaRecebimento::getData, Function.identity()));
 
-        return repository.save(dia);
+        List<DiaRecebimento> paraSalvar = new ArrayList<>();
+        for (var item : itens) {
+            DiaRecebimento dia = existentes.get(item.data());
+            if (dia == null) {
+                dia = new DiaRecebimento();
+                dia.setData(item.data());
+            }
+            dia.setTipo(item.tipo());
+            dia.setAjusteManual(true);
+            paraSalvar.add(dia);
+        }
+
+        repository.saveAll(paraSalvar);
+        return new SalvarDiasRecebimentoResponse(paraSalvar.size());
     }
 
     /**

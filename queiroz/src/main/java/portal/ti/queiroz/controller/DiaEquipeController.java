@@ -2,8 +2,9 @@ package portal.ti.queiroz.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import portal.ti.queiroz.dto.SalvarDiasEquipeRequest;
+import portal.ti.queiroz.dto.SalvarDiasEquipeResponse;
 import portal.ti.queiroz.model.DiaEquipe;
 import portal.ti.queiroz.service.DiaEquipeService;
 
@@ -24,10 +25,9 @@ public class DiaEquipeController {
         return service.buscarPorPeriodo(inicio, fim);
     }
 
-    @PutMapping("/dia")
-    public ResponseEntity<DiaEquipe> alternar(@RequestBody DiaEquipe dia) {
-        return service.alternar(dia.getData(), dia.getTipo())
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
+    // PUT: salva de uma vez os dias marcados no calendário (pincel + vários cliques + 1 save)
+    @PutMapping("/dias")
+    public SalvarDiasEquipeResponse salvarDias(@RequestBody SalvarDiasEquipeRequest request) {
+        return service.salvarDias(request);
     }
 }

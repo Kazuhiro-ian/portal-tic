@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import portal.ti.queiroz.dto.DetalheFilialAcuracidadeResponse;
+import portal.ti.queiroz.dto.DetalheFilialSemanalAcuracidadeResponse;
 import portal.ti.queiroz.dto.RelatorioAcuracidadeResponse;
 import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.service.RelatorioAcuracidadeService;
@@ -41,6 +42,13 @@ public class RelatorioAcuracidadeController {
     public DetalheFilialAcuracidadeResponse detalheFilial(
             @PathVariable Long filialId, @RequestParam Integer ano, @RequestParam Integer mes) {
         return service.detalheFilial(filialId, ano, mes);
+    }
+
+    // GET /api/qualidade/acuracidade/filial/42/semanal?ano=2026&mes=8 -- só filiais periodicidade SEMANAL
+    @GetMapping("/filial/{filialId}/semanal")
+    public DetalheFilialSemanalAcuracidadeResponse detalheSemanalFilial(
+            @PathVariable Long filialId, @RequestParam Integer ano, @RequestParam Integer mes) {
+        return service.detalheSemanalFilial(filialId, ano, mes);
     }
 
     // GET /api/qualidade/acuracidade/grupo?tipo=LOJA&ano=2026&mes=8 (tipo omitido = Geral)

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { AccuracyDashboard } from './AccuracyDashboard.jsx';
+import { WeeklyAccuracyDashboard } from './WeeklyAccuracyDashboard.jsx';
 import {
   buscarRelatorioAcuracidade, buscarDetalheFilialAcuracidade, buscarDetalheGrupoAcuracidade,
-  buscarConfiguracaoQualidade,
+  buscarDetalheSemanalAcuracidade, buscarConfiguracaoQualidade,
 } from '../services/api.js';
 
 const valorDaSelecao = (selecao) => {
@@ -45,12 +46,21 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
       .catch(() => {});
   }, [ano, mes, showToast]);
 
+  // Periodicidade só existe por filial (agregados de grupo não têm um valor único) --
+  // decide se busca o detalhe mês-a-mês de sempre ou o dashboard por semana do CD 00.
+  const filialSelecionada = selecao.tipo === 'FILIAL'
+    ? filiais.find((f) => f.filialId === selecao.filialId)
+    : null;
+  const ehSemanal = filialSelecionada?.periodicidadeInventario === 'SEMANAL';
+
   const carregarDetalhe = useCallback(async () => {
     try {
       setCarregando(true);
-      const dados = selecao.tipo === 'FILIAL'
-        ? await buscarDetalheFilialAcuracidade(selecao.filialId, ano, mes)
-        : await buscarDetalheGrupoAcuracidade(selecao.tipo === 'GRUPO' ? selecao.grupo : null, ano, mes);
+      const dados = selecao.tipo === 'FILIAL' && ehSemanal
+        ? await buscarDetalheSemanalAcuracidade(selecao.filialId, ano, mes)
+        : selecao.tipo === 'FILIAL'
+          ? await buscarDetalheFilialAcuracidade(selecao.filialId, ano, mes)
+          : await buscarDetalheGrupoAcuracidade(selecao.tipo === 'GRUPO' ? selecao.grupo : null, ano, mes);
       setDetalhe(dados);
     } catch (erro) {
       showToast(erro.message || 'Erro ao carregar o dashboard.', 'error');
@@ -58,7 +68,7 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
     } finally {
       setCarregando(false);
     }
-  }, [selecao, ano, mes, showToast]);
+  }, [selecao, ano, mes, showToast, ehSemanal]);
 
   useEffect(() => {
     carregarDetalhe();
@@ -108,7 +118,14 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
         </select>
       </div>
 
-      <AccuracyDashboard key={`${valorSelecionado}-${ano}-${mes}`} detalhe={detalhe} config={config} carregando={carregando} />
+      {ehSemanal ? (
+        <WeeklyAccuracyDashboard
+          key={`${valorSelecionado}-${ano}-${mes}`}
+          detalhe={detalhe} config={config} carregando={carregando}
+        />
+      ) : (
+        <AccuracyDashboard key={`${valorSelecionado}-${ano}-${mes}`} detalhe={detalhe} config={config} carregando={carregando} />
+      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 // CRUD de inventários, aplicando as regras de agendamento (conflito com recebimento,
-// um inventário por filial por mês, exceto CD).
+// um inventário por filial por mês, exceto periodicidade semanal).
 @Service
 public class InventarioService {
 
@@ -98,14 +98,16 @@ public class InventarioService {
                             .formatted(filial.getNumeroFilial(), filial.getNome()));
         }
 
-        // Um inventário por filial por mês (CANCELADO não conta) -- exceto CD, que faz
-        // contagens parciais ao longo do mês (ex: um inventário por sábado no CD 00) e cujo
-        // resultado mensal é a soma dessas contagens, não um único relatório.
+        // Um inventário por filial por mês (CANCELADO não conta) -- exceto periodicidade
+        // SEMANAL, que faz contagens parciais ao longo do mês (ex: um inventário por sábado
+        // no CD 00) e cujo resultado mensal é a fusão dessas contagens, não um único relatório.
+        // Null é tratado como MENSAL (trava normal) -- só precisa marcar SEMANAL explicitamente
+        // na filial que realmente faz contagem parcial.
         //
         // Loja com estoque dividido continua com um único inventário por mês -- o dia é da
         // loja, não do armazém. O armazém só entra na hora de importar o relatório (dois
         // uploads dentro do mesmo inventário), não no agendamento.
-        if (filial.getTipoFilial() != TipoFilial.CD) {
+        if (filial.getPeriodicidadeInventario() != PeriodicidadeInventario.SEMANAL) {
             YearMonth mes = YearMonth.from(inventario.getData());
             List<Inventario> doMes = repository.findByFilialIdAndDataBetween(
                     filial.getId(), mes.atDay(1), mes.atEndOfMonth());

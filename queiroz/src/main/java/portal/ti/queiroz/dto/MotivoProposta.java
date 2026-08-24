@@ -17,5 +17,7 @@ public enum MotivoProposta {
     /** Nenhum dia do mês serve para o grupo da filial. */
     SEM_DIA_VALIDO,
     /** A filial não tem grupo de recebimento definido. */
-    SEM_GRUPO
+    SEM_GRUPO,
+    /** Periodicidade semanal (ex: CD 00) -- fora do fluxo automático, agendada sábado a sábado. */
+    PERIODICIDADE_SEMANAL
 }

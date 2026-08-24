@@ -365,11 +365,34 @@ public class AcuracidadeService {
         copia.setQuantidadeFinal(original.getQuantidadeFinal());
         copia.setValorDivergencia(original.getValorDivergencia());
         copia.setDivergencia(original.getDivergencia());
+        // mesclarPorProduto recalcula "zerado" depois de somar (por isso sobrescreve o valor
+        // copiado aqui); mesclarMaisRecentePorProduto não soma nada, então o "zerado" do item
+        // vencedor já está correto e precisa sobreviver à cópia.
+        copia.setZerado(original.getZerado());
         return copia;
     }
 
     private BigDecimal somaCampo(BigDecimal a, BigDecimal b) {
         return valor(a).add(valor(b));
+    }
+
+    /**
+     * Funde os itens de várias contagens parciais do mesmo mês (ex: os sábados do CD 00) por
+     * código de produto, mantendo o valor da contagem MAIS RECENTE quando um SKU se repete --
+     * diferente de {@link #mesclarPorProduto}, que soma porque Loja e Estoque são dois locais
+     * físicos distintos. Aqui é o mesmo estoque físico sendo remedido em datas diferentes:
+     * somar inflaria a divergência artificialmente.
+     *
+     * @param itensPorSemanaAscendente uma lista por semana, da mais antiga para a mais recente
+     */
+    public List<InventarioItem> mesclarMaisRecentePorProduto(List<List<InventarioItem>> itensPorSemanaAscendente) {
+        Map<String, InventarioItem> mesclados = new LinkedHashMap<>();
+        for (List<InventarioItem> itensDaSemana : itensPorSemanaAscendente) {
+            for (InventarioItem item : itensDaSemana) {
+                mesclados.put(item.getCodProduto(), copiaParaMesclagem(item));
+            }
+        }
+        return List.copyOf(mesclados.values());
     }
 
     // --- Consultas ---

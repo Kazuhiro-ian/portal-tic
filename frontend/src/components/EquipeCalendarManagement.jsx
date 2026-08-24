@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CalendarDays } from 'lucide-react';
-import { listarDiasEquipe, alternarDiaEquipe } from '../services/api.js';
+import { CalendarDays, Save, X } from 'lucide-react';
+import { listarDiasEquipe, salvarDiasEquipe } from '../services/api.js';
 import { toISO, limitesDoMes, diasNoMes } from '../utils/datas.js';
 import { TIPOS_DIA_EQUIPE } from '../utils/qualidade.js';
 
@@ -8,6 +8,10 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
   const [dias, setDias] = useState({});
   const [tipoSelecionado, setTipoSelecionado] = useState('DSR');
   const [isLoading, setIsLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  // Cliques ainda não salvos: iso -> tipo escolhido, ou null pra "remover a marcação".
+  // Só vira alteração de verdade no banco quando o usuário clica em Salvar.
+  const [pendentes, setPendentes] = useState({});
 
   const carregar = useCallback(async () => {
     try {
@@ -15,6 +19,7 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
       const { inicio, fim } = limitesDoMes(ano, mes);
       const data = await listarDiasEquipe(inicio, fim);
       setDias(Object.fromEntries(data.map((d) => [d.data, d])));
+      setPendentes({});
     } catch (error) {
       showToast(error.message || 'Erro ao carregar o calendário da equipe.', 'error');
     } finally {
@@ -26,13 +31,33 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
     carregar();
   }, [carregar]);
 
-  const alternarDia = async (iso) => {
+  const tipoAtual = (iso) => {
+    if (Object.prototype.hasOwnProperty.call(pendentes, iso)) return pendentes[iso];
+    return dias[iso]?.tipo || null;
+  };
+
+  // Clicar pinta o dia com o tipo selecionado; clicar de novo no mesmo tipo desmarca --
+  // igual ao comportamento antigo, só que agora fica em memória até o Salvar.
+  const pintarDia = (iso) => {
     if (!canWrite) return;
+    const novoTipo = tipoAtual(iso) === tipoSelecionado ? null : tipoSelecionado;
+    setPendentes((prev) => ({ ...prev, [iso]: novoTipo }));
+  };
+
+  const descartarAlteracoes = () => setPendentes({});
+
+  const salvarAlteracoes = async () => {
+    const itens = Object.entries(pendentes).map(([data, tipo]) => ({ data, tipo }));
+    if (itens.length === 0) return;
     try {
-      await alternarDiaEquipe({ data: iso, tipo: tipoSelecionado });
+      setSalvando(true);
+      await salvarDiasEquipe(itens);
+      showToast(`${itens.length} ${itens.length === 1 ? 'dia atualizado' : 'dias atualizados'} no calendário da equipe.`);
       await carregar();
     } catch (error) {
-      showToast(error.message || 'Erro ao marcar o dia.', 'error');
+      showToast(error.message || 'Erro ao salvar o calendário da equipe.', 'error');
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -42,6 +67,8 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
     ...Array(primeiroDiaSemana).fill(null),
     ...Array.from({ length: total }, (_, i) => new Date(ano, mes - 1, i + 1)),
   ];
+
+  const qtdPendentes = Object.keys(pendentes).length;
 
   return (
     <div className="card">
@@ -69,7 +96,8 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
 
       {canWrite && (
         <p className="text-xs text-dark-400 mb-4">
-          Clique num dia do calendário para marcar/desmarcar &quot;{TIPOS_DIA_EQUIPE[tipoSelecionado].label}&quot; nele.
+          Clique nos dias para marcar/desmarcar &quot;{TIPOS_DIA_EQUIPE[tipoSelecionado].label}&quot;.
+          As alterações só valem depois de clicar em Salvar.
         </p>
       )}
 
@@ -90,18 +118,21 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
               if (!data) return <div key={`vazio-${idx}`} />;
 
               const iso = toISO(data);
-              const dia = dias[iso];
-              const cfg = dia ? TIPOS_DIA_EQUIPE[dia.tipo] : null;
+              const alterado = Object.prototype.hasOwnProperty.call(pendentes, iso);
+              const tipo = tipoAtual(iso);
+              const cfg = tipo ? TIPOS_DIA_EQUIPE[tipo] : null;
 
               return (
                 <button
                   key={iso}
-                  onClick={() => alternarDia(iso)}
+                  onClick={() => pintarDia(iso)}
                   disabled={!canWrite}
-                  title={dia?.observacao || cfg?.label || 'Sem marcação'}
+                  title={cfg?.label || 'Sem marcação'}
                   className={`min-h-14 sm:min-h-20 rounded-lg border p-1.5 sm:p-2 flex flex-col items-start justify-between transition-colors text-left ${
                     cfg ? cfg.celula : 'bg-dark-800 border-dark-700 text-dark-500'
-                  } ${canWrite ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'}`}
+                  } ${alterado ? 'ring-2 ring-primary-400 ring-offset-1 ring-offset-dark-900' : ''} ${
+                    canWrite ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'
+                  }`}
                 >
                   <span className="text-xs sm:text-sm font-bold">{data.getDate()}</span>
                   <span className="hidden xs:block text-[9px] sm:text-[10px] leading-tight font-medium opacity-90">
@@ -111,6 +142,25 @@ export function EquipeCalendarManagement({ ano, mes, canWrite, showToast }) {
               );
             })}
           </div>
+
+          {canWrite && qtdPendentes > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-5 pt-4 border-t border-dark-700">
+              <p className="text-sm text-dark-300">
+                {qtdPendentes} {qtdPendentes === 1 ? 'dia alterado' : 'dias alterados'} ainda não
+                salvo{qtdPendentes === 1 ? '' : 's'}.
+              </p>
+              <div className="flex items-center gap-2">
+                <button onClick={descartarAlteracoes} disabled={salvando} className="btn-secondary text-sm">
+                  <X className="w-4 h-4" />
+                  Descartar
+                </button>
+                <button onClick={salvarAlteracoes} disabled={salvando} className="btn-primary text-sm">
+                  <Save className="w-4 h-4" />
+                  {salvando ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

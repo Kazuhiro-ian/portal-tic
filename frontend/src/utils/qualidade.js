@@ -18,6 +18,22 @@ const GRUPO_BADGES = {
 
 export const grupoBadge = (grupo) => GRUPO_BADGES[grupo] || 'badge-info';
 
+// periodicidadeInventario null (filial ainda não configurada) é tratado como MENSAL,
+// mesmo critério do backend (PlanoInventarioService.periodicidadeDe).
+export const periodicidadeLabels = {
+  MENSAL: 'Mensal',
+  SEMANAL: 'Semanal',
+  BIMESTRAL: 'Bimestral',
+};
+
+const PERIODICIDADE_BADGES = {
+  MENSAL: 'badge-info',
+  SEMANAL: 'badge-warning',
+  BIMESTRAL: 'badge-success',
+};
+
+export const periodicidadeBadge = (periodicidade) => PERIODICIDADE_BADGES[periodicidade || 'MENSAL'];
+
 export const TIPOS_DIA = {
   GRUPO_1: {
     label: 'Grupo 1',
@@ -44,6 +60,7 @@ export const MOTIVOS = {
   JA_REALIZADO: { label: 'Já realizado', badge: 'badge-success' },
   SEM_DIA_VALIDO: { label: 'Sem dia válido', badge: 'badge-danger' },
   SEM_GRUPO: { label: 'Sem grupo', badge: 'badge-danger' },
+  PERIODICIDADE_SEMANAL: { label: 'Semanal', badge: 'badge-info' },
 };
 
 export const STATUS_INVENTARIO = {

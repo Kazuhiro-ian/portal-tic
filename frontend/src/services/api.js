@@ -159,8 +159,8 @@ export const listarDiasRecebimento = (inicio, fim) =>
   apiGet(`/api/qualidade/recebimentos?inicio=${inicio}&fim=${fim}`);
 export const aplicarPadraoMensal = (payload) =>
   apiPost('/api/qualidade/recebimentos/padrao-mensal', payload);
-export const salvarDiaRecebimento = (diaData) =>
-  apiPut('/api/qualidade/recebimentos/dia', diaData);
+export const salvarDiasRecebimento = (itens) =>
+  apiPut('/api/qualidade/recebimentos/dias', { itens });
 export const listarConflitosRecebimento = (inicio, fim) =>
   apiGet(`/api/qualidade/recebimentos/conflitos?inicio=${inicio}&fim=${fim}`);
 
@@ -208,6 +208,8 @@ export const buscarRankingAcuracidade = (ano, mes, { tipoFilial, filialId, limit
 };
 export const buscarDetalheFilialAcuracidade = (filialId, ano, mes) =>
   apiGet(`/api/qualidade/acuracidade/filial/${filialId}?ano=${ano}&mes=${mes}`);
+export const buscarDetalheSemanalAcuracidade = (filialId, ano, mes) =>
+  apiGet(`/api/qualidade/acuracidade/filial/${filialId}/semanal?ano=${ano}&mes=${mes}`);
 export const buscarDetalheGrupoAcuracidade = (tipo, ano, mes) => {
   const params = new URLSearchParams({ ano, mes });
   if (tipo) params.set('tipo', tipo);
@@ -223,5 +225,5 @@ export const deletarEquipeInventario = (id) => apiDelete(`/api/qualidade/equipes
 // --- ROTAS DE CALENDÁRIO DA EQUIPE (DSR/FOLGA/REUNIÃO/FERIADO) ---
 export const listarDiasEquipe = (inicio, fim) =>
   apiGet(`/api/qualidade/equipe-calendario?inicio=${inicio}&fim=${fim}`);
-export const alternarDiaEquipe = (diaData) =>
-  apiPut('/api/qualidade/equipe-calendario/dia', diaData);
+export const salvarDiasEquipe = (itens) =>
+  apiPut('/api/qualidade/equipe-calendario/dias', { itens });

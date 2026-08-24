@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import portal.ti.queiroz.dto.ConflitoInventario;
 import portal.ti.queiroz.dto.PadraoMensalRequest;
 import portal.ti.queiroz.dto.PadraoMensalResponse;
+import portal.ti.queiroz.dto.SalvarDiasRecebimentoRequest;
+import portal.ti.queiroz.dto.SalvarDiasRecebimentoResponse;
 import portal.ti.queiroz.model.DiaRecebimento;
 import portal.ti.queiroz.service.RecebimentoService;
 
@@ -34,10 +36,10 @@ public class QualidadeRecebimentoController {
         return service.aplicarPadraoMensal(request);
     }
 
-    // PUT: sobrescreve um dia específico (feriado, entrega extra)
-    @PutMapping("/dia")
-    public DiaRecebimento salvarDia(@RequestBody DiaRecebimento dia) {
-        return service.salvarDia(dia.getData(), dia.getTipo(), dia.getObservacao());
+    // PUT: salva de uma vez os dias marcados no calendário (pincel + vários cliques + 1 save)
+    @PutMapping("/dias")
+    public SalvarDiasRecebimentoResponse salvarDias(@RequestBody SalvarDiasRecebimentoRequest request) {
+        return service.salvarDias(request);
     }
 
     // GET: inventários planejados que batem com dia de recebimento do próprio grupo

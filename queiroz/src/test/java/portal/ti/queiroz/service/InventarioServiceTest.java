@@ -10,6 +10,7 @@ import portal.ti.queiroz.model.DiaRecebimento;
 import portal.ti.queiroz.model.Filiais;
 import portal.ti.queiroz.model.GrupoRecebimento;
 import portal.ti.queiroz.model.Inventario;
+import portal.ti.queiroz.model.PeriodicidadeInventario;
 import portal.ti.queiroz.model.TipoDiaRecebimento;
 import portal.ti.queiroz.model.TipoFilial;
 import portal.ti.queiroz.repository.DiaRecebimentoRepository;
@@ -55,13 +56,25 @@ class InventarioServiceTest {
                 .thenReturn(Collections.emptyList());
     }
 
-    private Filiais filialCD() {
+    private Filiais filialCDSemanal() {
         Filiais filial = new Filiais();
         filial.setId(2L);
         filial.setNumeroFilial(0);
         filial.setNome("Centro de Distribuição");
         filial.setGrupoRecebimento(GrupoRecebimento.CD);
         filial.setTipoFilial(TipoFilial.CD);
+        filial.setPeriodicidadeInventario(PeriodicidadeInventario.SEMANAL);
+        return filial;
+    }
+
+    private Filiais filialCDMensal() {
+        Filiais filial = new Filiais();
+        filial.setId(3L);
+        filial.setNumeroFilial(51);
+        filial.setNome("Boa Vista");
+        filial.setGrupoRecebimento(GrupoRecebimento.BV);
+        filial.setTipoFilial(TipoFilial.CD);
+        // periodicidadeInventario não setada -- null é tratado como MENSAL.
         return filial;
     }
 
@@ -132,10 +145,10 @@ class InventarioServiceTest {
     }
 
     @Test
-    void devePermitirMaisDeUmInventarioNoMesParaFilialCD() {
-        // CD faz contagem parcial toda semana -- não pode cair na regra de "um por mês"
-        // que vale pra loja. A checagem de duplicidade nem deveria ser consultada.
-        Filiais filial = filialCD();
+    void devePermitirMaisDeUmInventarioNoMesParaFilialSemanal() {
+        // Periodicidade SEMANAL (CD 00) faz contagem parcial toda semana -- não pode cair
+        // na regra de "um por mês". A checagem de duplicidade nem deveria ser consultada.
+        Filiais filial = filialCDSemanal();
         when(filiaisRepository.findById(2L)).thenReturn(Optional.of(filial));
 
         Inventario segundoSabado = new Inventario();
@@ -147,9 +160,33 @@ class InventarioServiceTest {
         Inventario salvo = service.salvar(segundoSabado);
 
         assertThat(salvo).isSameAs(segundoSabado);
-        // A checagem de duplicidade por mês não deve nem ser consultada para CD.
+        // A checagem de duplicidade por mês não deve nem ser consultada para SEMANAL.
         org.mockito.Mockito.verify(repository, org.mockito.Mockito.never())
                 .findByFilialIdAndDataBetween(any(), any(), any());
+    }
+
+    @Test
+    void naoDevePermitirDoisInventariosNoMesParaCDMensal() {
+        // CD que não é SEMANAL (ex: Boa Vista, mensal) segue a mesma trava de "um por mês"
+        // que uma Loja -- ser do tipo CD sozinho não isenta mais a filial dessa regra.
+        Filiais filial = filialCDMensal();
+        when(filiaisRepository.findById(3L)).thenReturn(Optional.of(filial));
+
+        Inventario jaExistente = new Inventario();
+        jaExistente.setId(99L);
+        jaExistente.setFilialId(3L);
+        jaExistente.setData(LocalDate.of(2026, 8, 5));
+        jaExistente.setStatus(portal.ti.queiroz.model.StatusInventario.PLANEJADO);
+        when(repository.findByFilialIdAndDataBetween(eq(3L), any(), any()))
+                .thenReturn(java.util.List.of(jaExistente));
+
+        Inventario segundoNoMes = new Inventario();
+        segundoNoMes.setFilialId(3L);
+        segundoNoMes.setData(LocalDate.of(2026, 8, 20));
+
+        assertThatThrownBy(() -> service.salvar(segundoNoMes))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("já possui inventário agendado");
     }
 
     @Test

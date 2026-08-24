@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
-import { grupoLabels, grupoBadge } from '../utils/qualidade.js';
+import { grupoLabels, grupoBadge, periodicidadeLabels, periodicidadeBadge } from '../utils/qualidade.js';
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -21,7 +21,7 @@ function formatCnpj(value) {
 
 const emptyForm = {
   numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '',
-  estoqueDividido: false,
+  estoqueDividido: false, periodicidadeInventario: '', referenciaBimestral: '',
 };
 
 const COLUNAS = [
@@ -78,6 +78,16 @@ const COLUNAS = [
       ) : (
         <span className="badge">Não definido</span>
       ),
+  },
+  {
+    chave: 'periodicidadeInventario',
+    header: 'Periodicidade',
+    mobile: 'badge',
+    render: (branch) => (
+      <span className={`badge ${periodicidadeBadge(branch.periodicidadeInventario)}`}>
+        {periodicidadeLabels[branch.periodicidadeInventario || 'MENSAL']}
+      </span>
+    ),
   },
 ];
 
@@ -137,6 +147,9 @@ export function BranchManagement() {
       grupoRecebimento: branch.grupoRecebimento || '',
       tipoFilial: branch.tipoFilial || '',
       estoqueDividido: Boolean(branch.estoqueDividido),
+      periodicidadeInventario: branch.periodicidadeInventario || '',
+      // input type="month" espera "AAAA-MM" -- a API devolve "AAAA-MM-DD" (dia 1 sempre).
+      referenciaBimestral: branch.referenciaBimestral ? branch.referenciaBimestral.slice(0, 7) : '',
     });
     setFormError('');
     setShowModal(true);
@@ -163,6 +176,12 @@ export function BranchManagement() {
         tipoFilial: form.tipoFilial || null,
         // Estoque dividido só faz sentido para Loja — o backend rejeita a combinação contrária.
         estoqueDividido: form.tipoFilial === 'LOJA' ? form.estoqueDividido : false,
+        periodicidadeInventario: form.periodicidadeInventario || null,
+        // Referência só faz sentido pra Bimestral -- o backend também limpa isso, mas o
+        // front já não deveria mandar lixo.
+        referenciaBimestral: form.periodicidadeInventario === 'BIMESTRAL' && form.referenciaBimestral
+          ? `${form.referenciaBimestral}-01`
+          : null,
       };
 
       if (editingBranch) {
@@ -391,6 +410,41 @@ export function BranchManagement() {
               planejamento de inventário da Qualidade.
             </p>
           </div>
+
+          <div>
+            <label htmlFor="filial-periodicidade" className="block text-sm font-medium text-dark-300 mb-2">Periodicidade do Inventário</label>
+            <select
+              id="filial-periodicidade"
+              value={form.periodicidadeInventario}
+              onChange={(e) => setForm({ ...form, periodicidadeInventario: e.target.value })}
+              className="select-field"
+            >
+              <option value="">Mensal (padrão)</option>
+              <option value="SEMANAL">Semanal (contagem parcial toda semana, ex: CD 00)</option>
+              <option value="BIMESTRAL">Bimestral (um mês sim, um mês não)</option>
+            </select>
+            <p className="text-xs text-dark-400 mt-1.5">
+              Semanal fica fora do plano automático de 1 dia por mês — o agendamento de cada
+              semana é feito diretamente na aba de Inventários.
+            </p>
+          </div>
+
+          {form.periodicidadeInventario === 'BIMESTRAL' && (
+            <div>
+              <label htmlFor="filial-referencia-bimestral" className="block text-sm font-medium text-dark-300 mb-2">Mês de Referência (ciclo &quot;sim&quot;)</label>
+              <input
+                id="filial-referencia-bimestral"
+                type="month"
+                value={form.referenciaBimestral}
+                onChange={(e) => setForm({ ...form, referenciaBimestral: e.target.value })}
+                className="input-field"
+              />
+              <p className="text-xs text-dark-400 mt-1.5">
+                Mês em que a filial teve (ou terá) inventário — ex: agosto/2026. Os meses
+                seguintes alternam automaticamente a partir dessa referência.
+              </p>
+            </div>
+          )}
 
           {formError && (
             <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
