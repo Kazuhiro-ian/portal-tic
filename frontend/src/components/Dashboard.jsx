@@ -349,12 +349,14 @@ export function Dashboard() {
           </div>
           <p className="text-xs text-dark-400">{employees.length} colaboradores</p>
           <div className="flex-1 space-y-1 overflow-y-auto scrollbar-thin">
-            {!isLoading && todayEmployees.slice(0, 3).map((e) => (
-              <p key={e.id} className="text-xs text-dark-100 truncate">{e.name}</p>
-            ))}
-            {!isLoading && todayEmployees.length > 3 && (
-              <p className="text-xs text-dark-400">+{todayEmployees.length - 3} outros</p>
-            )}
+            {!isLoading && employees.map((e) => {
+              const trabalhando = estaTrabalhando(escalasHoje[`${e.id}_${hojeISO}`]);
+              return (
+                <p key={e.id} className={`text-xs truncate ${trabalhando ? 'text-green-400' : 'text-amber-400'}`}>
+                  ● {e.name}
+                </p>
+              );
+            })}
           </div>
         </div>
 
