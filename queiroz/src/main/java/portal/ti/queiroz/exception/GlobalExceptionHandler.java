@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 
+// Converte exceções lançadas pelos controllers em respostas HTTP padronizadas (ErroResponse).
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

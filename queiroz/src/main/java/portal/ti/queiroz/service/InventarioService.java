@@ -15,6 +15,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+// CRUD de inventários, aplicando as regras de agendamento (conflito com recebimento,
+// um inventário por filial por mês, exceto CD).
 @Service
 public class InventarioService {
 

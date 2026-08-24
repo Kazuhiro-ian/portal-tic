@@ -9,6 +9,7 @@ import portal.ti.queiroz.repository.CredencialAcessoLogRepository;
 
 import java.util.List;
 
+// Registra e lista o log de auditoria de acesso ao cofre de credenciais.
 @Service
 public class CredencialAcessoLogService {
 

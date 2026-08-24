@@ -10,6 +10,7 @@ import portal.ti.queiroz.repository.CredencialRepository;
 
 import java.util.List;
 
+// CRUD do cofre de credenciais; toda operação sensível é auditada via CredencialAcessoLogService.
 @Service
 public class CredencialService {
 

@@ -5,6 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 
+// Ativo de TI cadastrado (desktop, notebook, celular, impressora etc.).
 @Data
 @Entity
 @Table(name = "ativos")

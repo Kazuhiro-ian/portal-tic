@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.EscalaRepository;
 import java.time.LocalDate;
 import java.util.List;
 
+// Consulta e grava a escala de turnos dos colaboradores.
 @Service
 public class EscalaService {
 

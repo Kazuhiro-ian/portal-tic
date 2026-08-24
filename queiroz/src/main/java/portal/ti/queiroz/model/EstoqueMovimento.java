@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+// Registro de entrada/saída de um item do estoque.
 @Data
 @Entity
 @Table(name = "estoque_movimentos")

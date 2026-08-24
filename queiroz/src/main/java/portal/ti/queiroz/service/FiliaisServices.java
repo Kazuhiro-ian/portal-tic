@@ -10,6 +10,7 @@ import portal.ti.queiroz.repository.FiliaisRepository;
 
 import java.util.List;
 
+// CRUD de filiais, com a regra de que só Lojas podem ter estoque dividido em armazéns.
 @Service
 public class FiliaisServices {
 

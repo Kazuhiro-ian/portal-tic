@@ -32,6 +32,7 @@ public class UsuarioController {
         return service.atualizar(id, req);
     }
 
+    // DELETE aqui não remove o usuário -- apenas desativa (ver UsuarioService.desativar).
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> desativar(@PathVariable Long id) {
         service.desativar(id);

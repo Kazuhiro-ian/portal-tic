@@ -13,6 +13,7 @@ import portal.ti.queiroz.repository.EstoqueMovimentoRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+// Registra o histórico de entradas/saídas de estoque e mantém a quantidade do item em sincronia.
 @Service
 public class EstoqueMovimentoService {
 

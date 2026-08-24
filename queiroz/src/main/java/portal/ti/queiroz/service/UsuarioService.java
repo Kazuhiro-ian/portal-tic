@@ -12,6 +12,7 @@ import portal.ti.queiroz.repository.UsuarioRepository;
 
 import java.util.List;
 
+// CRUD de usuários; troca de senha, papel ou desativação revoga os tokens JWT já emitidos.
 @Service
 public class UsuarioService {
 

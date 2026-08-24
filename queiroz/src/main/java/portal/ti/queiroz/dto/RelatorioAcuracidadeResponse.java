@@ -2,6 +2,7 @@ package portal.ti.queiroz.dto;
 
 import java.util.List;
 
+// cds/lojas/geral são os agregados prontos, calculados a partir da lista de filiais.
 public record RelatorioAcuracidadeResponse(
         int ano,
         int mes,

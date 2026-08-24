@@ -3,6 +3,7 @@ package portal.ti.queiroz.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+// Colaborador da equipe, usado na escala e no plantão.
 @Data
 @Entity
 @Table(name = "colaboradores")

@@ -10,6 +10,7 @@ import portal.ti.queiroz.repository.ZebraCotaRepository;
 import java.util.List;
 import java.util.Optional;
 
+// CRUD das cotas de etiquetas/ribbons Zebra por filial; uma cota por filial.
 @Service
 public class ZebraCotaService {
 

@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.ArtigoRepository;
 
 import java.util.List;
 
+// CRUD dos artigos da wiki interna.
 @Service
 public class ArtigoService {
 

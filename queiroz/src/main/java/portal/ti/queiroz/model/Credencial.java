@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import portal.ti.queiroz.security.CredencialPasswordConverter;
 
+// Credencial guardada no cofre. Password fica criptografado no banco; o converter faz a
+// cifragem/decifragem de forma transparente na entidade.
 @Data
 @Entity
 @Table(name = "credenciais")

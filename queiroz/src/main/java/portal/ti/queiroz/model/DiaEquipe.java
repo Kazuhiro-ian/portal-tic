@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 
+// Uma linha por data concreta do calendário da equipe (DSR, folga, reunião, feriado).
 @Data
 @Entity
 @Table(name = "dias_equipe",

@@ -10,6 +10,7 @@ import portal.ti.queiroz.repository.UsuarioRepository;
 
 import java.util.List;
 
+// CRUD dos avisos do Dashboard; o autor é sempre resolvido do usuário autenticado.
 @Service
 public class AvisoService {
 

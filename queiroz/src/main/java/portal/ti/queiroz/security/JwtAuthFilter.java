@@ -17,6 +17,7 @@ import portal.ti.queiroz.repository.UsuarioRepository;
 
 import java.io.IOException;
 
+// Lê o token Bearer, valida o JWT e popula o SecurityContext quando o token ainda é válido.
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -50,6 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             int tokenVersionDoToken = jwtService.extrairTokenVersion(claims);
 
             Usuario usuario = usuarioRepository.findByUsername(username).orElse(null);
+            // tokenVersion diferente = token emitido antes da última troca de senha/revogação.
             boolean tokenAindaValido = usuario != null
                     && Boolean.TRUE.equals(usuario.getAtivo())
                     && usuario.getTokenVersion() != null

@@ -5,6 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+// Um inventário agendado ou realizado para uma filial em uma data.
 @Data
 @Entity
 @Table(name = "inventarios")
@@ -37,6 +38,7 @@ public class Inventario {
 
     private String observacao;
 
+    // true quando o usuário confirmou o agendamento mesmo caindo em dia de recebimento.
     @Column(name = "ciente_conflito_recebimento")
     private Boolean cienteConflitoRecebimento;
 }

@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+// Gera e valida os tokens JWT usados para autenticar as requisições.
 @Component
 public class JwtService {
 

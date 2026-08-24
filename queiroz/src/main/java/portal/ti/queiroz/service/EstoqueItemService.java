@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.EstoqueItemRepository;
 
 import java.util.List;
 
+// CRUD dos itens de estoque (consumíveis e ativos rastreados por número de série).
 @Service
 public class EstoqueItemService {
 

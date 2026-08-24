@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// CRUD de ativos de TI e teste de conectividade (ping/porta) dos equipamentos com IP cadastrado.
 @Service
 public class AtivoService {
 

@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+// Importa o relatório do Protheus, calcula os indicadores de acuracidade e grava o resultado.
 @Service
 public class AcuracidadeService {
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import portal.ti.queiroz.model.Usuario;
 import portal.ti.queiroz.repository.UsuarioRepository;
 
+// Adapta Usuario para o UserDetails que o Spring Security usa na autenticação.
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 

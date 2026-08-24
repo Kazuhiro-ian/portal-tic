@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.ColaboradorRepository;
 
 import java.util.List;
 
+// CRUD de colaboradores, usados na escala e no plantão.
 @Service
 public class ColaboradorService {
 

@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+// Alterna o tipo de um dia no calendário da equipe; clicar de novo no mesmo tipo remove a marcação.
 @Service
 public class DiaEquipeService {
 

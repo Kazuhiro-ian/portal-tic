@@ -9,6 +9,7 @@ import portal.ti.queiroz.repository.TarefaPlantaoRepository;
 import java.time.LocalDate;
 import java.util.List;
 
+// CRUD das tarefas do plantão do dia.
 @Service
 public class TarefaPlantaoService {
 

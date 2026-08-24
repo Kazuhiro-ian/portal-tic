@@ -7,6 +7,7 @@ import lombok.ToString;
 
 import java.time.LocalDateTime;
 
+// Usuário do sistema. equals/hashCode restritos ao id para não comparar o hash de senha.
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
@@ -36,6 +37,7 @@ public class Usuario {
     @Column(nullable = false)
     private Boolean ativo = true;
 
+    // Incrementado para invalidar todos os tokens JWT já emitidos (ex: ao trocar senha).
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
 

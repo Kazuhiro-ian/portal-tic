@@ -20,6 +20,7 @@ import java.security.SecureRandom;
 public class BootstrapAdminRunner implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(BootstrapAdminRunner.class);
+    // Sem caracteres ambíguos (I, O, l, o, 0, 1) para facilitar a digitação da senha gerada.
     private static final String CARACTERES_SENHA =
             "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
 

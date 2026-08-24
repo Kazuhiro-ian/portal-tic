@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.EquipeInventarioRepository;
 
 import java.util.List;
 
+// CRUD das equipes de inventário.
 @Service
 public class EquipeInventarioService {
     @Autowired

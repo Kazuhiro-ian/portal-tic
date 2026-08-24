@@ -3,6 +3,7 @@ package portal.ti.queiroz.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+// Cota mensal de etiquetas/ribbons Zebra por filial e os dias em que são enviados.
 @Data
 @Entity
 @Table(name = "zebra_cotas",

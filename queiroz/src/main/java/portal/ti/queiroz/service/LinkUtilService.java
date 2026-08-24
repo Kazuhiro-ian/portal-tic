@@ -8,6 +8,7 @@ import portal.ti.queiroz.repository.LinkUtilRepository;
 
 import java.util.List;
 
+// CRUD dos links úteis favoritados, organizados por categoria e tags.
 @Service
 public class LinkUtilService {
 
