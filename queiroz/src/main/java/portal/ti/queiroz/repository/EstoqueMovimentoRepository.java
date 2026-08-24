@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface EstoqueMovimentoRepository extends JpaRepository<EstoqueMovimento, Long> {
 
-    /** Mais recente primeiro -- ordena no banco em vez de carregar tudo pra ordenar em memória. */
+    // Mais recente primeiro; ordena no banco em vez de carregar tudo para ordenar em memória.
     List<EstoqueMovimento> findByOrderByDateDesc();
 }

@@ -25,9 +25,9 @@ public class ZebraEnvio {
     @Column(nullable = false)
     private LocalDate dataEnvio;
 
-    @Column(nullable = false)
-    private String tipoEnvio; // "REGULAR" ou "EXTRA"
+    @Column(nullable = false) // "REGULAR" ou "EXTRA"
+    private String tipoEnvio;
 
     @Column(columnDefinition = "TEXT")
-    private String motivoExtra; // Obrigatório apenas se for "EXTRA"
+    private String motivoExtra; // obrigatório apenas se tipoEnvio for "EXTRA"
 }

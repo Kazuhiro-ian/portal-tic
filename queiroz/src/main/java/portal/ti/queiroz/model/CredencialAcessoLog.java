@@ -5,12 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * Registro de auditoria do cofre de credenciais: quem acessou/alterou o quê e quando.
- *
- * Guarda um snapshot do nome da credencial (não uma FK) de propósito -- o log precisa
- * continuar legível mesmo que a credencial original seja excluída depois.
- */
+// Auditoria do cofre de credenciais: quem acessou/alterou o quê e quando.
 @Data
 @Entity
 @Table(name = "credencial_acesso_logs")
@@ -23,6 +18,7 @@ public class CredencialAcessoLog {
     @Column(name = "credencial_id", nullable = false)
     private Long credencialId;
 
+    // Snapshot do nome, não uma FK: o log deve continuar legível mesmo após excluir a credencial.
     @Column(name = "credencial_nome", nullable = false)
     private String credencialNome;
 

@@ -19,6 +19,6 @@ public class TarefaPlantao {
     @Column(nullable = false)
     private String descricao;
 
-    @Column(nullable = false)
-    private String status; // "PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"
+    @Column(nullable = false) // "PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"
+    private String status;
 }

@@ -5,10 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * Aviso da equipe, exibido no Dashboard. Antes vivia só no localStorage do navegador
- * (não persistia entre dispositivos, autor era uma string fixa) -- agora é real.
- */
+// Aviso exibido no Dashboard. Antes era persistido no localStorage do navegador.
 @Data
 @Entity
 @Table(name = "avisos")

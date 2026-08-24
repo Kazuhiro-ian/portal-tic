@@ -16,8 +16,8 @@ public class Artigo {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
-    private String category; // "networks", "systems", "hardware"
+    @Column(nullable = false) // "networks", "systems", "hardware"
+    private String category;
 
     @Column(columnDefinition = "TEXT")
     private String summary;

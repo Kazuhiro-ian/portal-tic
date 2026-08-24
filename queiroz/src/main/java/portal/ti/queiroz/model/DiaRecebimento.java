@@ -5,17 +5,11 @@ import lombok.Data;
 
 import java.time.LocalDate;
 
-/**
- * Uma linha por DATA concreta do calendário, dizendo qual grupo recebe material nela.
- *
- * Guardar a data concreta (em vez de só o padrão semanal do mês) resolve os dois casos
- * com um único modelo: aplicar o padrão do mês expande para linhas, e um feriado é
- * simplesmente a edição de uma linha (ajusteManual = true).
- */
+// Uma linha por data concreta, indicando qual grupo recebe material nela.
+// Aplicar o padrão semanal do mês expande em linhas; um feriado é a edição de uma linha.
 @Data
 @Entity
-@Table(name = "dias_recebimento",
-        uniqueConstraints = @UniqueConstraint(name = "uk_dias_recebimento_data", columnNames = "data"))
+@Table(name = "dias_recebimento", uniqueConstraints = @UniqueConstraint(name = "uk_dias_recebimento_data", columnNames = "data"))
 public class DiaRecebimento {
 
     @Id
@@ -29,11 +23,7 @@ public class DiaRecebimento {
     @Column(nullable = false)
     private TipoDiaRecebimento tipo;
 
-    /**
-     * true quando o dia foi ajustado à mão (feriado, entrega extra). Esses dias
-     * sobrevivem a uma reaplicação do padrão semanal, salvo se o usuário pedir
-     * explicitamente para sobrescrever.
-     */
+    // true quando o dia foi ajustado manualmente; sobrevive a uma reaplicação do padrão semanal.
     @Column(name = "ajuste_manual")
     private Boolean ajusteManual;
 

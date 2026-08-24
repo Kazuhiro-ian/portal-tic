@@ -5,14 +5,8 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-/**
- * Uma linha do relatório de produtos exportado do Protheus, já vinculada ao
- * inventário que a originou.
- *
- * Guardar o detalhe por SKU (e não só o resumo) é o que permite os rankings de
- * maiores sobras/perdas e recalcular tudo se alguma regra mudar — sem precisar
- * pedir o arquivo de novo.
- */
+// Uma linha do relatório de produtos exportado do Protheus, vinculada ao inventário que a
+// originou. Guardar o detalhe por SKU permite recalcular tudo e montar rankings sem reimportar.
 @Data
 @Entity
 @Table(name = "inventario_itens", indexes = {
@@ -27,16 +21,12 @@ public class InventarioItem {
     @Column(name = "inventario_id", nullable = false)
     private Long inventarioId;
 
-    /**
-     * Armazém (01 = Loja, 03 = Estoque) de origem deste item, para filiais com estoque
-     * dividido. Null = filial não dividida (item único do inventário, como sempre foi).
-     */
+    // Armazém de origem para filiais com estoque dividido; null = filial não dividida.
     @Enumerated(EnumType.STRING)
     @Column(name = "armazem")
     private Armazem armazem;
 
-    // --- Campos vindos do relatório do Protheus ---
-
+    // Campos abaixo vêm direto do relatório do Protheus.
     @Column(name = "cod_produto")
     private String codProduto;
 
@@ -55,8 +45,7 @@ public class InventarioItem {
 
     private String fabricante;
 
-    /** Saldo que o sistema (Protheus) acreditava ter antes da contagem. */
-    @Column(name = "quantidade_sistema", precision = 15, scale = 3)
+    @Column(name = "quantidade_sistema", precision = 15, scale = 3) // saldo que o Protheus tinha antes da contagem
     private BigDecimal quantidadeSistema;
 
     @Column(precision = 15, scale = 3)
@@ -68,12 +57,10 @@ public class InventarioItem {
     @Column(precision = 15, scale = 3)
     private BigDecimal contagem3;
 
-    /** Diferença em unidades: negativa = falta, positiva = sobra. */
-    @Column(precision = 15, scale = 3)
+    @Column(precision = 15, scale = 3) // negativa = falta, positiva = sobra
     private BigDecimal divergencia;
 
-    /** Diferença em R$ (divergência x valor unitário), como o Protheus já entrega. */
-    @Column(name = "valor_divergencia", precision = 15, scale = 2)
+    @Column(name = "valor_divergencia", precision = 15, scale = 2) // divergência x valor unitário
     private BigDecimal valorDivergencia;
 
     @Column(name = "cod_barras")
@@ -82,19 +69,16 @@ public class InventarioItem {
     @Column(length = 300)
     private String observacao;
 
-    // --- Campos derivados (a planilha calculava em colunas auxiliares) ---
-
+    // Campos abaixo são derivados, calculados a partir dos anteriores.
     @Column(name = "valor_inicial", precision = 15, scale = 2)
     private BigDecimal valorInicial;
 
-    /** Última contagem preenchida: a 3ª se houver, senão a 2ª, senão a 1ª. */
-    @Column(name = "quantidade_final", precision = 15, scale = 3)
+    @Column(name = "quantidade_final", precision = 15, scale = 3) // última contagem preenchida: 3ª, senão 2ª, senão 1ª
     private BigDecimal quantidadeFinal;
 
     @Column(name = "valor_final", precision = 15, scale = 2)
     private BigDecimal valorFinal;
 
-    /** True quando saldo, todas as contagens e a divergência são zero. */
-    @Column(nullable = false)
+    @Column(nullable = false) // true quando saldo, contagens e divergência são todos zero
     private Boolean zerado;
 }

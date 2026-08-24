@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public interface EscalaRepository extends JpaRepository<Escala, Long> {
 
-    // Busca todas as escalas entre um intervalo de datas (para carregar a semana/mês)
+    // Escalas em um intervalo de datas (semana/mês).
     List<Escala> findByDataBetween(LocalDate inicio, LocalDate fim);
 
-    // Busca a escala específica de um colaborador em determinado dia
+    // Escala de um colaborador em um dia específico.
     Optional<Escala> findByColaboradorIdAndData(Long colaboradorId, LocalDate data);
 }

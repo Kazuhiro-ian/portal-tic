@@ -19,6 +19,6 @@ public class Escala {
     @Column(nullable = false)
     private LocalDate data;
 
-    @Column(nullable = false)
-    private String turno; // Ex: "08:00 - 17:00", "Folga", "12:00 - 21:00", "Plantão"
+    @Column(nullable = false) // Ex: "08:00 - 17:00", "Folga", "Plantão"
+    private String turno;
 }
