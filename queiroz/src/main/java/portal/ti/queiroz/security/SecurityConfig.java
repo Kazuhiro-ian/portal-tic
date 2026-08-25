@@ -78,6 +78,12 @@ public class SecurityConfig {
                         // está exposto (ver management.endpoints.web.exposure.include) e sem detalhes,
                         // então isso não revela configuração interna.
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        // Documentação da API (Swagger UI/OpenAPI): descreve só a FORMA dos
+                        // endpoints (rotas, DTOs), não dado nenhum -- liberado sem login para
+                        // facilitar integração. "Executar" um endpoint dali dentro ainda exige
+                        // colar um token JWT válido; não abre nenhum acesso que o próprio
+                        // /api/auth/login já não desse.
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                         // Auditoria do cofre de credenciais: só ADMIN, mesmo que TECNICO tenha
                         // acesso de escrita às credenciais em si. Precisa vir ANTES do matcher
