@@ -6,6 +6,8 @@ import {
 import { DataTable } from './DataTable.jsx';
 import { ListaRanking } from './ListaRanking.jsx';
 import { StoreAccuracyDetailPanel } from './StoreAccuracyDetailPanel.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 import { percentual, moeda } from '../utils/formato.js';
 
 const rotuloTipo = (tipo) => (tipo === 'CD' ? 'CD' : tipo === 'LOJA' ? 'Loja' : '—');
@@ -164,6 +166,8 @@ export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
   const [isLoading, setIsLoading] = useState(true);
   const [filialSelecionada, setFilialSelecionada] = useState(null);
 
+  const paginacao = usePaginacao(relatorio?.filiais || []);
+
   const carregar = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -203,11 +207,12 @@ export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
         <h2 className="text-lg font-semibold text-white mb-4">Acuracidade por Filial</h2>
         <DataTable
           colunas={COLUNAS}
-          dados={relatorio.filiais}
+          dados={paginacao.itensPagina}
           chaveLinha={(linha) => linha.filialId}
           vazio="Nenhuma filial cadastrada."
           aoClicarLinha={(linha) => setFilialSelecionada(linha)}
         />
+        <Paginacao {...paginacao} rotulo="filiais" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

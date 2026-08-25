@@ -8,6 +8,8 @@ import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
 import { grupoLabels, grupoBadge, periodicidadeLabels, periodicidadeBadge } from '../utils/qualidade.js';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -128,6 +130,8 @@ export function BranchManagement() {
       (b.endereco && b.endereco.toLowerCase().includes(q))
     );
   });
+
+  const paginacao = usePaginacao(filtered);
 
   const openNew = () => {
     setEditingBranch(null);
@@ -264,7 +268,7 @@ export function BranchManagement() {
 
         <DataTable
           colunas={COLUNAS}
-          dados={filtered}
+          dados={paginacao.itensPagina}
           carregando={isLoading}
           vazio="Nenhuma filial encontrada."
           acoes={(branch) =>
@@ -280,6 +284,7 @@ export function BranchManagement() {
             )
           }
         />
+        <Paginacao {...paginacao} rotulo="filiais" />
       </div>
 
       <SidePanel

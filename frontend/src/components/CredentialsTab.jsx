@@ -3,6 +3,8 @@ import { Edit, Trash2, Eye, EyeOff, Copy, Check, Lock, Loader2, History } from '
 import { SidePanel } from './SidePanel.jsx';
 import { FiltroBar } from './FiltroBar.jsx';
 import { DataTable } from './DataTable.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 import {
   salvarCredencial, atualizarCredencial, deletarCredencial,
   revelarSenhaCredencial, listarAuditoriaCredenciais,
@@ -65,6 +67,7 @@ export const CredentialsTab = forwardRef(function CredentialsTab(
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditLog, setAuditLog] = useState([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(false);
+  const paginacaoAuditoria = usePaginacao(auditLog);
 
   const filteredCredentials = credentials.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -379,11 +382,12 @@ export const CredentialsTab = forwardRef(function CredentialsTab(
       >
         <DataTable
           colunas={COLUNAS_AUDITORIA}
-          dados={auditLog}
+          dados={paginacaoAuditoria.itensPagina}
           carregando={isLoadingAudit}
           vazio="Nenhum acesso registrado ainda."
           offset="220px"
         />
+        <Paginacao {...paginacaoAuditoria} rotulo="registros" />
       </SidePanel>
     </>
   );

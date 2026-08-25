@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 
 const emptyForm = { nome: '' };
 
@@ -46,6 +48,8 @@ export function EquipeInventarioManagement() {
   useEffect(() => {
     carregarEquipes();
   }, [carregarEquipes]);
+
+  const paginacao = usePaginacao(equipes);
 
   const openNew = () => {
     setEditingEquipe(null);
@@ -132,7 +136,7 @@ export function EquipeInventarioManagement() {
       <div className="card">
         <DataTable
           colunas={COLUNAS}
-          dados={equipes}
+          dados={paginacao.itensPagina}
           carregando={isLoading}
           vazio="Nenhuma equipe cadastrada."
           acoes={(equipe) =>
@@ -148,6 +152,7 @@ export function EquipeInventarioManagement() {
             )
           }
         />
+        <Paginacao {...paginacao} rotulo="equipes" />
       </div>
 
       <SidePanel

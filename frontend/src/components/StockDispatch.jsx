@@ -6,6 +6,8 @@ import { useToast } from '../hooks/useToast.js';
 import { DataTable } from './DataTable.jsx';
 import { Toast } from './Toast.jsx';
 import { SearchableSelect } from './SearchableSelect.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 
 function colunasHistorico(formatDate) {
   return [
@@ -95,6 +97,8 @@ export function StockDispatch({ items, onAtualizado }) {
   useEffect(() => {
     carregarMovimentos();
   }, [carregarMovimentos]);
+
+  const paginacaoMovimentos = usePaginacao(movements);
 
   const selectedItem = items.find((i) => i.id === form.itemId) || null;
 
@@ -270,10 +274,11 @@ export function StockDispatch({ items, onAtualizado }) {
 
           <DataTable
             colunas={colunasHistorico(formatDate)}
-            dados={movements}
+            dados={paginacaoMovimentos.itensPagina}
             carregando={isLoadingHistory}
             vazio="Nenhuma movimentação registrada ainda"
           />
+          <Paginacao {...paginacaoMovimentos} rotulo="movimentações" />
         </div>
       </div>
     </div>

@@ -6,6 +6,8 @@ import {
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
 import { SearchableSelect } from './SearchableSelect.jsx';
+import { Paginacao } from './Paginacao.jsx';
+import { usePaginacao } from '../hooks/usePaginacao.js';
 import {
   listarFiliais,
   listarEstoqueItens,
@@ -141,6 +143,8 @@ export function ZebraSupplies() {
   useEffect(() => {
     carregarDados();
   }, [carregarDados]);
+
+  const paginacaoDistribuicoes = usePaginacao(distributions);
 
   const today = new Date();
   const currentMonth = today.getMonth();
@@ -583,7 +587,7 @@ export function ZebraSupplies() {
 
         <DataTable
           colunas={colunasHistoricoZebra(branches)}
-          dados={distributions}
+          dados={paginacaoDistribuicoes.itensPagina}
           carregando={isLoading}
           vazio="Nenhum envio registrado."
           acoes={(d) =>
@@ -594,6 +598,7 @@ export function ZebraSupplies() {
             )
           }
         />
+        <Paginacao {...paginacaoDistribuicoes} rotulo="envios" />
       </div>
 
       <SidePanel
