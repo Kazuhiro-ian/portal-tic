@@ -20,7 +20,11 @@ public class Filiais {
     @Column(nullable = false)
     private Integer numeroFilial;
 
-    @NotBlank
+    // cnpj e endereco ficam sem @NotBlank de propósito: na tela de Gestão de Filiais só
+    // "Número da Filial" e "Nome da Filial" são marcados como obrigatórios (BranchManagement.jsx),
+    // e o cadastro sempre aceitou filial sem CNPJ/endereço, gravando string vazia. Exigi-los aqui
+    // rejeitaria esse cadastro que sempre funcionou -- mesma armadilha do formulário de Desktop
+    // em Ativos. Se um dia virarem obrigatórios de verdade, o lugar de começar é a tela.
     @Column(nullable = false)
     private String cnpj;
 
@@ -28,7 +32,6 @@ public class Filiais {
     @Column(nullable = false)
     private String nome;
 
-    @NotBlank
     @Column(nullable = false)
     private String endereco;
 
