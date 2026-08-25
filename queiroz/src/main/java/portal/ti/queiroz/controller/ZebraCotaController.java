@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class ZebraCotaController {
     }
 
     @PostMapping
-    public ZebraCota criar(@RequestBody ZebraCota cota) {
+    public ZebraCota criar(@Valid @RequestBody ZebraCota cota) {
         return service.salvar(cota);
     }
 
     @PutMapping("/{id}")
-    public ZebraCota atualizar(@PathVariable Long id, @RequestBody ZebraCota cota) {
+    public ZebraCota atualizar(@PathVariable Long id, @Valid @RequestBody ZebraCota cota) {
         return service.atualizar(id, cota);
     }
 

@@ -6,6 +6,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import portal.ti.queiroz.dto.AtualizarCredencialRequest;
 import portal.ti.queiroz.dto.CredencialResponse;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Credencial;
@@ -42,10 +43,9 @@ class CredencialServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(existente));
         when(repository.save(any(Credencial.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Credencial atualizacao = new Credencial();
-        atualizacao.setName("Switch Core - Andar 2");
-        atualizacao.setUsername("admin");
-        atualizacao.setPassword(""); // em branco: não deve sobrescrever
+        // password em branco: não deve sobrescrever a senha existente
+        AtualizarCredencialRequest atualizacao =
+                new AtualizarCredencialRequest("Switch Core - Andar 2", "admin", "", null);
 
         CredencialResponse resultado = service.atualizar(1L, atualizacao);
 

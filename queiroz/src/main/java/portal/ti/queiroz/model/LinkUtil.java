@@ -1,6 +1,7 @@
 package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.util.List;
 
@@ -13,12 +14,15 @@ public class LinkUtil {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(nullable = false)
     private String name;
 
+    @NotBlank
     @Column(nullable = false)
     private String url;
 
+    @NotBlank
     @Column(nullable = false)
     private String category;
 

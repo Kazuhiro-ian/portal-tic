@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class EstoqueItemController {
     }
 
     @PostMapping
-    public EstoqueItem criar(@RequestBody EstoqueItem item) {
+    public EstoqueItem criar(@Valid @RequestBody EstoqueItem item) {
         return service.salvar(item);
     }
 
     @PutMapping("/{id}")
-    public EstoqueItem atualizar(@PathVariable Long id, @RequestBody EstoqueItem itemAtualizado) {
+    public EstoqueItem atualizar(@PathVariable Long id, @Valid @RequestBody EstoqueItem itemAtualizado) {
         return service.atualizar(id, itemAtualizado);
     }
 

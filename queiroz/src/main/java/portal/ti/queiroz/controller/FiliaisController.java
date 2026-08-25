@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class FiliaisController {
     }
 
     @PostMapping
-    public Filiais criar(@RequestBody Filiais filial) {
+    public Filiais criar(@Valid @RequestBody Filiais filial) {
         return service.salvar(filial);
     }
 
     @PutMapping("/{id}")
-    public Filiais atualizar(@PathVariable Long id, @RequestBody Filiais filialAtualizada) {
+    public Filiais atualizar(@PathVariable Long id, @Valid @RequestBody Filiais filialAtualizada) {
         return service.atualizar(id, filialAtualizada);
     }
 

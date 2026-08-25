@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +24,12 @@ public class AtivoController {
     }
 
     @PostMapping
-    public Ativo criar(@RequestBody Ativo ativo) {
+    public Ativo criar(@Valid @RequestBody Ativo ativo) {
         return service.salvar(ativo);
     }
 
     @PutMapping("/{id}")
-    public Ativo atualizar(@PathVariable Long id, @RequestBody Ativo ativoAtualizado) {
+    public Ativo atualizar(@PathVariable Long id, @Valid @RequestBody Ativo ativoAtualizado) {
         return service.atualizar(id, ativoAtualizado);
     }
 

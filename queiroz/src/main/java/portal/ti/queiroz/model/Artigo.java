@@ -1,6 +1,7 @@
 package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import java.time.LocalDate;
 
@@ -13,18 +14,22 @@ public class Artigo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(nullable = false)
     private String title;
 
+    @NotBlank
     @Column(nullable = false) // "networks", "systems", "hardware"
     private String category;
 
     @Column(columnDefinition = "TEXT")
     private String summary;
 
+    @NotBlank
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @NotBlank
     @Column(nullable = false)
     private String author;
 

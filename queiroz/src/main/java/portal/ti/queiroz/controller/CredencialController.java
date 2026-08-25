@@ -1,11 +1,13 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import portal.ti.queiroz.dto.AtualizarCredencialRequest;
 import portal.ti.queiroz.dto.CredencialResponse;
+import portal.ti.queiroz.dto.CriarCredencialRequest;
 import portal.ti.queiroz.dto.RevelarSenhaResponse;
-import portal.ti.queiroz.model.Credencial;
 import portal.ti.queiroz.model.TipoAcaoCredencial;
 import portal.ti.queiroz.service.CredencialService;
 
@@ -30,13 +32,13 @@ public class CredencialController {
     }
 
     @PostMapping
-    public CredencialResponse criar(@RequestBody Credencial credencial) {
-        return service.salvar(credencial);
+    public CredencialResponse criar(@Valid @RequestBody CriarCredencialRequest request) {
+        return service.salvar(request.paraEntidade());
     }
 
     @PutMapping("/{id}")
-    public CredencialResponse atualizar(@PathVariable Long id, @RequestBody Credencial credencial) {
-        return service.atualizar(id, credencial);
+    public CredencialResponse atualizar(@PathVariable Long id, @Valid @RequestBody AtualizarCredencialRequest request) {
+        return service.atualizar(id, request);
     }
 
     @DeleteMapping("/{id}")

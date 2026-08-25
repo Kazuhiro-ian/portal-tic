@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class ArtigoController {
     }
 
     @PostMapping
-    public Artigo criar(@RequestBody Artigo artigo) {
+    public Artigo criar(@Valid @RequestBody Artigo artigo) {
         return service.salvar(artigo);
     }
 
     @PutMapping("/{id}")
-    public Artigo atualizar(@PathVariable Long id, @RequestBody Artigo artigo) {
+    public Artigo atualizar(@PathVariable Long id, @Valid @RequestBody Artigo artigo) {
         return service.atualizar(id, artigo);
     }
 

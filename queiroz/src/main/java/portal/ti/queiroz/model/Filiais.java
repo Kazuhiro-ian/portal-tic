@@ -1,6 +1,8 @@
 package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -14,15 +16,19 @@ public class Filiais {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
     @Column(nullable = false)
     private Integer numeroFilial;
 
+    @NotBlank
     @Column(nullable = false)
     private String cnpj;
 
+    @NotBlank
     @Column(nullable = false)
     private String nome;
 
+    @NotBlank
     @Column(nullable = false)
     private String endereco;
 

@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class EscalaController {
 
     // POST: Salvar ou Atualizar a escala de um dia
     @PostMapping
-    public ResponseEntity<Escala> salvar(@RequestBody Escala escala) {
+    public ResponseEntity<Escala> salvar(@Valid @RequestBody Escala escala) {
         Escala salva = service.salvarOuAtualizar(escala);
         return ResponseEntity.ok(salva);
     }

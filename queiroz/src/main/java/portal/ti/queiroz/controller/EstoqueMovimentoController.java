@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import portal.ti.queiroz.model.EstoqueMovimento;
@@ -20,7 +21,7 @@ public class EstoqueMovimentoController {
     }
 
     @PostMapping
-    public EstoqueMovimento criar(@RequestBody EstoqueMovimento movimento) {
+    public EstoqueMovimento criar(@Valid @RequestBody EstoqueMovimento movimento) {
         return service.registrar(movimento);
     }
 }

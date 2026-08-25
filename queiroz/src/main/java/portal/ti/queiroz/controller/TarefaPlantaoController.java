@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class TarefaPlantaoController {
     }
 
     @PostMapping
-    public TarefaPlantao criar(@RequestBody TarefaPlantao tarefa) {
+    public TarefaPlantao criar(@Valid @RequestBody TarefaPlantao tarefa) {
         return service.salvar(tarefa);
     }
 

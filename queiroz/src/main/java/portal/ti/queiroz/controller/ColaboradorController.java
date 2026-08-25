@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class ColaboradorController {
     }
 
     @PostMapping
-    public Colaborador criar(@RequestBody Colaborador colaborador) {
+    public Colaborador criar(@Valid @RequestBody Colaborador colaborador) {
         return service.salvar(colaborador);
     }
 
     @PutMapping("/{id}")
-    public Colaborador atualizar(@PathVariable Long id, @RequestBody Colaborador colaboradorAtualizado) {
+    public Colaborador atualizar(@PathVariable Long id, @Valid @RequestBody Colaborador colaboradorAtualizado) {
         return service.atualizar(id, colaboradorAtualizado);
     }
 

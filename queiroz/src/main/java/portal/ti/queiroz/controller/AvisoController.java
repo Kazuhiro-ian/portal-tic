@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,12 +23,12 @@ public class AvisoController {
     }
 
     @PostMapping
-    public Aviso criar(@RequestBody Aviso aviso, Authentication authentication) {
+    public Aviso criar(@Valid @RequestBody Aviso aviso, Authentication authentication) {
         return service.salvar(aviso, authentication.getName());
     }
 
     @PutMapping("/{id}")
-    public Aviso atualizar(@PathVariable Long id, @RequestBody Aviso aviso) {
+    public Aviso atualizar(@PathVariable Long id, @Valid @RequestBody Aviso aviso) {
         return service.atualizar(id, aviso);
     }
 

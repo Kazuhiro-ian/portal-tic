@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,12 @@ public class LinkUtilController {
     }
 
     @PostMapping
-    public LinkUtil criar(@RequestBody LinkUtil link) {
+    public LinkUtil criar(@Valid @RequestBody LinkUtil link) {
         return service.salvar(link);
     }
 
     @PutMapping("/{id}")
-    public LinkUtil atualizar(@PathVariable Long id, @RequestBody LinkUtil linkAtualizado) {
+    public LinkUtil atualizar(@PathVariable Long id, @Valid @RequestBody LinkUtil linkAtualizado) {
         return service.atualizar(id, linkAtualizado);
     }
 

@@ -1,6 +1,9 @@
 package portal.ti.queiroz.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
@@ -19,21 +22,28 @@ public class EstoqueItem {
     @Version
     private Long version;
 
+    @NotBlank
     @Column(nullable = false)
     private String name;
 
+    @NotBlank
     @Column(nullable = false)
     private String category;
 
     @Column
     private String subcategory;
 
+    @NotNull
+    @Min(0)
     @Column(nullable = false)
     private Integer quantity;
 
+    @NotNull
+    @Min(0)
     @Column(name = "min_quantity", nullable = false)
     private Integer minQuantity;
 
+    @NotBlank
     @Column(nullable = false)
     private String location;
 

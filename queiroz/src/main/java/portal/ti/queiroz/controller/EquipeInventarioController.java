@@ -1,5 +1,6 @@
 package portal.ti.queiroz.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +20,13 @@ public class EquipeInventarioController {
         return service.listarTodas();
     }
 
-    @PostMapping 
-    public EquipeInventario criar(@RequestBody EquipeInventario equipe) {
+    @PostMapping
+    public EquipeInventario criar(@Valid @RequestBody EquipeInventario equipe) {
         return service.salvar(equipe);
     }
 
     @PutMapping("/{id}")
-    public EquipeInventario atualizar(@PathVariable Long id, @RequestBody EquipeInventario equipeAtualizada) {
+    public EquipeInventario atualizar(@PathVariable Long id, @Valid @RequestBody EquipeInventario equipeAtualizada) {
         return service.atualizar(id, equipeAtualizada);
     }
 

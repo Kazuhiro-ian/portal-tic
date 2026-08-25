@@ -2,6 +2,7 @@ package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import portal.ti.queiroz.dto.AtualizarCredencialRequest;
 import portal.ti.queiroz.dto.CredencialResponse;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.model.Credencial;
@@ -34,19 +35,19 @@ public class CredencialService {
         return CredencialResponse.fromEntity(salva);
     }
 
-    public CredencialResponse atualizar(Long id, Credencial credencialAtualizada) {
+    public CredencialResponse atualizar(Long id, AtualizarCredencialRequest atualizacao) {
         Credencial c = repository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Credencial não encontrada: " + id));
 
-        c.setName(credencialAtualizada.getName());
-        c.setUsername(credencialAtualizada.getUsername());
+        c.setName(atualizacao.name());
+        c.setUsername(atualizacao.username());
         // Só sobrescreve a senha se vier preenchida -- a listagem não traz mais a
         // senha atual, então o formulário de edição não pode pré-carregá-la; se
         // salvássemos sempre, um PUT de "só mudei o nome" apagaria a senha existente.
-        if (credencialAtualizada.getPassword() != null && !credencialAtualizada.getPassword().isBlank()) {
-            c.setPassword(credencialAtualizada.getPassword());
+        if (atualizacao.password() != null && !atualizacao.password().isBlank()) {
+            c.setPassword(atualizacao.password());
         }
-        c.setNotes(credencialAtualizada.getNotes());
+        c.setNotes(atualizacao.notes());
         Credencial salva = repository.save(c);
         logService.registrar(salva.getId(), salva.getName(), TipoAcaoCredencial.EDITAR);
         return CredencialResponse.fromEntity(salva);
