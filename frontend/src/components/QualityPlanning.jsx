@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X, ClipboardCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ReceivingCalendar } from './ReceivingCalendar.jsx';
 import { InventoryPlan } from './InventoryPlan.jsx';
@@ -9,6 +9,7 @@ import { AccuracyReport } from './AccuracyReport.jsx';
 import { QualityDashboards } from './QualityDashboards.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
+import { Toast } from './Toast.jsx';
 
 const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
@@ -54,19 +55,7 @@ export function QualityPlanning() {
 
   return (
     <div className="space-y-6 relative">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border bg-dark-800 text-white transition-all max-w-md">
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          )}
-          <span className="text-sm font-medium">{toast.message}</span>
-          <button onClick={hideToast} className="ml-2 text-dark-400 hover:text-white shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={hideToast} />
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>

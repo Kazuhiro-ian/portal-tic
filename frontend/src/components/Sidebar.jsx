@@ -1,6 +1,7 @@
 import { LayoutDashboard, Link, HardDrive, Package, Calendar, BookOpen, Monitor, Tag, Store, Users, LogOut, ClipboardCheck } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { ROLE_LABELS } from '../utils/roles.js';
 
 // Exportado para o App.jsx reaproveitar: título do módulo atual no header mobile e a
 // lista de rotas da barra de navegação inferior (BottomNav) usam a mesma fonte de verdade.
@@ -17,13 +18,6 @@ export const menuItems = [
 ];
 
 export const usuariosMenuItem = { to: '/usuarios', label: 'Usuários', icon: Users };
-
-const roleLabels = {
-  ADMIN: 'Administrador',
-  TECNICO: 'Técnico',
-  LEITURA: 'Leitura',
-  QUALIDADE: 'Qualidade',
-};
 
 export function Sidebar({ onNavigate }) {
   const { user, logout, isAdmin } = useAuth();
@@ -87,7 +81,7 @@ export function Sidebar({ onNavigate }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white truncate">{user?.nomeCompleto || user?.username}</p>
-            <p className="text-xs text-dark-400">{roleLabels[user?.role] || user?.role}</p>
+            <p className="text-xs text-dark-400">{ROLE_LABELS[user?.role] || user?.role}</p>
           </div>
           <button
             onClick={logout}

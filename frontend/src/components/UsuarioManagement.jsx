@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ShieldCheck, Search } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
@@ -7,13 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
-
-const roleLabels = {
-  ADMIN: 'Administrador',
-  TECNICO: 'Técnico',
-  LEITURA: 'Leitura',
-  QUALIDADE: 'Qualidade',
-};
+import { ROLE_LABELS } from '../utils/roles.js';
 
 const emptyForm = { username: '', password: '', nomeCompleto: '', role: 'TECNICO', ativo: true };
 
@@ -39,7 +33,7 @@ const COLUNAS = [
     render: (u) => (
       <span className="badge badge-info">
         {u.role === 'ADMIN' && <ShieldCheck className="w-3 h-3 mr-1" />}
-        {roleLabels[u.role] || u.role}
+        {ROLE_LABELS[u.role] || u.role}
       </span>
     ),
   },
@@ -68,9 +62,21 @@ export function UsuarioManagement() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
+  const carregarUsuarios = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await listarUsuarios();
+      setUsuarios(data);
+    } catch (error) {
+      showToast('Erro ao carregar usuários.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
   useEffect(() => {
     carregarUsuarios();
-  }, []);
+  }, [carregarUsuarios]);
 
   const filtrados = usuarios.filter((u) => {
     const termo = search.trim().toLowerCase();
@@ -81,18 +87,6 @@ export function UsuarioManagement() {
       (u.role && u.role.toLowerCase().includes(termo))
     );
   });
-
-  const carregarUsuarios = async () => {
-    try {
-      setIsLoading(true);
-      const data = await listarUsuarios();
-      setUsuarios(data);
-    } catch (error) {
-      showToast('Erro ao carregar usuários.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const openNew = () => {
     setEditingUsuario(null);

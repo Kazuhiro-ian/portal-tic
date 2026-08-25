@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Search, Building2 } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
@@ -103,22 +103,21 @@ export function BranchManagement() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
-  useEffect(() => {
-    carregarFiliais();
-  }, []);
-
-  const carregarFiliais = async () => {
+  const carregarFiliais = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listarFiliais();
       setBranches(data.sort((a, b) => a.numeroFilial - b.numeroFilial));
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar dados do servidor.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarFiliais();
+  }, [carregarFiliais]);
 
   const filtered = branches.filter((b) => {
     const q = search.toLowerCase();

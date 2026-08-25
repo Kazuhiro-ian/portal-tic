@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, BookOpen, Key } from 'lucide-react';
 import { ArticlesTab } from './ArticlesTab.jsx';
 import { CredentialsTab } from './CredentialsTab.jsx';
@@ -31,11 +31,7 @@ export function KnowledgeBase() {
   const articlesTabRef = useRef(null);
   const credentialsTabRef = useRef(null);
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setIsLoading(true);
       const [artigosData, credsData] = await Promise.all([
@@ -45,12 +41,15 @@ export function KnowledgeBase() {
       setArticles(artigosData);
       setCredentials(credsData);
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar dados do banco.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast, podeVerCredenciais]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const abrirNovo = () => {
     if (activeTab === 'articles') {

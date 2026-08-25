@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   AlertTriangle, Send, Tag, Layers, Settings, Edit, Trash2, History,
   CheckCircle2, Store, FileText
@@ -117,11 +117,7 @@ export function ZebraSupplies() {
     filialId: '', etiquetasPadrao: 5, ribbonsPadrao: 2, diaEnvio1: 5, diaEnvio2: 20,
   });
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setIsLoading(true);
       const [filiaisData, cotasData, enviosData, estoqueData] = await Promise.all([
@@ -135,12 +131,15 @@ export function ZebraSupplies() {
       setDistributions(enviosData);
       setStockItems(estoqueData);
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar dados do servidor.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const today = new Date();
   const currentMonth = today.getMonth();

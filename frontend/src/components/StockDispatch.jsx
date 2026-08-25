@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
 import { listarMovimentos, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -201,11 +201,7 @@ export function StockDispatch({ items, onAtualizado }) {
   // como o restante do app já faz para confirmação de ação assíncrona concluída.
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    carregarMovimentos();
-  }, []);
-
-  const carregarMovimentos = async () => {
+  const carregarMovimentos = useCallback(async () => {
     try {
       setIsLoadingHistory(true);
       const data = await listarMovimentos();
@@ -215,7 +211,11 @@ export function StockDispatch({ items, onAtualizado }) {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarMovimentos();
+  }, [carregarMovimentos]);
 
   const selectedItem = items.find((i) => i.id === form.itemId) || null;
 

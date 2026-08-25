@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Users } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
@@ -31,11 +31,7 @@ export function EquipeInventarioManagement() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
-  useEffect(() => {
-    carregarEquipes();
-  }, []);
-
-  const carregarEquipes = async () => {
+  const carregarEquipes = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listarEquipesInventario();
@@ -45,7 +41,11 @@ export function EquipeInventarioManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarEquipes();
+  }, [carregarEquipes]);
 
   const openNew = () => {
     setEditingEquipe(null);

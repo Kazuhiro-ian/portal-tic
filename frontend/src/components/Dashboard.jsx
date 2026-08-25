@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
@@ -6,6 +6,8 @@ import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, l
 import { toISO } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
+import { useToast } from '../hooks/useToast.js';
+import { Toast } from './Toast.jsx';
 
 export function Dashboard() {
   const { canWrite } = useAuth();
@@ -25,11 +27,9 @@ export function Dashboard() {
   const [showAddNotice, setShowAddNotice] = useState(false);
   const [newNotice, setNewNotice] = useState({ mensagem: '', prioridade: 'MEDIA' });
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
+  const { toast, showToast, hideToast } = useToast();
 
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       const hoje = new Date();
       const amanha = new Date(hoje);
@@ -63,11 +63,15 @@ export function Dashboard() {
       setEscalasHoje(indexarEscalasPorColaboradorEData(escalasData));
       setLinks(linksData);
     } catch (error) {
-      console.error(error);
+      showToast('Erro ao carregar os dados do dashboard.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const onlinePrinters = printers.filter((p) => p.status === 'Online').length;
   const offlinePrinters = printers.filter((p) => p.status !== 'Online');
@@ -183,7 +187,7 @@ export function Dashboard() {
       setShowAddNotice(false);
       await carregarDados();
     } catch (error) {
-      console.error(error);
+      showToast(error.message || 'Erro ao adicionar o aviso.', 'error');
     }
   };
 
@@ -192,7 +196,7 @@ export function Dashboard() {
       await deletarAviso(id);
       setNotices((prev) => prev.filter((n) => n.id !== id));
     } catch (error) {
-      console.error(error);
+      showToast(error.message || 'Erro ao excluir o aviso.', 'error');
     }
   };
 
@@ -209,6 +213,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <Toast toast={toast} onClose={hideToast} />
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">

@@ -95,10 +95,14 @@ export const CredentialsTab = forwardRef(function CredentialsTab(
   }));
 
   const copyToClipboard = async (text, id) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    showToast('Copiado para a área de transferência!');
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      showToast('Copiado para a área de transferência!');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      showToast('Não foi possível copiar. Verifique a permissão de área de transferência do navegador.', 'error');
+    }
   };
 
   // A listagem não traz mais a senha (cofre seguro) -- "mostrar" busca sob demanda,

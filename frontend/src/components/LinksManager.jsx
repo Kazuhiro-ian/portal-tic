@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ExternalLink, Cloud, Server, Zap } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { FiltroBar } from './FiltroBar.jsx';
@@ -35,22 +35,21 @@ export function LinksManager() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listarLinks();
       setLinks(data);
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar os links do banco de dados.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const filteredLinks = links.filter((link) => {
     const matchSearch =

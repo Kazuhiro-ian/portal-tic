@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Edit, Trash2, Minus, AlertTriangle, Cpu, HardDrive, Printer, ArrowLeftRight,
   Package, Laptop, Smartphone, KeyRound
@@ -138,22 +138,21 @@ export function StockDashboard() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();  
 
-  useEffect(() => {
-    carregarEstoque();
-  }, []);
-
-  const carregarEstoque = async () => {
+  const carregarEstoque = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listarEstoqueItens();
       setItems(data);
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar os itens do estoque.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarEstoque();
+  }, [carregarEstoque]);
 
   const filteredItems = items.filter((item) => {
     const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());

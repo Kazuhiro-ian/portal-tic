@@ -14,7 +14,7 @@ import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
 import { toISO } from '../utils/datas.js';
-import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
+import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData, estiloBadgeTurno } from '../utils/escala.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
 
@@ -50,9 +50,12 @@ export function EmployeeSchedule() {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
+  // getWeekDates/todayStr são recalculados a cada render (dependem de "new Date()"), então
+  // listá-los como dependência recriaria a função e refaria a busca em todo render -- só a
+  // troca de semana deve disparar uma nova busca.
   useEffect(() => {
     carregarDadosIniciais();
-  }, [currentWeekOffset]);
+  }, [currentWeekOffset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = new Date();
   const todayStr = toISO(today);
@@ -457,12 +460,7 @@ export function EmployeeSchedule() {
                           const isToday = dateObj.toDateString() === today.toDateString();
                           const isOpenMenu = activeCellMenu === cellKey;
 
-                          let badgeStyle = "bg-dark-700 text-dark-400 border border-dark-600";
-                          if (turnoAtual.includes('07:00')) badgeStyle = "bg-blue-500/15 text-blue-300 border border-blue-500/30";
-                          else if (turnoAtual.includes('08:00')) badgeStyle = "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
-                          else if (turnoAtual.includes('11:30')) badgeStyle = "bg-purple-500/15 text-purple-300 border border-purple-500/30";
-                          else if (turnoAtual === 'Plantão') badgeStyle = "bg-amber-500/15 text-amber-300 border border-amber-500/30";
-                          else if (turnoAtual === 'Ferias') badgeStyle = "bg-pink-500/15 text-pink-300 border border-pink-500/30";
+                          const badgeStyle = estiloBadgeTurno(turnoAtual);
 
                           const isLastRows = empIndex >= employees.length - 2 && employees.length > 2;
                           const isRightColumns = dayIndex >= 4;

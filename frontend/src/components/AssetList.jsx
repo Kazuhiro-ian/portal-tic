@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { AssetFormPanel } from './AssetFormPanel.jsx';
 import { AssetDetailPanel } from './AssetDetailPanel.jsx';
@@ -105,11 +105,7 @@ export function AssetList({ tipo, tipoLabel }) {
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setIsLoading(true);
       const [dadosAtivos, dadosFiliais, disponibilidadePing] = await Promise.all([
@@ -121,12 +117,15 @@ export function AssetList({ tipo, tipoLabel }) {
       setFiliais(dadosFiliais);
       setPingHabilitado(disponibilidadePing.habilitado);
     } catch (error) {
-      console.error(error);
       showToast('Erro ao carregar ativos do servidor.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const nomeFilial = (filialId) => {
     const filial = filiais.find((f) => f.id === filialId);
