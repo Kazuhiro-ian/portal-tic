@@ -7,6 +7,14 @@
 # e cobre tanto o Maven (queiroz/) quanto o npm (frontend/) com a base de advisories do próprio
 # GitHub. Um "npm audit --audit-level=critical" continua no CI (ci.yml) para o feedback rápido
 # do frontend a cada PR; o Maven fica só com o Dependabot mesmo, pelo motivo acima.
+#
+# ignore de "version-update:semver-major" em npm/maven: salto de versão major é justamente o
+# tipo de atualização que costuma quebrar sozinho (ex.: Tailwind 3->4 muda o formato de
+# configuração inteiro; ESLint 8->10 pulou a 9, que trocou pra "flat config"). Essas duas
+# tentativas de PR do Dependabot quebraram o build de preview na Vercel -- não por bug no
+# código, mas porque a própria atualização exige adaptação manual antes de poder ser aplicada.
+# Patch/minor continuam automáticos (são compatíveis por definição do versionamento semântico);
+# major vira uma decisão deliberada de quem for atualizar, não um PR automático toda semana.
 version: 2
 updates:
   - package-ecosystem: "maven"
@@ -14,12 +22,18 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
