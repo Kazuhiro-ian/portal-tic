@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
+
+const DEBOUNCE_BUSCA_MS = 200;
 
 // Substitui o padrão antigo (`flex flex-col sm:flex-row` empilhando busca + selects), que no
 // mobile consumia metade da tela antes do primeiro dado aparecer. Agora só a busca fica
@@ -30,6 +32,26 @@ export function FiltroBar({ busca, onBuscaChange, placeholderBusca = 'Buscar...'
 
   const limparFiltro = (filtro) => filtro.onChange(valorPadraoDe(filtro));
 
+  // Estado local pro campo responder a cada tecla instantaneamente; o valor lá em cima (e o
+  // .filter() que ele dispara em cada tela) só atualiza DEBOUNCE_BUSCA_MS depois de parar de
+  // digitar -- listas grandes deixam de refiltrar a cada tecla.
+  const [buscaLocal, setBuscaLocal] = useState(busca);
+  const debounceRef = useRef(null);
+
+  // Ecoa mudanças vindas de fora (ex.: um botão "Limpar" que zera a busca do componente pai)
+  // sem reagendar o debounce.
+  useEffect(() => {
+    setBuscaLocal(busca);
+  }, [busca]);
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
+
+  const aoDigitarBusca = (valor) => {
+    setBuscaLocal(valor);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => onBuscaChange(valor), DEBOUNCE_BUSCA_MS);
+  };
+
   return (
     <div className="mb-6 space-y-3">
       <div className="flex gap-3">
@@ -37,8 +59,8 @@ export function FiltroBar({ busca, onBuscaChange, placeholderBusca = 'Buscar...'
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
           <input
             type="text"
-            value={busca}
-            onChange={(e) => onBuscaChange(e.target.value)}
+            value={buscaLocal}
+            onChange={(e) => aoDigitarBusca(e.target.value)}
             placeholder={placeholderBusca}
             aria-label={placeholderBusca}
             className="input-field pl-10"

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
+import { SearchableSelect } from './SearchableSelect.jsx';
 import {
   listarFiliais,
   listarEstoqueItens,
@@ -383,26 +384,20 @@ export function ZebraSupplies() {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="zebra-filial" className="block text-sm font-medium text-dark-300 mb-2">Filial de Destino *</label>
-              <select
-                id="zebra-filial"
-                value={dispatchForm.filialId}
-                onChange={(e) => handleBranchSelect(e.target.value)}
-                className="select-field"
-                disabled={isLoading || branches.length === 0}
-              >
-                <option value="">
-                  {branches.length === 0 ? 'Nenhuma filial cadastrada' : '-- Selecione a filial --'}
-                </option>
-                {branches.map((b) => {
+              <label id="zebra-filial-label" className="block text-sm font-medium text-dark-300 mb-2">Filial de Destino *</label>
+              <SearchableSelect
+                items={branches.map((b) => {
                   const num = getBranchNumber(b);
-                  return (
-                    <option key={b.id} value={num}>
-                      {branchLabel(branches, num)}
-                    </option>
-                  );
+                  return { value: num, label: branchLabel(branches, num) };
                 })}
-              </select>
+                value={dispatchForm.filialId || null}
+                onChange={(item) => handleBranchSelect(item.value)}
+                labelId="zebra-filial-label"
+                placeholder={branches.length === 0 ? 'Nenhuma filial cadastrada' : '-- Selecione a filial --'}
+                searchPlaceholder="Pesquisar filial..."
+                vazio="Nenhuma filial encontrada"
+                disabled={isLoading || branches.length === 0}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

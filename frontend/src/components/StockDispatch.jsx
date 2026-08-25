@@ -1,132 +1,11 @@
-import { useState, useRef, useEffect, useId, useCallback } from 'react';
-import { Search, Send, ArrowDownCircle, ArrowUpCircle, ChevronDown, Check, Package, Loader2 } from 'lucide-react';
+import { useState, useEffect, useId, useCallback } from 'react';
+import { Send, ArrowDownCircle, ArrowUpCircle, Package, Loader2 } from 'lucide-react';
 import { listarMovimentos, salvarMovimento } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { DataTable } from './DataTable.jsx';
 import { Toast } from './Toast.jsx';
-
-function SearchableSelect({ items, value, onChange, labelId }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [indiceAtivo, setIndiceAtivo] = useState(-1);
-  const ref = useRef(null);
-  const listboxId = useId();
-  const selected = items.find((i) => i.id === value) || null;
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-        setQuery('');
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const filtered = items.filter((i) =>
-    i.name.toLowerCase().includes(query.toLowerCase()) ||
-    (i.subcategory || '').toLowerCase().includes(query.toLowerCase())
-  );
-
-  // Sempre que a lista visível muda (abriu, ou a busca filtrou), a opção ativa por teclado
-  // volta pra primeira -- um índice preso de uma busca anterior apontaria pro item errado.
-  useEffect(() => {
-    setIndiceAtivo(filtered.length > 0 ? 0 : -1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, open]);
-
-  const escolher = (item) => {
-    onChange(item);
-    setOpen(false);
-    setQuery('');
-  };
-
-  const aoTeclarNaBusca = (evento) => {
-    if (evento.key === 'ArrowDown') {
-      evento.preventDefault();
-      setIndiceAtivo((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (evento.key === 'ArrowUp') {
-      evento.preventDefault();
-      setIndiceAtivo((i) => Math.max(i - 1, 0));
-    } else if (evento.key === 'Enter') {
-      evento.preventDefault();
-      if (filtered[indiceAtivo]) escolher(filtered[indiceAtivo]);
-    } else if (evento.key === 'Escape') {
-      setOpen(false);
-      setQuery('');
-    }
-  };
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-labelledby={labelId}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="input-field w-full flex items-center justify-between text-left"
-      >
-        <span className={selected ? 'text-white truncate' : 'text-dark-400'}>
-          {selected ? selected.name : 'Selecione um item...'}
-        </span>
-        <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute z-20 mt-1 w-full bg-dark-800 border border-dark-600 rounded-lg shadow-xl overflow-hidden">
-          <div className="relative p-2 border-b border-dark-700">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
-            <input
-              autoFocus
-              type="text"
-              role="combobox"
-              aria-expanded={open}
-              aria-controls={listboxId}
-              aria-autocomplete="list"
-              aria-activedescendant={indiceAtivo >= 0 ? `${listboxId}-opt-${indiceAtivo}` : undefined}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={aoTeclarNaBusca}
-              placeholder="Pesquisar item..."
-              className="w-full bg-dark-700 text-white text-sm rounded-md pl-8 pr-3 py-2 outline-none focus:ring-1 focus:ring-primary-500"
-            />
-          </div>
-          <div id={listboxId} role="listbox" className="max-h-56 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-dark-400 text-center">Nenhum item encontrado</p>
-            ) : (
-              filtered.map((item, index) => (
-                <button
-                  key={item.id}
-                  id={`${listboxId}-opt-${index}`}
-                  role="option"
-                  aria-selected={item.id === value}
-                  type="button"
-                  onClick={() => escolher(item)}
-                  onMouseEnter={() => setIndiceAtivo(index)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-dark-700 ${
-                    index === indiceAtivo ? 'bg-dark-700' : ''
-                  } ${item.id === value ? 'bg-primary-500/10' : ''}`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-white truncate">{item.name}</p>
-                    <p className="text-xs text-dark-400">
-                      {item.subcategory || 'Sem categoria'} · Estoque: {item.quantity}
-                    </p>
-                  </div>
-                  {item.id === value && <Check className="w-4 h-4 text-primary-400 flex-shrink-0 ml-2" />}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { SearchableSelect } from './SearchableSelect.jsx';
 
 function colunasHistorico(formatDate) {
   return [
@@ -301,10 +180,16 @@ export function StockDispatch({ items, onAtualizado }) {
             <div>
               <label id={itemLabelId} className="block text-sm font-medium text-dark-300 mb-2">Item do Estoque *</label>
               <SearchableSelect
-                items={items}
+                items={items.map((i) => ({
+                  value: i.id,
+                  label: i.name,
+                  sublabel: `${i.subcategory || 'Sem categoria'} · Estoque: ${i.quantity}`,
+                }))}
                 value={form.itemId}
-                onChange={(item) => setForm({ ...form, itemId: item.id })}
+                onChange={(item) => setForm({ ...form, itemId: item.value })}
                 labelId={itemLabelId}
+                placeholder="Selecione um item..."
+                searchPlaceholder="Pesquisar item..."
               />
               {selectedItem && (
                 <p className="text-xs text-dark-400 mt-1.5">
