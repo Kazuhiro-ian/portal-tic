@@ -9,7 +9,9 @@ import { Toast } from './Toast.jsx';
 function SearchableSelect({ items, value, onChange, labelId }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [indiceAtivo, setIndiceAtivo] = useState(-1);
   const ref = useRef(null);
+  const listboxId = useId();
   const selected = items.find((i) => i.id === value) || null;
 
   useEffect(() => {
@@ -28,12 +30,43 @@ function SearchableSelect({ items, value, onChange, labelId }) {
     (i.subcategory || '').toLowerCase().includes(query.toLowerCase())
   );
 
+  // Sempre que a lista visível muda (abriu, ou a busca filtrou), a opção ativa por teclado
+  // volta pra primeira -- um índice preso de uma busca anterior apontaria pro item errado.
+  useEffect(() => {
+    setIndiceAtivo(filtered.length > 0 ? 0 : -1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, open]);
+
+  const escolher = (item) => {
+    onChange(item);
+    setOpen(false);
+    setQuery('');
+  };
+
+  const aoTeclarNaBusca = (evento) => {
+    if (evento.key === 'ArrowDown') {
+      evento.preventDefault();
+      setIndiceAtivo((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (evento.key === 'ArrowUp') {
+      evento.preventDefault();
+      setIndiceAtivo((i) => Math.max(i - 1, 0));
+    } else if (evento.key === 'Enter') {
+      evento.preventDefault();
+      if (filtered[indiceAtivo]) escolher(filtered[indiceAtivo]);
+    } else if (evento.key === 'Escape') {
+      setOpen(false);
+      setQuery('');
+    }
+  };
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-labelledby={labelId}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="input-field w-full flex items-center justify-between text-left"
       >
         <span className={selected ? 'text-white truncate' : 'text-dark-400'}>
@@ -49,28 +82,34 @@ function SearchableSelect({ items, value, onChange, labelId }) {
             <input
               autoFocus
               type="text"
+              role="combobox"
+              aria-expanded={open}
+              aria-controls={listboxId}
+              aria-autocomplete="list"
+              aria-activedescendant={indiceAtivo >= 0 ? `${listboxId}-opt-${indiceAtivo}` : undefined}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={aoTeclarNaBusca}
               placeholder="Pesquisar item..."
               className="w-full bg-dark-700 text-white text-sm rounded-md pl-8 pr-3 py-2 outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
-          <div className="max-h-56 overflow-y-auto">
+          <div id={listboxId} role="listbox" className="max-h-56 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="px-4 py-6 text-sm text-dark-400 text-center">Nenhum item encontrado</p>
             ) : (
-              filtered.map((item) => (
+              filtered.map((item, index) => (
                 <button
                   key={item.id}
+                  id={`${listboxId}-opt-${index}`}
+                  role="option"
+                  aria-selected={item.id === value}
                   type="button"
-                  onClick={() => {
-                    onChange(item);
-                    setOpen(false);
-                    setQuery('');
-                  }}
+                  onClick={() => escolher(item)}
+                  onMouseEnter={() => setIndiceAtivo(index)}
                   className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-dark-700 ${
-                    item.id === value ? 'bg-primary-500/10' : ''
-                  }`}
+                    index === indiceAtivo ? 'bg-dark-700' : ''
+                  } ${item.id === value ? 'bg-primary-500/10' : ''}`}
                 >
                   <div className="min-w-0">
                     <p className="text-sm text-white truncate">{item.name}</p>
@@ -212,7 +251,9 @@ export function StockDispatch({ items, onAtualizado }) {
         type: 'OUT',
         quantity: qty,
         destination: form.destination.trim(),
-        date: new Date().toISOString().substring(0, 19), // ISO compatível com o LocalDateTime do Java
+        // Sem "date": o backend preenche com o horário do servidor quando vier nulo
+        // (EstoqueMovimentoService.registrar). Montar o timestamp aqui exigiria lidar com
+        // fuso horário (toISOString() converteria para UTC e erraria o horário exibido).
         notes: form.notes.trim() || null,
       };
 

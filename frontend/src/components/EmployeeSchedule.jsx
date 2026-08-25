@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import {
   Plus, Edit, Trash2, UserCheck, ChevronLeft, ChevronRight, Clock, Moon, Coffee, CheckSquare,
-  ListTodo, Circle, PlayCircle, Search
+  ListTodo, Circle, PlayCircle, Search, Brush, Save, X
 } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import {
   listarColaboradores, salvarColaborador, atualizarColaborador, deletarColaborador,
-  listarEscalasPorPeriodo, salvarEscalaDia,
+  listarEscalasPorPeriodo, salvarEscalaDia, salvarEscalasEmLote,
   listarTarefasPorData, salvarTarefaPlantao, atualizarStatusTarefa, deletarTarefaPlantao
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
+import { toISO } from '../utils/datas.js';
 import { TURNOS_OPCOES, estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 
 const weekDays = ['Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado'];
@@ -30,9 +31,16 @@ export function EmployeeSchedule() {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
 
-  const [activeCellMenu, setActiveCellMenu] = useState(null); 
+  const [activeCellMenu, setActiveCellMenu] = useState(null);
   const [viewModeToday, setViewModeToday] = useState('trabalhando');
   const [buscaColaborador, setBuscaColaborador] = useState('');
+
+  // Edição em lote: escolhe um turno "pincel" e clica em várias células antes de salvar tudo
+  // de uma vez, em vez de abrir o popup e salvar célula por célula.
+  const [modoLote, setModoLote] = useState(false);
+  const [turnoPincel, setTurnoPincel] = useState(TURNOS_OPCOES[0].value);
+  const [pendentes, setPendentes] = useState({}); // "colaboradorId_data" -> turno escolhido
+  const [salvandoLote, setSalvandoLote] = useState(false);
 
   // Estados das Tarefas do Plantão
   const [tarefasHoje, setTarefasHoje] = useState([]);
@@ -47,7 +55,7 @@ export function EmployeeSchedule() {
   }, [currentWeekOffset]);
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toISO(today);
 
   const carregarDadosIniciais = async () => {
     try {
@@ -56,8 +64,8 @@ export function EmployeeSchedule() {
       setEmployees(cols);
 
       const dates = getWeekDates(currentWeekOffset);
-      const inicioStr = dates[0].toISOString().split('T')[0];
-      const fimStr = dates[6].toISOString().split('T')[0];
+      const inicioStr = toISO(dates[0]);
+      const fimStr = toISO(dates[6]);
 
       const listaEscalas = await listarEscalasPorPeriodo(inicioStr, fimStr);
       
@@ -88,7 +96,7 @@ export function EmployeeSchedule() {
   const weekDates = getWeekDates(currentWeekOffset);
 
   const handleSelectTurno = async (colaboradorId, dataDateObj, turnoSelecionado) => {
-    const dataStr = dataDateObj.toISOString().split('T')[0];
+    const dataStr = toISO(dataDateObj);
     const key = `${colaboradorId}_${dataStr}`;
     
     try {
@@ -105,6 +113,54 @@ export function EmployeeSchedule() {
       showToast('Escala atualizada com sucesso!');
     } catch (error) {
       showToast('Erro ao atualizar turno.', 'error');
+    }
+  };
+
+  // Clicar pinta a célula com o turno selecionado no pincel; clicar de nova na mesma célula
+  // desmarca -- as alterações só valem depois de clicar em "Salvar alterações".
+  const pintarCelula = (colaboradorId, dataStr) => {
+    if (!canWrite) return;
+    const key = `${colaboradorId}_${dataStr}`;
+    setPendentes((prev) => {
+      const proximo = { ...prev };
+      if (proximo[key] === turnoPincel) {
+        delete proximo[key];
+      } else {
+        proximo[key] = turnoPincel;
+      }
+      return proximo;
+    });
+  };
+
+  const alternarModoLote = () => {
+    setModoLote((prev) => !prev);
+    setPendentes({});
+    setActiveCellMenu(null);
+  };
+
+  const descartarLote = () => setPendentes({});
+
+  const salvarLote = async () => {
+    const itens = Object.entries(pendentes).map(([chave, turno]) => {
+      const separador = chave.lastIndexOf('_');
+      return {
+        colaboradorId: Number(chave.slice(0, separador)),
+        data: chave.slice(separador + 1),
+        turno,
+      };
+    });
+    if (itens.length === 0) return;
+
+    try {
+      setSalvandoLote(true);
+      await salvarEscalasEmLote(itens);
+      showToast(`${itens.length} ${itens.length === 1 ? 'turno atualizado' : 'turnos atualizados'} de uma vez.`);
+      setPendentes({});
+      await carregarDadosIniciais();
+    } catch (error) {
+      showToast(error.message || 'Erro ao salvar os turnos selecionados.', 'error');
+    } finally {
+      setSalvandoLote(false);
     }
   };
 
@@ -271,6 +327,69 @@ export function EmployeeSchedule() {
               </button>
             </div>
 
+            {canWrite && (
+              <div className="flex flex-col gap-3 mb-4 pb-4 border-b border-dark-700">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={alternarModoLote}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border flex items-center gap-1.5 ${
+                      modoLote
+                        ? 'bg-primary-600 border-primary-600 text-white'
+                        : 'border-dark-700 text-dark-300 hover:text-white'
+                    }`}
+                    aria-pressed={modoLote}
+                  >
+                    <Brush className="w-4 h-4" />
+                    Editar em lote
+                  </button>
+                  {modoLote && (
+                    <p className="text-xs text-dark-400">
+                      Escolha um turno abaixo e clique nas células para pintar. Nada é salvo até
+                      clicar em &quot;Salvar alterações&quot;.
+                    </p>
+                  )}
+                </div>
+
+                {modoLote && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {TURNOS_OPCOES.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setTurnoPincel(opt.value)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
+                          turnoPincel === opt.value
+                            ? 'bg-primary-600 border-primary-600 text-white'
+                            : 'border-dark-700 text-dark-300 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {modoLote && Object.keys(pendentes).length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-sm text-dark-300">
+                      {Object.keys(pendentes).length} {Object.keys(pendentes).length === 1 ? 'célula alterada' : 'células alteradas'} ainda não salva{Object.keys(pendentes).length === 1 ? '' : 's'}.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={descartarLote} disabled={salvandoLote} className="btn-secondary text-sm">
+                        <X className="w-4 h-4" />
+                        Descartar
+                      </button>
+                      <button onClick={salvarLote} disabled={salvandoLote} className="btn-primary text-sm">
+                        <Save className="w-4 h-4" />
+                        {salvandoLote ? 'Salvando...' : 'Salvar alterações'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Exceção deliberada ao padrão DataTable: isto é uma grade dia×pessoa, não uma
                 lista. Mantém o scroll horizontal, mas com a primeira coluna e o cabeçalho de
                 dias congelados, para o nome do colaborador nunca sumir de vista.
@@ -330,9 +449,11 @@ export function EmployeeSchedule() {
                           </div>
                         </td>
                         {weekDates.map((dateObj, dayIndex) => {
-                          const dataStr = dateObj.toISOString().split('T')[0];
+                          const dataStr = toISO(dateObj);
                           const cellKey = `${employee.id}_${dataStr}`;
-                          const turnoAtual = escalas[cellKey] || 'Folga';
+                          const turnoPendente = pendentes[cellKey];
+                          const alteradoNoLote = Object.prototype.hasOwnProperty.call(pendentes, cellKey);
+                          const turnoAtual = turnoPendente || escalas[cellKey] || 'Folga';
                           const isToday = dateObj.toDateString() === today.toDateString();
                           const isOpenMenu = activeCellMenu === cellKey;
 
@@ -356,19 +477,31 @@ export function EmployeeSchedule() {
                           return (
                             <td
                               key={dataStr}
-                              className={`table-cell text-center group relative ${canWrite ? 'cursor-pointer' : ''} ${isToday ? 'bg-primary-500/5' : ''}`}
-                              onClick={() => canWrite && setActiveCellMenu(isOpenMenu ? null : cellKey)}
+                              className={`table-cell text-center group relative ${isToday ? 'bg-primary-500/5' : ''}`}
                             >
-                              <div className="flex flex-col items-center py-1">
+                              <button
+                                type="button"
+                                disabled={!canWrite}
+                                onClick={() =>
+                                  modoLote
+                                    ? pintarCelula(employee.id, dataStr)
+                                    : setActiveCellMenu(isOpenMenu ? null : cellKey)
+                                }
+                                className={`w-full flex flex-col items-center py-1 rounded-md ${canWrite ? 'cursor-pointer' : 'cursor-default'} ${
+                                  alteradoNoLote ? 'ring-2 ring-primary-400 ring-offset-1 ring-offset-dark-900' : ''
+                                }`}
+                              >
                                 <span className={`text-[11px] font-medium px-2 py-1 rounded-md transition-all ${badgeStyle}`}>
                                   {turnoAtual}
                                 </span>
                                 {canWrite && (
-                                  <span className="text-[10px] text-dark-400 opacity-0 group-hover:opacity-100 mt-1 transition-opacity">Alterar</span>
+                                  <span className="text-[10px] text-dark-400 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 mt-1 transition-opacity">
+                                    {modoLote ? 'Pintar' : 'Alterar'}
+                                  </span>
                                 )}
-                              </div>
+                              </button>
 
-                              {canWrite && isOpenMenu && (
+                              {canWrite && !modoLote && isOpenMenu && (
                                 <div 
                                   className={`absolute z-50 ${positionClasses} ${alignClasses} w-48 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl p-1.5 space-y-1 text-left`} 
                                   onClick={(e) => e.stopPropagation()}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMediaQuery, BREAKPOINTS } from '../hooks/useMediaQuery.js';
 
 // Tabela que vira lista de cards abaixo de `md` (768px), eliminando o scroll horizontal
 // que qualquer tabela com 6+ colunas gera num iPhone. Ver PLANO-MOBILE.md §1.1 e §2.
@@ -23,6 +24,10 @@ export function DataTable({
 }) {
   const scrollRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
+  // Renderiza só a tabela OU só a lista de cards, nunca as duas: com as duas sempre montadas
+  // (uma escondida via CSS), cada atualização de dados dobrava o trabalho de reconciliação do
+  // React à toa, já que só uma das duas árvores chega a ficar visível por vez.
+  const isDesktop = useMediaQuery(BREAKPOINTS.md);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -41,10 +46,18 @@ export function DataTable({
 
   const estaVazio = !carregando && dados.length === 0;
 
+  const aoTeclarLinha = (item) => (evento) => {
+    if (!aoClicarLinha) return;
+    if (evento.key === 'Enter' || evento.key === ' ') {
+      evento.preventDefault();
+      aoClicarLinha(item);
+    }
+  };
+
   return (
     <>
       {/* Tabela: md e acima */}
-      <div className="hidden md:block">
+      {isDesktop && (
         <div
           ref={scrollRef}
           className="table-scroll"
@@ -90,7 +103,10 @@ export function DataTable({
                   <tr
                     key={chaveLinha(item, index)}
                     onClick={aoClicarLinha ? () => aoClicarLinha(item) : undefined}
-                    className={`hover:bg-dark-700/30 transition-colors ${aoClicarLinha ? 'cursor-pointer' : ''}`}
+                    onKeyDown={aoClicarLinha ? aoTeclarLinha(item) : undefined}
+                    tabIndex={aoClicarLinha ? 0 : undefined}
+                    role={aoClicarLinha ? 'button' : undefined}
+                    className={`hover:bg-dark-700/30 transition-colors ${aoClicarLinha ? 'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-400 -outline-offset-2' : ''}`}
                   >
                     {colunas.map((coluna) => (
                       <td key={coluna.chave} className={`table-cell ${coluna.tdClassName || ''}`}>
@@ -108,10 +124,11 @@ export function DataTable({
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
       {/* Cards: abaixo de md */}
-      <div className="md:hidden space-y-3">
+      {!isDesktop && (
+      <div className="space-y-3">
         {carregando ? (
           <p className="text-center py-12 text-dark-400">Carregando...</p>
         ) : estaVazio ? (
@@ -121,7 +138,10 @@ export function DataTable({
             <div
               key={chaveLinha(item, index)}
               onClick={aoClicarLinha ? () => aoClicarLinha(item) : undefined}
-              className={`data-card ${aoClicarLinha ? 'cursor-pointer active:border-dark-500' : ''}`}
+              onKeyDown={aoClicarLinha ? aoTeclarLinha(item) : undefined}
+              tabIndex={aoClicarLinha ? 0 : undefined}
+              role={aoClicarLinha ? 'button' : undefined}
+              className={`data-card ${aoClicarLinha ? 'cursor-pointer active:border-dark-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-400' : ''}`}
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="min-w-0">
@@ -164,6 +184,7 @@ export function DataTable({
           ))
         )}
       </div>
+      )}
     </>
   );
 }

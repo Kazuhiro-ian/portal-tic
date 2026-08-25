@@ -151,7 +151,15 @@ export const ArticlesTab = forwardRef(function ArticlesTab(
                 <div
                   key={article.id}
                   onClick={() => setViewingArticle(article)}
-                  className="p-5 rounded-xl bg-dark-700/50 border border-dark-600 hover:border-primary-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setViewingArticle(article);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="p-5 rounded-xl bg-dark-700/50 border border-dark-600 hover:border-primary-500/50 transition-all cursor-pointer group flex flex-col justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-400"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3">

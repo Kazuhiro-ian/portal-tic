@@ -1,12 +1,18 @@
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useScrollLock } from '../hooks/useScrollLock.js';
+import { useFocusTrap } from '../hooks/useFocusTrap.js';
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+  const containerRef = useRef(null);
+
   // Contador de travas em vez de `overflow: hidden` direto no body: essa lógica antiga
   // destravava o fundo ao fechar QUALQUER modal, mesmo com outro ainda aberto por baixo
   // (ex.: ConfirmDialog dentro de outro modal). Ver PLANO-MOBILE.md §1.4b.
   useScrollLock(isOpen);
+
+  // Prende o Tab dentro do modal enquanto aberto (mesma lógica do menu mobile em App.jsx).
+  useFocusTrap(containerRef, isOpen);
 
   // Fechar com Esc: o clique no overlay já fechava, mas quem usa teclado ficava preso no modal.
   useEffect(() => {
@@ -30,6 +36,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
+        ref={containerRef}
         className={`modal-content ${sizeClasses[size]} mx-4 animate-in fade-in zoom-in duration-200`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"

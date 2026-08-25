@@ -16,6 +16,7 @@ import { useConfirm } from '../hooks/useConfirm.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
 import { getBranchNumber, branchLabel } from '../utils/filiais.js';
+import { toISO } from '../utils/datas.js';
 
 function colunasHistoricoZebra(branches) {
   return [
@@ -100,7 +101,7 @@ export function ZebraSupplies() {
     filialId: '', // Guarda o NUMERO da filial (numero_filial)
     qtdEtiquetas: 0,
     qtdRibbons: 0,
-    dataEnvio: new Date().toISOString().split('T')[0],
+    dataEnvio: toISO(new Date()),
     tipoEnvio: 'REGULAR',
     motivoExtra: '',
   });
@@ -178,7 +179,7 @@ export function ZebraSupplies() {
     if (!branchNumStr) {
       setDispatchForm({
         filialId: '', qtdEtiquetas: 0, qtdRibbons: 0,
-        dataEnvio: new Date().toISOString().split('T')[0],
+        dataEnvio: toISO(new Date()),
         tipoEnvio: 'REGULAR', motivoExtra: '',
       });
       return;
@@ -233,7 +234,7 @@ export function ZebraSupplies() {
 
       setDispatchForm({
         filialId: '', qtdEtiquetas: 0, qtdRibbons: 0,
-        dataEnvio: new Date().toISOString().split('T')[0],
+        dataEnvio: toISO(new Date()),
         tipoEnvio: 'REGULAR', motivoExtra: '',
       });
 

@@ -114,6 +114,8 @@ export const deletarColaborador = (id) => apiDelete(`/api/colaboradores/${id}`);
 export const listarEscalasPorPeriodo = (inicio, fim) =>
   apiGet(`/api/escalas?inicio=${inicio}&fim=${fim}`);
 export const salvarEscalaDia = (escalaData) => apiPost('/api/escalas', escalaData);
+// Salva vários turnos "pintados" na grade de uma vez, em uma única requisição.
+export const salvarEscalasEmLote = (itens) => apiPut('/api/escalas/dias', { itens });
 
 // --- ROTAS DE TAREFAS DE PLANTÃO ---
 export const listarTarefasPorData = (dataYYYYMMDD) =>

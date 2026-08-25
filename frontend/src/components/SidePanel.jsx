@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useSlidePanel } from '../hooks/useSlidePanel.js';
 import { useScrollLock } from '../hooks/useScrollLock.js';
+import { useFocusTrap } from '../hooks/useFocusTrap.js';
 
 // Substitui o Modal para formulários e detalhes. API deliberadamente parecida com a do Modal
 // (isOpen/onClose/title/size) para a migração ser quase find-and-replace — ver PLANO-MOBILE.md §4.1.
@@ -23,7 +24,12 @@ const WIDTH_CLASSES = {
 
 export function SidePanel({ isOpen, onClose, title, size = 'md', footer, children }) {
   const { mounted, visible } = useSlidePanel(isOpen);
+  const containerRef = useRef(null);
   useScrollLock(isOpen);
+
+  // Prende o Tab dentro do painel enquanto aberto (mesma lógica do menu mobile em App.jsx) --
+  // sem isto, o Tab escapava para o conteúdo escondido atrás do painel.
+  useFocusTrap(containerRef, isOpen);
 
   // Fechar com Esc, igual ao Modal.
   useEffect(() => {
@@ -50,6 +56,7 @@ export function SidePanel({ isOpen, onClose, title, size = 'md', footer, childre
       />
 
       <div
+        ref={containerRef}
         className={`panel-surface absolute inset-y-0 right-0 w-full h-app ${larguraClasse} flex flex-col transition-transform duration-300 ease-out ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}

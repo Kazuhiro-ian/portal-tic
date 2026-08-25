@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useScrollLock } from './hooks/useScrollLock.js';
+import { useFocusTrap } from './hooks/useFocusTrap.js';
 
 // Importação dos Componentes
 import { Sidebar, menuItems, usuariosMenuItem } from './components/Sidebar.jsx';
@@ -48,29 +49,8 @@ function App() {
   }, [sidebarOpen]);
 
   // Foco preso dentro do menu enquanto aberto no mobile (Tab não escapa para o conteúdo atrás).
-  useEffect(() => {
-    if (!sidebarOpen) return undefined;
-    const container = sidebarWrapperRef.current;
-    if (!container) return undefined;
-
-    const focaveis = container.querySelectorAll('a[href], button:not([disabled])');
-    focaveis[0]?.focus();
-
-    const aoTeclarTab = (evento) => {
-      if (evento.key !== 'Tab' || focaveis.length === 0) return;
-      const primeiro = focaveis[0];
-      const ultimo = focaveis[focaveis.length - 1];
-      if (evento.shiftKey && document.activeElement === primeiro) {
-        evento.preventDefault();
-        ultimo.focus();
-      } else if (!evento.shiftKey && document.activeElement === ultimo) {
-        evento.preventDefault();
-        primeiro.focus();
-      }
-    };
-    container.addEventListener('keydown', aoTeclarTab);
-    return () => container.removeEventListener('keydown', aoTeclarTab);
-  }, [sidebarOpen]);
+  // Mesma lógica reaproveitada em Modal/SidePanel via useFocusTrap.
+  useFocusTrap(sidebarWrapperRef, sidebarOpen);
 
   // Arrastar o menu para a esquerda fecha, como o usuário espera de um painel deslizante.
   const aoTocarInicio = (evento) => {

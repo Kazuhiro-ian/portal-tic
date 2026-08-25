@@ -72,7 +72,7 @@ function colunasEstoque({ canWrite, adjustQuantity, ajustandoId }) {
                 onClick={() => adjustQuantity(item, -1)}
                 disabled={ajustando}
                 title="Diminuir 1 unidade" aria-label="Diminuir 1 unidade"
-                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-11 h-11 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Minus className="w-4 h-4 text-dark-300" />
               </button>
@@ -87,7 +87,7 @@ function colunasEstoque({ canWrite, adjustQuantity, ajustandoId }) {
                 onClick={() => adjustQuantity(item, 1)}
                 disabled={ajustando}
                 title="Aumentar 1 unidade" aria-label="Aumentar 1 unidade"
-                className="w-9 h-9 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                className="w-11 h-11 md:w-7 md:h-7 rounded bg-dark-600 hover:bg-dark-500 flex items-center justify-center transition-colors disabled:opacity-50 disabled:pointer-events-none"
               >
                 <Plus className="w-4 h-4 text-dark-300" />
               </button>
