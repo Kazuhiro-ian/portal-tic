@@ -145,7 +145,7 @@ export function StockDashboard() {
       const data = await listarEstoqueItens();
       setItems(data);
     } catch (error) {
-      showToast('Erro ao carregar os itens do estoque.', 'error');
+      showToast(error.message || 'Erro ao carregar os itens do estoque.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +206,7 @@ export function StockDashboard() {
       setEditingItem(null);
       setFormData(emptyForm);
     } catch (error) {
-      showToast('Erro ao salvar item.', 'error');
+      showToast(error.message || 'Erro ao salvar item.', 'error');
     }
   };
 
@@ -222,7 +222,7 @@ export function StockDashboard() {
       showToast('Item excluído com sucesso.');
       await carregarEstoque();
     } catch (error) {
-      showToast('Erro ao excluir item.', 'error');
+      showToast(error.message || 'Erro ao excluir item.', 'error');
     }
   };
 

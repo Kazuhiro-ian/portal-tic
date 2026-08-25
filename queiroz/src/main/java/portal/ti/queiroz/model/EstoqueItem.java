@@ -19,7 +19,13 @@ public class EstoqueItem {
     // ZebraEnvioService) podiam ler a mesma quantidade e a segunda gravação sobrescrevia a
     // primeira silenciosamente. Com @Version, a segunda gravação lança
     // ObjectOptimisticLockingFailureException em vez de perder a baixa.
+    //
+    // columnDefinition com "default 0" é obrigatório aqui: sem ele, o Hibernate gera
+    // "ADD COLUMN version bigint not null" sem valor padrão, e o Postgres recusa aplicar isso
+    // (ddl-auto=update) em qualquer tabela estoque_itens que já tenha linhas -- a aplicação
+    // simplesmente não sobe. Com o default, as linhas existentes nascem na versão 0.
     @Version
+    @Column(columnDefinition = "bigint not null default 0")
     private Long version;
 
     @NotBlank
@@ -50,7 +56,6 @@ public class EstoqueItem {
     @Column(name = "categoria_zebra")
     private String categoriaZebra;
 
-    // Campos abaixo suportam ativos além de consumíveis (notebooks, celulares, licenças).
     @Column(name = "serial_number")
     private String serialNumber;
 

@@ -34,6 +34,12 @@ async function apiFetch(path, options = {}) {
     try {
       const body = await response.json();
       if (body && body.mensagem) mensagem = body.mensagem;
+      // "detalhes" traz o campo específico que falhou na validação (ex.: "quantity: must be
+      // greater than or equal to 0") -- sem isto, toda falha de validação virava a mesma
+      // mensagem genérica, sem pista nenhuma de qual campo checar.
+      if (body && Array.isArray(body.detalhes) && body.detalhes.length > 0) {
+        mensagem = `${mensagem} (${body.detalhes.join('; ')})`;
+      }
       if (body && body.codigo) codigo = body.codigo;
     } catch {
       // resposta sem corpo JSON, mantém mensagem genérica

@@ -21,10 +21,6 @@ public class Ativo {
     @Column(nullable = false)
     private TipoAtivo tipo;
 
-    // Sem @NotBlank de propósito: quais campos são obrigatórios depende do tipo do ativo (ex.:
-    // Desktop não pede marca/modelo -- só etiqueta/IP/processador/memória/armazenamento/filial/
-    // setor, ver AssetFormPanel.jsx CAMPOS_POR_TIPO), e essa regra já é aplicada no frontend.
-    // Uma anotação fixa aqui rejeitaria o cadastro de Desktop, que sempre manda os dois vazios.
     @Column(nullable = false)
     private String marca;
 
@@ -66,5 +62,4 @@ public class Ativo {
     private String memoria;
 
     private String armazenamento;
-
 }
