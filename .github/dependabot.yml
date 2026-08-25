@@ -1,0 +1,27 @@
+# Verificação de dependências com vulnerabilidade conhecida (backend e frontend).
+#
+# Por que Dependabot em vez de um plugin tipo OWASP Dependency-Check dentro do CI: o
+# Dependency-Check baixa e processa a base inteira de CVEs do NVD a cada execução -- deixa o
+# CI lento e, sem uma chave de API do NVD, sujeito a rate limit (falha intermitente sem
+# relação nenhuma com o código). O Dependabot roda do lado do GitHub, não consome minuto de CI,
+# e cobre tanto o Maven (queiroz/) quanto o npm (frontend/) com a base de advisories do próprio
+# GitHub. Um "npm audit --audit-level=critical" continua no CI (ci.yml) para o feedback rápido
+# do frontend a cada PR; o Maven fica só com o Dependabot mesmo, pelo motivo acima.
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/queiroz"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

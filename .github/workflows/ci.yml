@@ -47,6 +47,13 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # audit-level=critical (não "high"): há uma vulnerabilidade moderada conhecida e aceita
+      # no esbuild/vite (só afeta o servidor de dev local, não o build de produção) cujo único
+      # conserto hoje é um bump de major do Vite — fora do escopo de travar todo PR por isto.
+      - name: Checar dependências com vulnerabilidade conhecida
+        working-directory: frontend
+        run: npm audit --audit-level=critical
+
       - name: Lint
         working-directory: frontend
         run: npm run lint
