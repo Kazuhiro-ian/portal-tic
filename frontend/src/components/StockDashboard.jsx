@@ -13,6 +13,7 @@ import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
 import { Paginacao } from './Paginacao.jsx';
+import { useAbaNaUrl } from '../hooks/useAbaNaUrl.js';
 import { usePaginacao } from '../hooks/usePaginacao.js';
 
 const categoryInfo = {
@@ -118,7 +119,7 @@ export function StockDashboard() {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState('inventory');
+  const [activeTab, setActiveTab] = useAbaNaUrl('aba', 'inventory');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);

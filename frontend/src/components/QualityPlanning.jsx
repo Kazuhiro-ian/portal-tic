@@ -10,6 +10,7 @@ import { QualityDashboards } from './QualityDashboards.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
+import { useAbaNaUrl } from '../hooks/useAbaNaUrl.js';
 
 const ABAS = [
   { id: 'recebimento', label: 'Calendário de Recebimento' },
@@ -26,7 +27,7 @@ export function QualityPlanning() {
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth() + 1);
-  const [aba, setAba] = useState('recebimento');
+  const [aba, setAba] = useAbaNaUrl('aba', 'recebimento');
 
   // Conflitos devolvidos pela aplicação do padrão, repassados para a aba do plano.
   const [conflitosExternos, setConflitosExternos] = useState(null);

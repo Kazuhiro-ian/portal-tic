@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { HardDrive } from 'lucide-react';
 import { AssetList } from './AssetList.jsx';
+import { useAbaNaUrl } from '../hooks/useAbaNaUrl.js';
 
 const TIPOS = [
   { id: 'DESKTOP', label: 'Desktops' },
@@ -12,7 +12,7 @@ const TIPOS = [
 ];
 
 export function AssetInventory() {
-  const [aba, setAba] = useState(TIPOS[0].id);
+  const [aba, setAba] = useAbaNaUrl('aba', TIPOS[0].id);
   const tipoAtivo = TIPOS.find((t) => t.id === aba);
 
   return (

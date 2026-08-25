@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { Toast } from './Toast.jsx';
+import { useAbaNaUrl } from '../hooks/useAbaNaUrl.js';
 
 /**
  * Página da Base de Conhecimento: só orquestra as duas abas (Artigos e Credenciais), que são
@@ -23,7 +24,7 @@ export function KnowledgeBase() {
   const [articles, setArticles] = useState([]);
   const [credentials, setCredentials] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('articles');
+  const [activeTab, setActiveTab] = useAbaNaUrl('aba', 'articles');
 
   const { toast, showToast, hideToast } = useToast();
   const { confirmar, dialogoConfirmacao } = useConfirm();
