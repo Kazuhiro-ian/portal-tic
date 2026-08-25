@@ -106,7 +106,7 @@ public class AcuracidadeService {
             item.setInventarioId(inventarioId);
             item.setArmazem(armazem);
         });
-        itemRepository.saveAll(itens);
+        itemRepository.salvarEmLote(itens);
         InventarioResultado salvo = resultadoRepository.save(resultado);
 
         // Ter relatório importado é o que caracteriza inventário concluído (a primeira

@@ -62,7 +62,13 @@ public class CredencialService {
     public String revelarSenha(Long id, TipoAcaoCredencial acao) {
         Credencial credencial = repository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Credencial não encontrada: " + id));
-        logService.registrar(id, credencial.getName(), acao != null ? acao : TipoAcaoCredencial.VISUALIZAR);
+        // Este endpoint é sempre uma leitura: só aceitamos VISUALIZAR ou COPIAR do chamador,
+        // nunca um valor arbitrário (ex.: CRIAR/EDITAR/EXCLUIR) que corromperia a trilha de
+        // auditoria do cofre — a única garantia real de que ela reflete o que aconteceu.
+        TipoAcaoCredencial acaoRegistrada = acao == TipoAcaoCredencial.COPIAR
+                ? TipoAcaoCredencial.COPIAR
+                : TipoAcaoCredencial.VISUALIZAR;
+        logService.registrar(id, credencial.getName(), acaoRegistrada);
         return credencial.getPassword();
     }
 }

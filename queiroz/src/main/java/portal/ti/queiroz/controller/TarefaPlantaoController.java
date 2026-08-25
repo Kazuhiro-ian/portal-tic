@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import portal.ti.queiroz.model.StatusTarefaPlantao;
 import portal.ti.queiroz.model.TarefaPlantao;
 import portal.ti.queiroz.service.TarefaPlantaoService;
 
@@ -28,10 +29,11 @@ public class TarefaPlantaoController {
     }
 
     @PatchMapping("/{id}/status")
-    public TarefaPlantao atualizarStatus(@PathVariable Long id, @RequestBody String status) {
-        // Remove aspas caso enviadas via body
-        String statusLimpo = status.replace("\"", "").trim();
-        return service.atualizarStatus(id, statusLimpo);
+    public TarefaPlantao atualizarStatus(@PathVariable Long id, @RequestBody StatusTarefaPlantao status) {
+        // Jackson desserializa a string JSON do corpo direto no enum (e recusa qualquer valor
+        // fora de StatusTarefaPlantao com 400, via GlobalExceptionHandler) -- não precisa mais
+        // de tratamento manual de aspas nem aceita um valor arbitrário como status.
+        return service.atualizarStatus(id, status);
     }
 
     @DeleteMapping("/{id}")

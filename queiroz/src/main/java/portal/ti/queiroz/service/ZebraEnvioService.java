@@ -1,6 +1,7 @@
 package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
@@ -48,9 +49,8 @@ public class ZebraEnvioService {
             throw new RegraDeNegocioException("O motivo é obrigatório para envios extras.");
         }
 
-        List<EstoqueItem> todosOsItens = itemRepository.findAll();
-        baixarEstoque(todosOsItens, "ETIQUETA", "etiqueta", qtdEtiquetas, "etiquetas", "rolos");
-        baixarEstoque(todosOsItens, "RIBBON", "ribbon", qtdRibbons, "ribbons", "unidades");
+        baixarEstoque("ETIQUETA", "etiqueta", qtdEtiquetas, "etiquetas", "rolos");
+        baixarEstoque("RIBBON", "ribbon", qtdRibbons, "ribbons", "unidades");
 
         // Zera o id recebido no corpo: sem isso, um POST com um id existente no JSON
         // vira UPDATE silencioso daquele registro em vez de criar um novo.
@@ -64,11 +64,13 @@ public class ZebraEnvioService {
      * fallback que o frontend usava, preservada aqui pra não exigir recategorizar o
      * estoque já cadastrado.
      */
-    private void baixarEstoque(List<EstoqueItem> todosOsItens, String categoria, String palavraChave,
+    private void baixarEstoque(String categoria, String palavraChave,
                                 int quantidadeNecessaria, String rotuloPlural, String unidade) {
         if (quantidadeNecessaria <= 0) return;
 
-        List<EstoqueItem> itensDoTipo = todosOsItens.stream()
+        // Traz só os itens já categorizados como "categoria" mais os sem categoria (candidatos
+        // ao fallback por nome), em vez de carregar a tabela de estoque inteira.
+        List<EstoqueItem> itensDoTipo = itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull(categoria).stream()
                 .filter(i -> categoria.equals(i.getCategoriaZebra())
                         || (i.getCategoriaZebra() == null && i.getName().toLowerCase().contains(palavraChave)))
                 .toList();
@@ -85,7 +87,13 @@ public class ZebraEnvioService {
             int deduzir = Math.min(item.getQuantity(), restante);
             item.setQuantity(item.getQuantity() - deduzir);
             restante -= deduzir;
-            itemRepository.save(item);
+            // saveAndFlush (não save): ver o mesmo comentário em EstoqueMovimentoService.registrar.
+            try {
+                itemRepository.saveAndFlush(item);
+            } catch (ObjectOptimisticLockingFailureException e) {
+                throw new RegraDeNegocioException(
+                        "O estoque de \"" + item.getName() + "\" foi alterado por outra operação ao mesmo tempo. Tente novamente.");
+            }
         }
     }
 

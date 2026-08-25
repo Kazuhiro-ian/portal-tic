@@ -246,8 +246,11 @@ public class RelatorioAcuracidadeService {
             return null;
         }
 
+        // Uma única query com IN (via itensPorInventario) em vez de uma por semana do mês.
+        List<Long> inventarioIds = semanas.stream().map(Inventario::getId).toList();
+        Map<Long, List<InventarioItem>> itensPorInventario = itensPorInventario(inventarioIds, null);
         List<List<InventarioItem>> itensPorSemana = semanas.stream()
-                .map(inv -> itemRepository.findByInventarioIdAndArmazem(inv.getId(), null))
+                .map(inv -> itensPorInventario.getOrDefault(inv.getId(), List.of()))
                 .toList();
 
         List<InventarioItem> mesclados = acuracidadeService.mesclarMaisRecentePorProduto(itensPorSemana);
@@ -479,13 +482,17 @@ public class RelatorioAcuracidadeService {
                 .sorted(Comparator.comparing(Inventario::getData))
                 .toList();
 
+        // Uma única query com IN (via itensPorInventario) em vez de uma por semana do mês.
+        List<Long> inventarioIdsDoMes = semanas.stream().map(Inventario::getId).toList();
+        Map<Long, List<InventarioItem>> itensPorInventarioDoMes = itensPorInventario(inventarioIdsDoMes, null);
+
         List<SemanaAcuracidade> semanasResposta = new ArrayList<>();
         List<List<InventarioItem>> itensPorSemana = new ArrayList<>();
         for (int i = 0; i < semanas.size(); i++) {
             Inventario inv = semanas.get(i);
             InventarioResultado resultado = resultadoDe(inv, null);
             semanasResposta.add(new SemanaAcuracidade(i + 1, inv.getData(), resumoDe(inv, resultado), resultado));
-            itensPorSemana.add(itemRepository.findByInventarioIdAndArmazem(inv.getId(), null));
+            itensPorSemana.add(itensPorInventarioDoMes.getOrDefault(inv.getId(), List.of()));
         }
 
         List<InventarioItem> mesclados = itensPorSemana.isEmpty()

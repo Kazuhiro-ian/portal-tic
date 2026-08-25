@@ -65,6 +65,11 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.UNAUTHORIZED, "Credenciais inválidas", "Usuário ou senha incorretos.", request);
     }
 
+    @ExceptionHandler(MuitasTentativasException.class)
+    public ResponseEntity<ErroResponse> handleMuitasTentativas(MuitasTentativasException e, HttpServletRequest request) {
+        return construir(HttpStatus.TOO_MANY_REQUESTS, "Muitas tentativas", e.getMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErroResponse> handleGenerico(Exception e, HttpServletRequest request) {
         log.error("Erro não tratado em {}", request.getRequestURI(), e);

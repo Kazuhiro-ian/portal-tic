@@ -61,7 +61,7 @@ class EstoqueMovimentoServiceTest {
         item.setQuantity(10);
 
         when(itemRepository.findById(2L)).thenReturn(Optional.of(item));
-        when(itemRepository.save(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(itemRepository.saveAndFlush(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(any(EstoqueMovimento.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EstoqueMovimento movimento = new EstoqueMovimento();
@@ -74,8 +74,31 @@ class EstoqueMovimentoServiceTest {
 
         assertThat(item.getQuantity()).isEqualTo(15);
         assertThat(resultado.getItemName()).isEqualTo("Teclado");
-        verify(itemRepository).save(item);
+        verify(itemRepository).saveAndFlush(item);
         verify(repository).save(movimento);
+    }
+
+    @Test
+    void conflitoDeVersaoNaGravacaoConcorrenteViraErroDeRegraDeNegocio() {
+        EstoqueItem item = new EstoqueItem();
+        item.setId(3L);
+        item.setName("Cabo HDMI");
+        item.setQuantity(10);
+
+        when(itemRepository.findById(3L)).thenReturn(Optional.of(item));
+        when(itemRepository.saveAndFlush(any(EstoqueItem.class)))
+                .thenThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(EstoqueItem.class, 3L));
+
+        EstoqueMovimento movimento = new EstoqueMovimento();
+        movimento.setItemId("3");
+        movimento.setType("OUT");
+        movimento.setQuantity(2);
+
+        assertThatThrownBy(() -> service.registrar(movimento))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("ao mesmo tempo");
+
+        verify(repository, never()).save(any());
     }
 
     @Test

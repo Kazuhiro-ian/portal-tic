@@ -3,6 +3,7 @@ package portal.ti.queiroz.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
+import portal.ti.queiroz.model.StatusTarefaPlantao;
 import portal.ti.queiroz.model.TarefaPlantao;
 import portal.ti.queiroz.repository.TarefaPlantaoRepository;
 
@@ -25,12 +26,12 @@ public class TarefaPlantaoService {
         // vira UPDATE silencioso daquele registro em vez de criar um novo.
         tarefa.setId(null);
         if (tarefa.getStatus() == null) {
-            tarefa.setStatus("PENDENTE");
+            tarefa.setStatus(StatusTarefaPlantao.PENDENTE);
         }
         return repository.save(tarefa);
     }
 
-    public TarefaPlantao atualizarStatus(Long id, String novoStatus) {
+    public TarefaPlantao atualizarStatus(Long id, StatusTarefaPlantao novoStatus) {
         TarefaPlantao tarefa = repository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Tarefa não encontrada: " + id));
         tarefa.setStatus(novoStatus);

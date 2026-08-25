@@ -19,6 +19,7 @@ public class TarefaPlantao {
     @Column(nullable = false)
     private String descricao;
 
-    @Column(nullable = false) // "PENDENTE", "EM_ANDAMENTO", "CONCLUIDO"
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusTarefaPlantao status;
 }

@@ -12,6 +12,13 @@ public class EstoqueItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Trava otimista: sem isto, duas baixas concorrentes no mesmo item (EstoqueMovimentoService,
+    // ZebraEnvioService) podiam ler a mesma quantidade e a segunda gravação sobrescrevia a
+    // primeira silenciosamente. Com @Version, a segunda gravação lança
+    // ObjectOptimisticLockingFailureException em vez de perder a baixa.
+    @Version
+    private Long version;
+
     @Column(nullable = false)
     private String name;
 

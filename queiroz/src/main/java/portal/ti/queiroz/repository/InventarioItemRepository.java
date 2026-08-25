@@ -8,7 +8,7 @@ import portal.ti.queiroz.model.InventarioItem;
 import java.math.BigDecimal;
 import java.util.List;
 
-public interface InventarioItemRepository extends JpaRepository<InventarioItem, Long> {
+public interface InventarioItemRepository extends JpaRepository<InventarioItem, Long>, InventarioItemRepositoryCustom {
 
     /** Todos os itens do inventário, dos dois armazéns quando a filial for dividida. */
     List<InventarioItem> findByInventarioId(Long inventarioId);

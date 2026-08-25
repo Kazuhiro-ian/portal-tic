@@ -8,7 +8,11 @@ import java.time.LocalTime;
 // Um inventário agendado ou realizado para uma filial em uma data.
 @Data
 @Entity
-@Table(name = "inventarios")
+@Table(name = "inventarios", indexes = {
+        // RelatorioAcuracidadeService/PlanoInventarioService consultam o tempo todo por
+        // filial + intervalo de data (findByDataBetween, findByFilialIdAndDataBetween).
+        @Index(name = "idx_inventarios_filial_data", columnList = "filial_id, data")
+})
 public class Inventario {
 
     @Id

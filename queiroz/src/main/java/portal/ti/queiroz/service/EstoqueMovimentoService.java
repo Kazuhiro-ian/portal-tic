@@ -1,6 +1,7 @@
 package portal.ti.queiroz.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
@@ -49,7 +50,15 @@ public class EstoqueMovimentoService {
         }
 
         item.setQuantity(novaQuantidade);
-        itemRepository.save(item);
+        // saveAndFlush (não save) força a checagem de @Version já aqui dentro do método, onde dá
+        // pra converter o conflito numa mensagem clara -- com save() simples, o UPDATE só
+        // aconteceria no commit da transação, e o conflito vazaria como erro 500 genérico.
+        try {
+            itemRepository.saveAndFlush(item);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new RegraDeNegocioException(
+                    "O estoque de \"" + item.getName() + "\" foi alterado por outra operação ao mesmo tempo. Tente novamente.");
+        }
 
         movimento.setItemName(item.getName());
         if (movimento.getDate() == null) {

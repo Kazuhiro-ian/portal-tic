@@ -59,8 +59,11 @@ class ZebraEnvioServiceTest {
         EstoqueItem etiquetaB = item(2L, "ETIQUETA", "Etiqueta 60x40", 10);
         EstoqueItem ribbon = item(3L, "RIBBON", "Ribbon cera", 20);
 
-        when(itemRepository.findAll()).thenReturn(List.of(etiquetaA, etiquetaB, ribbon));
-        when(itemRepository.save(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull("ETIQUETA"))
+                .thenReturn(List.of(etiquetaA, etiquetaB));
+        when(itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull("RIBBON"))
+                .thenReturn(List.of(ribbon));
+        when(itemRepository.saveAndFlush(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(any(ZebraEnvio.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Pede 8 etiquetas: esgota o item A (5) e tira mais 3 do item B, sem tocar em ribbon.
@@ -78,7 +81,7 @@ class ZebraEnvioServiceTest {
     @Test
     void estoqueInsuficienteLancaExcecaoENaoPersisteNada() {
         EstoqueItem etiqueta = item(1L, "ETIQUETA", "Etiqueta 40x60", 3);
-        when(itemRepository.findAll()).thenReturn(List.of(etiqueta));
+        when(itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull("ETIQUETA")).thenReturn(List.of(etiqueta));
 
         ZebraEnvio pedido = envio(10L, 5, 0, "REGULAR");
 
@@ -87,7 +90,7 @@ class ZebraEnvioServiceTest {
                 .hasMessageContaining("Estoque insuficiente");
 
         assertThat(etiqueta.getQuantity()).isEqualTo(3);
-        verify(itemRepository, never()).save(any());
+        verify(itemRepository, never()).saveAndFlush(any());
         verify(repository, never()).save(any());
     }
 
@@ -115,8 +118,8 @@ class ZebraEnvioServiceTest {
     @Test
     void semCategoriaZebraCaiNoFallbackPorNome() {
         EstoqueItem semCategoria = item(1L, null, "Rolo de Etiqueta Térmica", 10);
-        when(itemRepository.findAll()).thenReturn(List.of(semCategoria));
-        when(itemRepository.save(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull("ETIQUETA")).thenReturn(List.of(semCategoria));
+        when(itemRepository.saveAndFlush(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(any(ZebraEnvio.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ZebraEnvio pedido = envio(10L, 4, 0, "REGULAR");
@@ -128,8 +131,8 @@ class ZebraEnvioServiceTest {
     @Test
     void zeraOIdRecebidoParaNuncaSobrescreverOutroRegistro() {
         EstoqueItem etiqueta = item(1L, "ETIQUETA", "Etiqueta 40x60", 10);
-        when(itemRepository.findAll()).thenReturn(List.of(etiqueta));
-        when(itemRepository.save(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(itemRepository.findByCategoriaZebraOrCategoriaZebraIsNull("ETIQUETA")).thenReturn(List.of(etiqueta));
+        when(itemRepository.saveAndFlush(any(EstoqueItem.class))).thenAnswer(inv -> inv.getArgument(0));
         when(repository.save(any(ZebraEnvio.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ZebraEnvio pedido = envio(10L, 2, 0, "REGULAR");
