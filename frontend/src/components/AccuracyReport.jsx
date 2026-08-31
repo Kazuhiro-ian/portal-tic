@@ -197,7 +197,7 @@ export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 c-sm:grid-cols-3 gap-4">
         <CardAgregado titulo="Centros de Distribuição" icon={Building2} linha={relatorio.cds} config={config} />
         <CardAgregado titulo="Lojas" icon={Store} linha={relatorio.lojas} config={config} />
         <CardAgregado titulo="Geral" icon={Layers} linha={relatorio.geral} config={config} />
@@ -215,7 +215,7 @@ export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
         <Paginacao {...paginacao} rotulo="filiais" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 c-md:grid-cols-2 gap-6">
         <ListaRanking titulo="Maiores Faltas" icon={ArrowDown} cor="text-red-400" itens={ranking?.maioresFaltas} />
         <ListaRanking titulo="Maiores Sobras" icon={ArrowUp} cor="text-green-400" itens={ranking?.maioresSobras} />
       </div>
@@ -224,6 +224,7 @@ export function AccuracyReport({ ano, mes, showToast, onAbrirDashboard }) {
         <StoreAccuracyDetailPanel
           filialId={filialSelecionada.filialId}
           nomeFilial={`${filialSelecionada.numeroFilial} - ${filialSelecionada.nome}`}
+          periodicidade={filialSelecionada.periodicidadeInventario}
           ano={ano}
           mes={mes}
           onClose={() => setFilialSelecionada(null)}

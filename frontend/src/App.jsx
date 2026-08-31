@@ -6,6 +6,7 @@ import { useFocusTrap } from './hooks/useFocusTrap.js';
 
 // Importação dos Componentes
 import { Sidebar, menuItems, usuariosMenuItem } from './components/Sidebar.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { BottomNav } from './components/BottomNav.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { LinksManager } from './components/LinksManager.jsx';
@@ -139,26 +140,31 @@ function App() {
           className="flex-1 p-4 lg:p-8 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8 overflow-y-auto overscroll-contain scrollbar-thin"
           key={location.pathname}
         >
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/links" element={<LinksManager />} />
-            <Route path="/ativos" element={<AssetInventory />} />
-            <Route path="/estoque" element={<StockDashboard />} />
-            <Route path="/escala" element={<EmployeeSchedule />} />
-            <Route path="/conhecimento" element={<KnowledgeBase />} />
-            <Route path="/filiais" element={<BranchManagement />} />
-            <Route path="/zebra" element={<ZebraSupplies />} />
-            <Route path="/qualidade" element={<QualityPlanning />} />
-            {/* A rota de usuários só existe para ADMIN. Quem não for cai no dashboard, e o
-                backend recusa /api/usuarios de qualquer forma. */}
-            <Route
-              path="/usuarios"
-              element={isAdmin ? <UsuarioManagement /> : <Navigate to="/dashboard" replace />}
-            />
-            {/* URL desconhecida volta para o dashboard em vez de deixar a tela em branco. */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          {/* Um erro de render em qualquer tela vira um card de erro dentro do <main>, em vez
+              de desmontar o app inteiro e deixar só o fundo da página à mostra. resetKey na
+              rota faz a tela de erro sumir sozinha ao navegar para outro módulo. */}
+          <ErrorBoundary resetKey={location.pathname}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/links" element={<LinksManager />} />
+              <Route path="/ativos" element={<AssetInventory />} />
+              <Route path="/estoque" element={<StockDashboard />} />
+              <Route path="/escala" element={<EmployeeSchedule />} />
+              <Route path="/conhecimento" element={<KnowledgeBase />} />
+              <Route path="/filiais" element={<BranchManagement />} />
+              <Route path="/zebra" element={<ZebraSupplies />} />
+              <Route path="/qualidade" element={<QualityPlanning />} />
+              {/* A rota de usuários só existe para ADMIN. Quem não for cai no dashboard, e o
+                  backend recusa /api/usuarios de qualquer forma. */}
+              <Route
+                path="/usuarios"
+                element={isAdmin ? <UsuarioManagement /> : <Navigate to="/dashboard" replace />}
+              />
+              {/* URL desconhecida volta para o dashboard em vez de deixar a tela em branco. */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
 
       </div>

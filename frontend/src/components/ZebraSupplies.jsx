@@ -378,9 +378,9 @@ export function ZebraSupplies() {
         )
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 c-md:grid-cols-5 gap-6">
         {canWrite && (
-        <div className="lg:col-span-3 card">
+        <div className="c-md:col-span-3 card">
           <h2 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
             <Send className="w-5 h-5 text-primary-400" />
             Registrar Saída de Material
@@ -514,7 +514,7 @@ export function ZebraSupplies() {
         </div>
         )}
 
-        <div className={canWrite ? 'lg:col-span-2 space-y-4' : 'lg:col-span-5 grid grid-cols-1 md:grid-cols-2 gap-4'}>
+        <div className={canWrite ? 'c-md:col-span-2 space-y-4' : 'c-md:col-span-5 grid grid-cols-1 md:grid-cols-2 gap-4'}>
           <div className="card">
             <h3 className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-4">
               Visão Geral do Mês

@@ -304,8 +304,8 @@ export function EmployeeSchedule() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 c-lg:grid-cols-4 gap-6">
+        <div className="c-lg:col-span-3">
           <div className="card">
             <div className="flex items-center justify-between mb-6">
               <button
@@ -532,7 +532,7 @@ export function EmployeeSchedule() {
         </div>
 
         {/* BARRA LATERAL: DADOS DE HOJE E CARD DE MISSÕES / TAREFAS */}
-        <div className="space-y-6 lg:col-span-1">
+        <div className="space-y-6 c-lg:col-span-1">
           
           {/* CARD 1: ESCALADOS E FOLGA HOJE */}
           <div className="card">

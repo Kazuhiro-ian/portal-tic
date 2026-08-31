@@ -17,7 +17,9 @@ function rodapeImportacao(titulo, resumo) {
   );
 }
 
-export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClose, showToast, onAbrirDashboard }) {
+export function StoreAccuracyDetailPanel({
+  filialId, nomeFilial, periodicidade, ano, mes, onClose, showToast, onAbrirDashboard,
+}) {
   const [detalhe, setDetalhe] = useState(null);
   const [config, setConfig] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -43,8 +45,10 @@ export function StoreAccuracyDetailPanel({ filialId, nomeFilial, ano, mes, onClo
     carregar();
   }, [carregar]);
 
+  // `semanal` viaja junto para o dashboard já escolher o componente certo antes mesmo da lista
+  // de filiais carregar lá -- ver QualityDashboards.ehSemanal.
   const abrirDashboard = () => {
-    onAbrirDashboard({ tipo: 'FILIAL', filialId });
+    onAbrirDashboard({ tipo: 'FILIAL', filialId, semanal: periodicidade === 'SEMANAL' });
     onClose();
   };
 

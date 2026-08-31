@@ -7,6 +7,7 @@ import { EquipeInventarioManagement } from './EquipeInventarioManagement.jsx';
 import { EquipeCalendarManagement } from './EquipeCalendarManagement.jsx';
 import { AccuracyReport } from './AccuracyReport.jsx';
 import { QualityDashboards } from './QualityDashboards.jsx';
+import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { MESES } from '../utils/datas.js';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
@@ -100,6 +101,9 @@ export function QualityPlanning() {
         ))}
       </div>
 
+      {/* Boundary por aba (resetKey={aba}): um erro numa aba não leva junto o seletor de mês
+          nem a barra de abas, então dá para sair dela sem recarregar a página. */}
+      <ErrorBoundary resetKey={aba}>
       {aba === 'recebimento' ? (
         <ReceivingCalendar
           ano={ano}
@@ -124,12 +128,13 @@ export function QualityPlanning() {
         <EquipeInventarioManagement />
       ) : (
         <EquipeCalendarManagement
-              ano={ano}
-              mes={mes}
-              canWrite={canWriteQualidade}
-              showToast={showToast}
-            />
-          )}
+          ano={ano}
+          mes={mes}
+          canWrite={canWriteQualidade}
+          showToast={showToast}
+        />
+      )}
+      </ErrorBoundary>
     </div>
   );
 }

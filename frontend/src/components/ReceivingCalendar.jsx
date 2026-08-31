@@ -119,7 +119,10 @@ export function ReceivingCalendar({ ano, mes, canWrite, showToast, onCalendarioM
           (feriados, entregas extras) podem ser feitos depois clicando nos dias do calendário.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* 7 selects só cabem lado a lado com muita largura: "Sem pedidos" precisa de ~133px e
+            em notebook (1024-1440px) cada coluna ficava com 82-131px, cortando o texto. Até lá
+            ficam 2/4 por linha. */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 c-xl:grid-cols-7 gap-3">
           {DIAS_SEMANA.map((d) => (
             <div key={d.java}>
               <label htmlFor={`padrao-dia-${d.java}`} className="block text-sm font-medium text-dark-300 mb-2">{d.curto}</label>

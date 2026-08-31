@@ -10,6 +10,24 @@ export default {
       lg: '1024px',
       xl: '1280px',
       '2xl': '1536px',
+
+      // --- Breakpoints da ÁREA DE CONTEÚDO ---
+      // As media queries acima medem a JANELA, mas em telas grandes o conteúdo não ocupa a
+      // janela toda: a sidebar fixa come 256px (w-64) e o <main> ainda tem 64px de padding
+      // (lg:p-8 nos dois lados). Sobram `viewport - 320px`.
+      //
+      // Por isso um `lg:grid-cols-6` (que dispara com a janela em 1024px) montava 6 colunas
+      // dentro de apenas 698px -- 103px por coluna, com os rótulos dos cards cortados no meio
+      // da palavra. Era o que quebrava as telas em notebook (1024-1440px) e passava
+      // despercebido no monitor grande.
+      //
+      // Os breakpoints abaixo são expressos pelo espaço que sobra PARA O CONTEÚDO. Use-os em
+      // grids densas (4+ colunas) e em divisões de coluna; os breakpoints normais continuam
+      // valendo para o que não convive com a sidebar (modais, painéis, login, mobile).
+      'c-sm': '960px',    // ~640px de conteúdo
+      'c-md': '1088px',   // ~768px de conteúdo
+      'c-lg': '1344px',   // ~1024px de conteúdo
+      'c-xl': '1600px',   // ~1280px de conteúdo
     },
     extend: {
       spacing: {

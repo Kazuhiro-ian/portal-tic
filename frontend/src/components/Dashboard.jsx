@@ -231,16 +231,21 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-6 lg:grid-rows-3 gap-4">
+      {/* O bento de 6 colunas só existe quando sobra largura de verdade (c-xl). Abaixo disso
+          ele degrada para 2 e 3 colunas: com 6 colunas em notebook cada card ficava com ~103px
+          e os rótulos eram cortados no meio da palavra. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 c-md:grid-cols-3 c-xl:grid-cols-6 c-xl:grid-rows-3 gap-4">
         {/* Recebimento Hoje — card vertical, ocupa a coluna toda (1x3) */}
-        <div className="metric-card lg:row-span-3">
-          <div className="flex items-center gap-3">
+        <div className="metric-card c-xl:row-span-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Truck className="w-6 h-6 text-amber-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-2xl font-bold text-white">{isLoading ? '—' : recebimentoHojeQtd}</p>
-              <p className="text-sm text-dark-400">Recebimento Hoje ({rotuloTipoDia(diaRecebimentoHoje?.tipo)})</p>
+              <p className="text-sm text-dark-400 truncate" title={`Recebimento Hoje (${rotuloTipoDia(diaRecebimentoHoje?.tipo)})`}>
+                Recebimento Hoje ({rotuloTipoDia(diaRecebimentoHoje?.tipo)})
+              </p>
             </div>
           </div>
 
@@ -264,7 +269,7 @@ export function Dashboard() {
         </div>
 
         {/* Inventários de Hoje — card largo (5x1) */}
-        <div className="card lg:col-span-5">
+        <div className="card sm:col-span-2 c-md:col-span-3 c-xl:col-span-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <ClipboardCheck className="w-5 h-5 text-blue-400" />
@@ -298,14 +303,14 @@ export function Dashboard() {
         </div>
 
         {/* Impressoras */}
-        <div className="metric-card lg:row-span-2">
-          <div className="flex items-center gap-3">
+        <div className="metric-card c-xl:row-span-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Printer className="w-6 h-6 text-primary-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-2xl font-bold text-white">{isLoading ? '—' : printers.length}</p>
-              <p className="text-sm text-dark-400">Impressoras</p>
+              <p className="text-sm text-dark-400 truncate" title="Impressoras">Impressoras</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{onlinePrinters} online</p>
@@ -320,14 +325,14 @@ export function Dashboard() {
         </div>
 
         {/* Estoque Baixo */}
-        <div className="metric-card lg:row-span-2">
-          <div className="flex items-center gap-3">
+        <div className="metric-card c-xl:row-span-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Package className="w-6 h-6 text-red-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-2xl font-bold text-white">{isLoading ? '—' : lowStockItems.length}</p>
-              <p className="text-sm text-dark-400">Estoque Baixo</p>
+              <p className="text-sm text-dark-400 truncate" title="Estoque Baixo">Estoque Baixo</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{stock.length} itens totais</p>
@@ -342,14 +347,14 @@ export function Dashboard() {
         </div>
 
         {/* No Plantão Hoje */}
-        <div className="metric-card lg:row-span-2">
-          <div className="flex items-center gap-3">
+        <div className="metric-card c-xl:row-span-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center shrink-0">
               <Users className="w-6 h-6 text-green-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-2xl font-bold text-white">{isLoading ? '—' : todayEmployees.length}</p>
-              <p className="text-sm text-dark-400">Trabalhando Hoje</p>
+              <p className="text-sm text-dark-400 truncate" title="Trabalhando Hoje">Trabalhando Hoje</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{employees.length} colaboradores</p>
@@ -366,14 +371,14 @@ export function Dashboard() {
         </div>
 
         {/* Avisos Ativos */}
-        <div className="metric-card lg:row-span-2">
-          <div className="flex items-center gap-3">
+        <div className="metric-card c-xl:row-span-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center shrink-0">
               <AlertTriangle className="w-6 h-6 text-yellow-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-2xl font-bold text-white">{notices.length}</p>
-              <p className="text-sm text-dark-400">Avisos Ativos</p>
+              <p className="text-sm text-dark-400 truncate" title="Avisos Ativos">Avisos Ativos</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{notices.filter((n) => n.prioridade === 'ALTA').length} urgentes</p>
@@ -385,14 +390,14 @@ export function Dashboard() {
         </div>
 
         {/* Zebra Pendentes */}
-        <div className={`metric-card lg:row-span-2 ${zebraPendingBranches.length > 0 ? 'border-accent-500/40 bg-accent-500/5' : ''}`}>
-          <div className="flex items-center gap-3">
+        <div className={`metric-card c-xl:row-span-2 ${zebraPendingBranches.length > 0 ? 'border-accent-500/40 bg-accent-500/5' : ''}`}>
+          <div className="flex items-center gap-3 min-w-0">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${zebraPendingBranches.length > 0 ? 'bg-accent-500/20' : 'bg-dark-700'}`}>
               <Tag className={`w-6 h-6 ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-dark-400'}`} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className={`text-2xl font-bold ${zebraPendingBranches.length > 0 ? 'text-accent-400' : 'text-white'}`}>{isLoading ? '—' : zebraPendingBranches.length}</p>
-              <p className="text-sm text-dark-400">Zebra Pendentes</p>
+              <p className="text-sm text-dark-400 truncate" title="Zebra Pendentes">Zebra Pendentes</p>
             </div>
           </div>
           <p className="text-xs text-dark-400">{branchQuotas.length} filiais cadastradas</p>

@@ -166,10 +166,14 @@ function RoscaProdutos({ resultado }) {
       </div>
       <div className="space-y-2.5 w-full">
         {segmentos.map((s) => (
-          <div key={s.rotulo} className="flex items-center gap-2 text-sm">
+          <div key={s.rotulo} className="flex items-center gap-2 text-sm min-w-0">
             <span className={`w-2.5 h-2.5 rounded-full shrink-0 bg-current ${s.corTexto}`} />
-            <span className="text-dark-300 w-20 shrink-0">{s.rotulo}</span>
-            <div className="flex-1 h-1.5 rounded-full bg-dark-700 overflow-hidden hidden sm:block">
+            <span className="text-dark-300 w-20 shrink truncate">{s.rotulo}</span>
+            {/* A barrinha só aparece onde sobra espaço para ela. As partes fixas da linha
+                (bolinha + rótulo + "9.539 (91,44%)") já pedem ~210px, então ela some na
+                faixa em que o card divide a largura em duas colunas mas ainda é estreito
+                (c-md a c-lg) -- era ali que a legenda estourava a caixa. */}
+            <div className="flex-1 h-1.5 rounded-full bg-dark-700 overflow-hidden hidden sm:block c-md:hidden c-lg:block">
               <div
                 className={`h-full rounded-full bg-current ${s.corTexto}`}
                 style={{ width: `${total > 0 ? (s.valor / total) * 100 : 0}%` }}
@@ -309,7 +313,7 @@ export function AccuracyDashboard({ detalhe, config, carregando }) {
       </div>
 
       {detalhe.estoqueDividido ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 c-md:grid-cols-2 gap-4">
           <ResultadoArmazemCard titulo="Loja" icon={Store} resultado={armazem01} anterior={detalhe.armazem01?.anterior} config={config} />
           <ResultadoArmazemCard titulo="Estoque" icon={Warehouse} resultado={armazem03} anterior={detalhe.armazem03?.anterior} config={config} />
         </div>
@@ -327,7 +331,7 @@ export function AccuracyDashboard({ detalhe, config, carregando }) {
         </div>
       )}
 
-      <div className={`grid grid-cols-1 ${detalhe.estoqueDividido ? 'lg:grid-cols-2' : ''} gap-4`}>
+      <div className={`grid grid-cols-1 ${detalhe.estoqueDividido ? 'c-md:grid-cols-2' : ''} gap-4`}>
         {detalhe.estoqueDividido && (
           <div className="card">
             <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
@@ -360,7 +364,7 @@ export function AccuracyDashboard({ detalhe, config, carregando }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 c-md:grid-cols-2 gap-4">
         <RankingBarras titulo="Maiores Faltas" icon={ArrowDown} itens={detalhe.maioresFaltas} cor="text-red-400" />
         <RankingBarras titulo="Maiores Sobras" icon={ArrowUp} itens={detalhe.maioresSobras} cor="text-green-400" />
       </div>
@@ -401,7 +405,7 @@ export function AccuracyDashboard({ detalhe, config, carregando }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 c-md:grid-cols-3 gap-3">
             {divergenciasVisiveis.map((d) => (
               <div key={d.codProduto} className="p-3 rounded-lg bg-dark-800/60 border border-dark-600">
                 <p className="text-sm text-white truncate">{d.descricao || d.codProduto}</p>

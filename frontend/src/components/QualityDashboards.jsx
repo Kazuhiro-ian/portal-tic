@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { AccuracyDashboard } from './AccuracyDashboard.jsx';
 import { WeeklyAccuracyDashboard } from './WeeklyAccuracyDashboard.jsx';
@@ -20,6 +20,15 @@ const selecaoDoValor = (valor) => {
 };
 
 /**
+ * Identidade da requisição que produz um `detalhe`. Inclui `semanal` porque a MESMA filial no
+ * MESMO mês tem dois formatos de resposta possíveis (mês-a-mês x por semana), servidos por
+ * endpoints diferentes -- sem isso não dá para saber se o `detalhe` em mãos é o do componente
+ * que está prestes a renderizar.
+ */
+const chaveDaRequisicao = (selecao, ano, mes, semanal) =>
+  `${valorDaSelecao(selecao)}|${ano}-${mes}|${semanal ? 'semanal' : 'mensal'}`;
+
+/**
  * Aba "Dashboards" de Qualidade: o mesmo dashboard de acuracidade que antes só existia
  * como página cheia (aberta em nova guia) para uma filial, agora selecionável também por
  * grupo (Lojas/CDs) ou geral, sem sair da tela. `selecaoExterna` permite que outra aba
@@ -32,6 +41,11 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
   const [selecao, setSelecao] = useState({ tipo: 'GERAL' });
   const [detalhe, setDetalhe] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  // Chave da última requisição disparada. Trocar de seleção rápido deixa mais de um fetch no
+  // ar, e eles podem voltar fora de ordem: sem este guarda, a resposta antiga (que chega por
+  // último) sobrescreveria a nova com uma chave que não bate mais e a tela ficaria presa no
+  // spinner para sempre.
+  const requisicaoAtualRef = useRef(null);
 
   useEffect(() => {
     if (selecaoExterna) setSelecao(selecaoExterna);
@@ -51,22 +65,35 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
   const filialSelecionada = selecao.tipo === 'FILIAL'
     ? filiais.find((f) => f.filialId === selecao.filialId)
     : null;
-  const ehSemanal = filialSelecionada?.periodicidadeInventario === 'SEMANAL';
+  // `selecao.semanal` é preenchido por quem já sabe a periodicidade no momento de navegar
+  // (botão "Ver dashboard completo"). Ele cobre a janela em que `filiais` ainda não chegou:
+  // sem isso, ehSemanal começaria false para o CD 00, buscaria o endpoint mensal e só depois
+  // viraria true -- trocando de componente com o payload do formato errado em mãos.
+  const ehSemanal = filialSelecionada
+    ? filialSelecionada.periodicidadeInventario === 'SEMANAL'
+    : selecao.tipo === 'FILIAL' && selecao.semanal === true;
 
   const carregarDetalhe = useCallback(async () => {
+    const chave = chaveDaRequisicao(selecao, ano, mes, ehSemanal);
+    requisicaoAtualRef.current = chave;
     try {
       setCarregando(true);
+      // Descarta o detalhe da seleção anterior ANTES de buscar o novo: ele está no formato do
+      // outro endpoint e não pode chegar ao componente que vai renderizar agora.
+      setDetalhe(null);
       const dados = selecao.tipo === 'FILIAL' && ehSemanal
         ? await buscarDetalheSemanalAcuracidade(selecao.filialId, ano, mes)
         : selecao.tipo === 'FILIAL'
           ? await buscarDetalheFilialAcuracidade(selecao.filialId, ano, mes)
           : await buscarDetalheGrupoAcuracidade(selecao.tipo === 'GRUPO' ? selecao.grupo : null, ano, mes);
-      setDetalhe(dados);
+      if (requisicaoAtualRef.current !== chave) return;
+      setDetalhe({ chave, dados });
     } catch (erro) {
+      if (requisicaoAtualRef.current !== chave) return;
       showToast(erro.message || 'Erro ao carregar o dashboard.', 'error');
-      setDetalhe(null);
+      setDetalhe({ chave, dados: null });
     } finally {
-      setCarregando(false);
+      if (requisicaoAtualRef.current === chave) setCarregando(false);
     }
   }, [selecao, ano, mes, showToast, ehSemanal]);
 
@@ -79,13 +106,26 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
 
   const valorSelecionado = valorDaSelecao(selecao);
 
+  // Um `detalhe` só é entregue ao dashboard se veio da requisição que corresponde ao que está
+  // sendo renderizado agora. Trocar de seleção muda `ehSemanal` (e o componente escolhido) no
+  // mesmo render, mas o fetch novo só termina depois -- sem esta checagem, o dashboard semanal
+  // recebia o payload mensal da seleção anterior e quebrava no primeiro acesso a `semanas`.
+  const chaveAtual = chaveDaRequisicao(selecao, ano, mes, ehSemanal);
+  const detalheSincronizado = detalhe?.chave === chaveAtual ? detalhe.dados : null;
+  // Enquanto o par (componente, dados) não bate, a tela está de fato carregando.
+  const carregandoDetalhe = carregando || detalhe?.chave !== chaveAtual;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary-400" />
-            {detalhe ? (detalhe.numeroFilial ? `${detalhe.numeroFilial} — ${detalhe.nome}` : detalhe.nome) : 'Dashboard de acuracidade'}
+            {detalheSincronizado
+              ? (detalheSincronizado.numeroFilial
+                ? `${detalheSincronizado.numeroFilial} — ${detalheSincronizado.nome}`
+                : detalheSincronizado.nome)
+              : 'Dashboard de acuracidade'}
           </h2>
           <p className="text-dark-400 text-sm mt-1">Escolha uma loja, um CD, um grupo ou o dashboard geral.</p>
         </div>
@@ -120,11 +160,14 @@ export function QualityDashboards({ ano, mes, showToast, selecaoExterna }) {
 
       {ehSemanal ? (
         <WeeklyAccuracyDashboard
-          key={`${valorSelecionado}-${ano}-${mes}`}
-          detalhe={detalhe} config={config} carregando={carregando}
+          key={chaveAtual}
+          detalhe={detalheSincronizado} config={config} carregando={carregandoDetalhe}
         />
       ) : (
-        <AccuracyDashboard key={`${valorSelecionado}-${ano}-${mes}`} detalhe={detalhe} config={config} carregando={carregando} />
+        <AccuracyDashboard
+          key={chaveAtual}
+          detalhe={detalheSincronizado} config={config} carregando={carregandoDetalhe}
+        />
       )}
     </div>
   );

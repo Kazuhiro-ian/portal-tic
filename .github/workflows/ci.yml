@@ -58,6 +58,12 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      # Suíte do frontend (Vitest + Testing Library). Cobre, entre outras coisas, a regressão
+      # da "tela azul" do dashboard do CD 00: um erro de render desmontava o app inteiro.
+      - name: Rodar os testes
+        working-directory: frontend
+        run: npm test
+
       - name: Build de produção
         working-directory: frontend
         run: npm run build

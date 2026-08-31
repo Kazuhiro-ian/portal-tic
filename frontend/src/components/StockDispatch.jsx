@@ -165,10 +165,10 @@ export function StockDispatch({ items, onAtualizado }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 c-md:grid-cols-5 gap-6">
       <Toast toast={toast} onClose={hideToast} />
       {canWrite && (
-      <div className="lg:col-span-2">
+      <div className="c-md:col-span-2">
         <div className="card">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 bg-warning-500/20 rounded-lg flex items-center justify-center">
@@ -258,7 +258,7 @@ export function StockDispatch({ items, onAtualizado }) {
       </div>
       )}
 
-      <div className={canWrite ? 'lg:col-span-3' : 'lg:col-span-5'}>
+      <div className={canWrite ? 'c-md:col-span-3' : 'c-md:col-span-5'}>
         <div className="card">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
