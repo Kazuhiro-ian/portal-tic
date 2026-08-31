@@ -10,6 +10,7 @@ import { Toast } from './Toast.jsx';
 import { grupoLabels, grupoBadge, periodicidadeLabels, periodicidadeBadge } from '../utils/qualidade.js';
 import { Paginacao } from './Paginacao.jsx';
 import { usePaginacao } from '../hooks/usePaginacao.js';
+import { FilialDetailPanel } from './FilialDetailPanel.jsx';
 
 function formatCnpj(value) {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -98,7 +99,7 @@ export function BranchManagement() {
   const { canWrite } = useAuth();
   const [branches, setBranches] = useState([]);
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [panelMode, setPanelMode] = useState(null); // null | 'view' | 'edit'
   const [editingBranch, setEditingBranch] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
@@ -138,7 +139,7 @@ export function BranchManagement() {
     setEditingBranch(null);
     setForm(emptyForm);
     setFormError('');
-    setShowModal(true);
+    setPanelMode('edit');
   };
 
   const openEdit = (branch) => {
@@ -158,8 +159,15 @@ export function BranchManagement() {
       whatsapp: branch.whatsapp || '',
     });
     setFormError('');
-    setShowModal(true);
+    setPanelMode('edit');
   };
+
+  const handleVisualizar = (branch) => {
+    setEditingBranch(branch);
+    setPanelMode('view');
+  };
+
+  const handleFecharPainel = () => setPanelMode(null);
 
   const handleSave = async () => {
     if (!form.numeroFilial.toString().trim()) {
@@ -203,7 +211,7 @@ export function BranchManagement() {
       }
 
       await carregarFiliais();
-      setShowModal(false);
+      setPanelMode(null);
       setEditingBranch(null);
       setForm(emptyForm);
       setFormError('');
@@ -251,55 +259,66 @@ export function BranchManagement() {
         )}
       </div>
 
-      <div className="card">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary-400" />
-            Todas as Filiais
-          </h2>
+      <div className="flex gap-4 items-start">
+        <div className="card flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary-400" />
+              Todas as Filiais
+            </h2>
 
-          <div className="relative sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
-            <input
-              type="text"
-              placeholder="Buscar filial..."
-              aria-label="Buscar filial"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-9"
-            />
+            <div className="relative sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+              <input
+                type="text"
+                placeholder="Buscar filial..."
+                aria-label="Buscar filial"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input-field pl-9"
+              />
+            </div>
           </div>
+
+          <DataTable
+            colunas={COLUNAS}
+            dados={paginacao.itensPagina}
+            carregando={isLoading}
+            vazio="Nenhuma filial encontrada."
+            aoClicarLinha={handleVisualizar}
+            acoes={(branch) =>
+              canWrite && (
+                <>
+                  <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )
+            }
+          />
+
+          <Paginacao {...paginacao} rotulo="filiais" />
         </div>
 
-        <DataTable
-          colunas={COLUNAS}
-          dados={paginacao.itensPagina}
-          carregando={isLoading}
-          vazio="Nenhuma filial encontrada."
-          acoes={(branch) =>
-            canWrite && (
-              <>
-                <button onClick={() => openEdit(branch)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(branch)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )
-          }
+        <FilialDetailPanel
+          open={panelMode === 'view'}
+          filial={editingBranch}
+          onEdit={() => setPanelMode('edit')}
+          onClose={handleFecharPainel}
         />
-        <Paginacao {...paginacao} rotulo="filiais" />
       </div>
 
       <SidePanel
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        isOpen={panelMode === 'edit'}
+        onClose={handleFecharPainel}
         title={editingBranch ? `Editar Filial — ${editingBranch.nome}` : 'Nova Filial'}
         size="lg"
         footer={
           <>
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button onClick={handleFecharPainel} className="btn-secondary">Cancelar</button>
             <button onClick={handleSave} className="btn-primary">
               {editingBranch ? 'Salvar Alterações' : 'Cadastrar Filial'}
             </button>
