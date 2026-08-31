@@ -123,4 +123,25 @@ class FiliaisServicesTest {
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("Loja");
     }
+
+    @Test
+    void deveAtualizarRamalEWhatsappAoEditar() {
+        Filiais existente = filialExistente();
+        when(repository.findById(1L)).thenReturn(Optional.of(existente));
+        when(repository.save(any(Filiais.class))).thenAnswer(chamada -> chamada.getArgument(0));
+
+        Filiais dadosNovos = new Filiais();
+        dadosNovos.setNumeroFilial(12);
+        dadosNovos.setNome("Centro");
+        dadosNovos.setCnpj("00.000.000/0001-00");
+        dadosNovos.setEndereco("Rua Um, 100");
+        dadosNovos.setGrupoRecebimento(GrupoRecebimento.GRUPO_1);
+        dadosNovos.setRamal("3305-1234");
+        dadosNovos.setWhatsapp("11987654321");
+
+        Filiais atualizada = service.atualizar(1L, dadosNovos);
+
+        assertThat(atualizada.getRamal()).isEqualTo("3305-1234");
+        assertThat(atualizada.getWhatsapp()).isEqualTo("11987654321");
+    }
 }

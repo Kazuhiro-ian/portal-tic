@@ -47,7 +47,9 @@ public class FiliaisServices {
         filial.setEstoqueDividido(filialAtualizada.getEstoqueDividido());
         filial.setPeriodicidadeInventario(filialAtualizada.getPeriodicidadeInventario());
         filial.setReferenciaBimestral(filialAtualizada.getReferenciaBimestral());
-
+        filial.setRamal(filialAtualizada.getRamal());
+        filial.setWhatsapp(filialAtualizada.getWhatsapp());
+        
         return repository.save(filial);
     }
 

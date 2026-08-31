@@ -24,6 +24,7 @@ function formatCnpj(value) {
 const emptyForm = {
   numeroFilial: '', nome: '', cnpj: '', endereco: '', grupoRecebimento: '', tipoFilial: '',
   estoqueDividido: false, periodicidadeInventario: '', referenciaBimestral: '',
+  ramal: '', whatsapp: '',
 };
 
 const COLUNAS = [
@@ -153,6 +154,8 @@ export function BranchManagement() {
       periodicidadeInventario: branch.periodicidadeInventario || '',
       // input type="month" espera "AAAA-MM" -- a API devolve "AAAA-MM-DD" (dia 1 sempre).
       referenciaBimestral: branch.referenciaBimestral ? branch.referenciaBimestral.slice(0, 7) : '',
+      ramal: branch.ramal || '',
+      whatsapp: branch.whatsapp || '',
     });
     setFormError('');
     setShowModal(true);
@@ -185,6 +188,8 @@ export function BranchManagement() {
         referenciaBimestral: form.periodicidadeInventario === 'BIMESTRAL' && form.referenciaBimestral
           ? `${form.referenciaBimestral}-01`
           : null,
+        ramal: form.ramal.trim(),
+        whatsapp: form.whatsapp.trim(),
       };
 
       if (editingBranch) {
@@ -196,7 +201,7 @@ export function BranchManagement() {
         await salvarFilial(payload);
         showToast('Filial cadastrada com sucesso no banco de dados!');
       }
-      
+
       await carregarFiliais();
       setShowModal(false);
       setEditingBranch(null);
@@ -226,7 +231,7 @@ export function BranchManagement() {
 
   return (
     <div className="space-y-6 relative">
-      
+
       {dialogoConfirmacao}
 
       <Toast toast={toast} onClose={hideToast} />
@@ -252,7 +257,7 @@ export function BranchManagement() {
             <Building2 className="w-5 h-5 text-primary-400" />
             Todas as Filiais
           </h2>
-          
+
           <div className="relative sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
             <input
@@ -353,6 +358,33 @@ export function BranchManagement() {
               className="input-field"
               placeholder="Ex: Av. Principal, 100"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="filial-ramal" className="block text-sm font-medium text-dark-300 mb-2">Ramal</label>
+              <input
+                id="filial-ramal"
+                type="text"
+                value={form.ramal}
+                onChange={(e) => setForm({ ...form, ramal: e.target.value })}
+                className="input-field"
+                placeholder="3305-1234"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="filial-whatsapp" className="block text-sm font-medium text-dark-300 mb-2">WhatsApp</label>
+              <input
+                id="filial-whatsapp"
+                type="text"
+                inputMode="numeric"
+                value={form.whatsapp}
+                onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                className="input-field"
+                placeholder="11987654321"
+              />
+            </div>
           </div>
 
           <div>

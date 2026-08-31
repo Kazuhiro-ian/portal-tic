@@ -64,4 +64,12 @@ public class Filiais {
     // já gravados.
     @Column(name = "referencia_bimestral_sim")
     private LocalDate referenciaBimestral;
+
+    // Ramal do telefone fixo da loja, "Formato 3305-XXXX", Opcional
+    @Column(name = "ramal")
+    private String ramal;
+
+    // Número de whatsapp da loja, usado para contato, Opcional.
+    @Column(name = "whatsapp")
+    private String whatsapp;
 }
