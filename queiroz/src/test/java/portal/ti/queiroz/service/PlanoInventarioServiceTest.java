@@ -5,11 +5,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import portal.ti.queiroz.dto.GerarInventariosSemanaisRequest;
+import portal.ti.queiroz.dto.GerarInventariosSemanaisResponse;
 import portal.ti.queiroz.dto.MotivoProposta;
 import portal.ti.queiroz.dto.PlanoMensalResponse;
 import portal.ti.queiroz.dto.PropostaInventario;
 import portal.ti.queiroz.dto.SalvarPlanoRequest;
 import portal.ti.queiroz.dto.SalvarPlanoResponse;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 import portal.ti.queiroz.exception.RegraDeNegocioException;
 import portal.ti.queiroz.model.*;
 import portal.ti.queiroz.repository.DiaEquipeRepository;
@@ -17,8 +20,11 @@ import portal.ti.queiroz.repository.DiaRecebimentoRepository;
 import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -292,5 +298,119 @@ class PlanoInventarioServiceTest {
         assertThatThrownBy(() -> service.salvarPlano(new SalvarPlanoRequest(ANO, MES, List.of(item))))
                 .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessageContaining("Calendário da Equipe");
+    }
+
+    // --- gerarInventariosPorDiaSemana ---
+
+    private int qtdOcorrenciasNoMes(YearMonth mes, DayOfWeek diaSemana) {
+        int total = 0;
+        for (int d = 1; d <= mes.lengthOfMonth(); d++) {
+            if (mes.atDay(d).getDayOfWeek() == diaSemana) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    private LocalDate primeiraOcorrenciaNoMes(YearMonth mes, DayOfWeek diaSemana) {
+        for (int d = 1; d <= mes.lengthOfMonth(); d++) {
+            LocalDate data = mes.atDay(d);
+            if (data.getDayOfWeek() == diaSemana) {
+                return data;
+            }
+        }
+        throw new IllegalStateException("Nenhuma ocorrência de " + diaSemana + " em " + mes);
+    }
+
+    @Test
+    void gerarPorDiaSemanaFilialInexistenteLancaExcecao() {
+        when(filiaisRepository.findById(99L)).thenReturn(Optional.empty());
+
+        var request = new GerarInventariosSemanaisRequest(99L, DayOfWeek.SATURDAY, ANO, MES);
+
+        assertThatThrownBy(() -> service.gerarInventariosPorDiaSemana(request))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+        verify(inventarioRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void gerarPorDiaSemanaFilialSemGrupoDeRecebimentoLancaExcecao() {
+        Filiais f = filial(20L, 200, null);
+        when(filiaisRepository.findById(20L)).thenReturn(Optional.of(f));
+
+        var request = new GerarInventariosSemanaisRequest(20L, DayOfWeek.SATURDAY, ANO, MES);
+
+        assertThatThrownBy(() -> service.gerarInventariosPorDiaSemana(request))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("grupo de recebimento");
+        verify(inventarioRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void gerarPorDiaSemanaCriaUmInventarioParaCadaOcorrenciaSemConflito() {
+        Filiais f = filial(21L, 210, GrupoRecebimento.CD);
+        when(filiaisRepository.findById(21L)).thenReturn(Optional.of(f));
+        when(inventarioRepository.findByFilialIdAndDataBetween(any(), any(), any())).thenReturn(List.of());
+        semRestricoesDeCalendario();
+        when(inventarioRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var request = new GerarInventariosSemanaisRequest(21L, DayOfWeek.SATURDAY, ANO, MES);
+        GerarInventariosSemanaisResponse resposta = service.gerarInventariosPorDiaSemana(request);
+
+        int sabadosNoMes = qtdOcorrenciasNoMes(YearMonth.of(ANO, MES), DayOfWeek.SATURDAY);
+        assertThat(resposta.criados()).isEqualTo(sabadosNoMes);
+        assertThat(resposta.ignorados()).isEqualTo(0);
+        assertThat(resposta.avisos()).isEmpty();
+
+        @SuppressWarnings("unchecked")
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(inventarioRepository).saveAll(captor.capture());
+        List<?> salvos = (List<?>) captor.getValue();
+        assertThat(salvos).hasSize(sabadosNoMes);
+        assertThat(salvos).allMatch(i -> ((Inventario) i).getStatus() == StatusInventario.PLANEJADO);
+        assertThat(salvos).allMatch(i -> ((Inventario) i).getData().getDayOfWeek() == DayOfWeek.SATURDAY);
+    }
+
+    @Test
+    void gerarPorDiaSemanaIgnoraDataQueJaTemInventarioNaoCancelado() {
+        Filiais f = filial(22L, 220, GrupoRecebimento.CD);
+        LocalDate primeiroSabado = primeiraOcorrenciaNoMes(YearMonth.of(ANO, MES), DayOfWeek.SATURDAY);
+        Inventario existente = inventario(400L, 22L, primeiroSabado, StatusInventario.PLANEJADO, primeiroSabado.getDayOfMonth());
+
+        when(filiaisRepository.findById(22L)).thenReturn(Optional.of(f));
+        when(inventarioRepository.findByFilialIdAndDataBetween(any(), any(), any())).thenReturn(List.of(existente));
+        semRestricoesDeCalendario();
+        when(inventarioRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var request = new GerarInventariosSemanaisRequest(22L, DayOfWeek.SATURDAY, ANO, MES);
+        GerarInventariosSemanaisResponse resposta = service.gerarInventariosPorDiaSemana(request);
+
+        int sabadosNoMes = qtdOcorrenciasNoMes(YearMonth.of(ANO, MES), DayOfWeek.SATURDAY);
+        assertThat(resposta.criados()).isEqualTo(sabadosNoMes - 1);
+        assertThat(resposta.ignorados()).isEqualTo(1);
+    }
+
+    @Test
+    void gerarPorDiaSemanaIgnoraDataDeRecebimentoDoGrupoEAvisa() {
+        Filiais f = filial(23L, 230, GrupoRecebimento.GRUPO_1);
+        LocalDate primeiroSabado = primeiraOcorrenciaNoMes(YearMonth.of(ANO, MES), DayOfWeek.SATURDAY);
+
+        DiaRecebimento diaBloqueado = new DiaRecebimento();
+        diaBloqueado.setData(primeiroSabado);
+        diaBloqueado.setTipo(TipoDiaRecebimento.GRUPO_1);
+
+        when(filiaisRepository.findById(23L)).thenReturn(Optional.of(f));
+        when(inventarioRepository.findByFilialIdAndDataBetween(any(), any(), any())).thenReturn(List.of());
+        when(diaRecebimentoRepository.findByDataBetween(any(), any())).thenReturn(List.of(diaBloqueado));
+        when(diaEquipeRepository.findByDataBetween(any(), any())).thenReturn(List.of());
+        when(inventarioRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var request = new GerarInventariosSemanaisRequest(23L, DayOfWeek.SATURDAY, ANO, MES);
+        GerarInventariosSemanaisResponse resposta = service.gerarInventariosPorDiaSemana(request);
+
+        int sabadosNoMes = qtdOcorrenciasNoMes(YearMonth.of(ANO, MES), DayOfWeek.SATURDAY);
+        assertThat(resposta.criados()).isEqualTo(sabadosNoMes - 1);
+        assertThat(resposta.ignorados()).isEqualTo(1);
+        assertThat(resposta.avisos()).hasSize(1);
     }
 }

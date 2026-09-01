@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import portal.ti.queiroz.dto.GerarInventariosSemanaisRequest;
+import portal.ti.queiroz.dto.GerarInventariosSemanaisResponse;
 import portal.ti.queiroz.dto.PlanoMensalResponse;
 import portal.ti.queiroz.dto.SalvarPlanoRequest;
 import portal.ti.queiroz.dto.SalvarPlanoResponse;
@@ -59,5 +62,10 @@ public class QualidadeInventarioController {
     @PostMapping("/salvar-plano")
     public SalvarPlanoResponse salvarPlano(@Valid @RequestBody SalvarPlanoRequest request) {
         return planoService.salvarPlano(request);
+    }
+
+    @PostMapping("/gerar-dia-semana")
+    public GerarInventariosSemanaisResponse gerarPorDiaSemana(@RequestBody GerarInventariosSemanaisRequest request) {
+        return planoService.gerarInventariosPorDiaSemana(request);
     }
 }

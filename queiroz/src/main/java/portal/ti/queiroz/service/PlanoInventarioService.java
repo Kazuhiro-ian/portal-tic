@@ -10,6 +10,7 @@ import portal.ti.queiroz.repository.DiaEquipeRepository;
 import portal.ti.queiroz.repository.DiaRecebimentoRepository;
 import portal.ti.queiroz.repository.FiliaisRepository;
 import portal.ti.queiroz.repository.InventarioRepository;
+import portal.ti.queiroz.exception.RecursoNaoEncontradoException;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -384,6 +385,78 @@ public class PlanoInventarioService {
 
         return new SalvarPlanoResponse(criados, atualizados, ignorados, avisos);
     }
+
+    /**
+     * Cadastro em lote: cria um Inventario PLANEJADO em toda ocorrência de request.diaSemana()
+     * no mês ano/mes, para a filial informada. Pula datas que já têm inventário não-cancelado
+     * ou que caem em dia de recebimento/Calendário da Equipe — o usuário confirma essas
+     * manualmente pelo formulário normal, que sabe coletar a "ciência do conflito".
+     */
+    @Transactional
+    public GerarInventariosSemanaisResponse gerarInventariosPorDiaSemana(GerarInventariosSemanaisRequest request) {
+        if (request.filialId() == null) {
+            throw new RegraDeNegocioException("Informe a filial.");
+        }
+        if (request.diaSemana() == null) {
+            throw new RegraDeNegocioException("Informe o dia da semana.");
+        }
+        YearMonth alvo = RecebimentoService.mesDe(request.ano(), request.mes());
+
+        Filiais filial = filiaisRepository.findById(request.filialId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Filial não encontrada com o ID: " + request.filialId()));
+
+        if (filial.getGrupoRecebimento() == null) {
+            throw new RegraDeNegocioException(
+                    "A filial %s - %s não tem grupo de recebimento definido. Defina o grupo em Gestão de Filiais antes de agendar o inventário."
+                            .formatted(filial.getNumeroFilial(), filial.getNome()));
+        }
+
+        Map<LocalDate, TipoDiaRecebimento> calendario = calendarioDe(alvo);
+        Set<LocalDate> diasEquipe = diasBloqueadosPelaEquipe(alvo);
+
+        Set<LocalDate> comInventario = inventarioRepository
+                .findByFilialIdAndDataBetween(filial.getId(), alvo.atDay(1), alvo.atEndOfMonth())
+                .stream()
+                .filter(inv -> inv.getStatus() != StatusInventario.CANCELADO)
+                .map(Inventario::getData)
+                .collect(Collectors.toSet());
+
+        List<Inventario> paraSalvar = new ArrayList<>();
+        List<String> avisos = new ArrayList<>();
+        int criados = 0;
+        int ignorados = 0;
+
+        for (int d = 1; d <= alvo.lengthOfMonth(); d++) {
+            LocalDate data = alvo.atDay(d);
+            if (data.getDayOfWeek() != request.diaSemana()) {
+                continue;
+            }
+            if (comInventario.contains(data)) {
+                ignorados++;
+                continue;
+            }
+            if (!diaLivre(data, filial.getGrupoRecebimento(), calendario, diasEquipe)) {
+                ignorados++;
+                avisos.add("Dia %s é recebimento do grupo ou está marcado no Calendário da Equipe — não foi criado; cadastre manualmente se quiser confirmar mesmo assim."
+                        .formatted(data.format(BR)));
+                continue;
+            }
+
+            Inventario inventario = new Inventario();
+            inventario.setFilialId(filial.getId());
+            inventario.setData(data);
+            inventario.setStatus(StatusInventario.PLANEJADO);
+            inventario.setDiaPreferencial(data.getDayOfMonth());
+            paraSalvar.add(inventario);
+            criados++;
+        }
+
+        inventarioRepository.saveAll(paraSalvar);
+
+        return new GerarInventariosSemanaisResponse(criados, ignorados, avisos);
+    }
+
 
     // ------------------------------------------------------------------
     // Auxiliares

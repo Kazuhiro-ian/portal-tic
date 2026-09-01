@@ -1,58 +1,89 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Plus, Edit, Trash2, Sparkles, Save, AlertTriangle, AlertCircle,
-  ClipboardList, CalendarDays, Lock, FileSpreadsheet,
-} from 'lucide-react';
-import { SidePanel } from './SidePanel.jsx';
-import { DataTable } from './DataTable.jsx';
-import { InventoryResultPanel } from './InventoryResultPanel.jsx';
+  Plus,
+  Edit,
+  Trash2,
+  Sparkles,
+  Save,
+  AlertTriangle,
+  AlertCircle,
+  ClipboardList,
+  CalendarDays,
+  Lock,
+  FileSpreadsheet,
+  Repeat,
+} from "lucide-react";
+import { SidePanel } from "./SidePanel.jsx";
+import { DataTable } from "./DataTable.jsx";
+import { InventoryResultPanel } from "./InventoryResultPanel.jsx";
 import {
-  listarFiliais, listarInventarios, salvarInventario, atualizarInventario,
-  deletarInventario, gerarPlanoInventario, salvarPlanoInventario, listarConflitosRecebimento,
-} from '../services/api.js';
-import { toISO, formatarBR, limitesDoMes, diasNoMes } from '../utils/datas.js';
-import { grupoLabels, grupoBadge, MOTIVOS, STATUS_INVENTARIO as STATUS } from '../utils/qualidade.js';
-import { useConfirm } from '../hooks/useConfirm.jsx';
+  listarFiliais,
+  listarInventarios,
+  salvarInventario,
+  atualizarInventario,
+  deletarInventario,
+  gerarPlanoInventario,
+  salvarPlanoInventario,
+  listarConflitosRecebimento,
+  gerarInventarioPorDiaSemana,
+} from "../services/api.js";
+import { toISO, formatarBR, limitesDoMes, diasNoMes } from "../utils/datas.js";
+import {
+  grupoLabels,
+  grupoBadge,
+  MOTIVOS,
+  STATUS_INVENTARIO as STATUS,
+  diasSemanaLabels,
+} from "../utils/qualidade.js";
+import { useConfirm } from "../hooks/useConfirm.jsx";
 
 const emptyForm = {
-  filialId: '', data: '', horarioInicio: '', horarioFim: '', status: 'PLANEJADO',
-  responsavel: '', observacao: '', cienteConflitoRecebimento: false,
+  filialId: "",
+  data: "",
+  horarioInicio: "",
+  horarioFim: "",
+  status: "PLANEJADO",
+  responsavel: "",
+  observacao: "",
+  cienteConflitoRecebimento: false,
 };
 
 function colunasProposta(alterarDataProposta) {
   return [
     {
-      chave: 'filial',
-      header: 'Filial',
-      mobile: 'titulo',
-      tdClassName: 'font-medium text-white',
+      chave: "filial",
+      header: "Filial",
+      mobile: "titulo",
+      tdClassName: "font-medium text-white",
       render: (item) => `${item.numeroFilial} — ${item.nomeFilial}`,
     },
     {
-      chave: 'grupo',
-      header: 'Grupo',
-      mobile: 'badge',
+      chave: "grupo",
+      header: "Grupo",
+      mobile: "badge",
       render: (item) =>
         item.grupo ? (
-          <span className={`badge ${grupoBadge(item.grupo)}`}>{grupoLabels[item.grupo]}</span>
+          <span className={`badge ${grupoBadge(item.grupo)}`}>
+            {grupoLabels[item.grupo]}
+          </span>
         ) : (
           <span className="badge">—</span>
         ),
     },
     {
-      chave: 'dataAtual',
-      header: 'Data atual',
-      tdClassName: 'text-dark-400',
+      chave: "dataAtual",
+      header: "Data atual",
+      tdClassName: "text-dark-400",
       render: (item) => formatarBR(item.dataAtual),
     },
     {
-      chave: 'dataSugerida',
-      header: 'Data sugerida',
+      chave: "dataSugerida",
+      header: "Data sugerida",
       render: (item) =>
         item.editavel ? (
           <input
             type="date"
-            value={item.dataSugerida || ''}
+            value={item.dataSugerida || ""}
             onChange={(e) => alterarDataProposta(item.filialId, e.target.value)}
             className="input-field py-1.5"
           />
@@ -64,11 +95,14 @@ function colunasProposta(alterarDataProposta) {
         ),
     },
     {
-      chave: 'motivo',
-      header: 'Motivo',
+      chave: "motivo",
+      header: "Motivo",
       render: (item) => (
         <>
-          <span className={`badge ${MOTIVOS[item.motivo]?.badge || 'badge'}`} title={item.descricaoMotivo}>
+          <span
+            className={`badge ${MOTIVOS[item.motivo]?.badge || "badge"}`}
+            title={item.descricaoMotivo}
+          >
             {MOTIVOS[item.motivo]?.label || item.motivo}
           </span>
           <p className="text-xs text-dark-400 mt-1">{item.descricaoMotivo}</p>
@@ -80,37 +114,43 @@ function colunasProposta(alterarDataProposta) {
 
 const COLUNAS_INVENTARIOS = (nomeFilial) => [
   {
-    chave: 'filial',
-    header: 'Filial',
-    mobile: 'titulo',
-    tdClassName: 'font-medium text-white',
+    chave: "filial",
+    header: "Filial",
+    mobile: "titulo",
+    tdClassName: "font-medium text-white",
     render: (inv) => nomeFilial(inv.filialId),
   },
   {
-    chave: 'data',
-    header: 'Data',
-    mobile: 'subtitulo',
+    chave: "data",
+    header: "Data",
+    mobile: "subtitulo",
     render: (inv) => formatarBR(inv.data),
   },
   {
-    chave: 'status',
-    header: 'Status',
-    mobile: 'badge',
+    chave: "status",
+    header: "Status",
+    mobile: "badge",
     render: (inv) => (
-      <span className={`badge ${STATUS[inv.status]?.badge || 'badge'}`}>
+      <span className={`badge ${STATUS[inv.status]?.badge || "badge"}`}>
         {STATUS[inv.status]?.label || inv.status}
       </span>
     ),
   },
   {
-    chave: 'responsavel',
-    header: 'Responsável',
-    tdClassName: 'text-dark-300',
-    render: (inv) => inv.responsavel || '—',
+    chave: "responsavel",
+    header: "Responsável",
+    tdClassName: "text-dark-300",
+    render: (inv) => inv.responsavel || "—",
   },
 ];
 
-export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos }) {
+export function InventoryPlan({
+  ano,
+  mes,
+  canWrite,
+  showToast,
+  conflitosExternos,
+}) {
   const { confirmar, dialogoConfirmacao } = useConfirm();
   const [filiais, setFiliais] = useState([]);
   const [inventarios, setInventarios] = useState([]);
@@ -124,8 +164,14 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState("");
   const [conflitoPendente, setConflitoPendente] = useState(false);
+  const [showDiaSemanaModal, setShowDiaSemanaModal] = useState(false);
+  const [diaSemanaForm, setDiaSemanaForm] = useState({
+    filialId: "",
+    diaSemana: "SATURDAY",
+  });
+  const [gerandoDiaSemana, setGerandoDiaSemana] = useState(false);
 
   // Inventário cujo resultado (relatório do Protheus) está aberto para importar/consultar.
   const [inventarioResultado, setInventarioResultado] = useState(null);
@@ -156,7 +202,10 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       setInventarios(dadosInv);
       setConflitos(dadosConflitos);
     } catch (error) {
-      showToast(error.message || 'Erro ao carregar o plano de inventário.', 'error');
+      showToast(
+        error.message || "Erro ao carregar o plano de inventário.",
+        "error",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -183,9 +232,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     try {
       const resp = await gerarPlanoInventario(ano, mes);
       setProposta(resp);
-      showToast(`Proposta gerada para ${resp.itens.length} filiais. Revise antes de salvar.`);
+      showToast(
+        `Proposta gerada para ${resp.itens.length} filiais. Revise antes de salvar.`,
+      );
     } catch (error) {
-      showToast(error.message || 'Erro ao gerar o plano.', 'error');
+      showToast(error.message || "Erro ao gerar o plano.", "error");
     } finally {
       setGerando(false);
     }
@@ -210,22 +261,25 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       }));
 
     if (itens.length === 0) {
-      showToast('Nenhum item do plano pode ser salvo.', 'error');
+      showToast("Nenhum item do plano pode ser salvo.", "error");
       return;
     }
 
     setSalvandoPlano(true);
     try {
       const resp = await salvarPlanoInventario({ ano, mes, itens });
-      const partes = [`${resp.criados} criados`, `${resp.atualizados} atualizados`];
+      const partes = [
+        `${resp.criados} criados`,
+        `${resp.atualizados} atualizados`,
+      ];
       if (resp.ignoradosRealizados > 0) {
         partes.push(`${resp.ignoradosRealizados} ignorados (já realizados)`);
       }
-      showToast(`Plano salvo: ${partes.join(', ')}.`);
+      showToast(`Plano salvo: ${partes.join(", ")}.`);
       setProposta(null);
       await carregar();
     } catch (error) {
-      showToast(error.message || 'Erro ao salvar o plano.', 'error');
+      showToast(error.message || "Erro ao salvar o plano.", "error");
     } finally {
       setSalvandoPlano(false);
     }
@@ -236,7 +290,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   const openNew = () => {
     setEditando(null);
     setForm({ ...emptyForm, data: toISO(new Date(ano, mes - 1, 1)) });
-    setFormError('');
+    setFormError("");
     setConflitoPendente(false);
     setShowModal(true);
   };
@@ -246,36 +300,45 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
     setForm({
       filialId: String(inv.filialId),
       data: inv.data,
-      horarioInicio: inv.horarioInicio || '',
-      horarioFim: inv.horarioFim || '',
+      horarioInicio: inv.horarioInicio || "",
+      horarioFim: inv.horarioFim || "",
       status: inv.status,
-      responsavel: inv.responsavel || '',
-      observacao: inv.observacao || '',
+      responsavel: inv.responsavel || "",
+      observacao: inv.observacao || "",
       cienteConflitoRecebimento: Boolean(inv.cienteConflitoRecebimento),
     });
-    setFormError('');
+    setFormError("");
     setConflitoPendente(Boolean(inv.cienteConflitoRecebimento));
     setShowModal(true);
   };
 
   // Filial ou data mudaram: a ciência dada para a combinação anterior não vale mais.
   const alterarFilialOuData = (campo, valor) => {
-    setForm((atual) => ({ ...atual, [campo]: valor, cienteConflitoRecebimento: false }));
+    setForm((atual) => ({
+      ...atual,
+      [campo]: valor,
+      cienteConflitoRecebimento: false,
+    }));
     setConflitoPendente(false);
-    setFormError('');
+    setFormError("");
   };
 
   const handleSave = async () => {
     if (!form.filialId) {
-      setFormError('Selecione a filial.');
+      setFormError("Selecione a filial.");
       return;
     }
     if (!form.data) {
-      setFormError('Informe a data do inventário.');
+      setFormError("Informe a data do inventário.");
       return;
     }
-    if (conflitoPendente && (!form.cienteConflitoRecebimento || !form.observacao.trim())) {
-      setFormError('Marque "Estou ciente do conflito" e informe uma observação para confirmar o agendamento mesmo assim.');
+    if (
+      conflitoPendente &&
+      (!form.cienteConflitoRecebimento || !form.observacao.trim())
+    ) {
+      setFormError(
+        'Marque "Estou ciente do conflito" e informe uma observação para confirmar o agendamento mesmo assim.',
+      );
       return;
     }
 
@@ -293,18 +356,21 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
 
       if (editando) {
         // Preserva a âncora do dia-do-mês ao editar.
-        await atualizarInventario(editando.id, { ...payload, diaPreferencial: editando.diaPreferencial });
-        showToast('Inventário atualizado.');
+        await atualizarInventario(editando.id, {
+          ...payload,
+          diaPreferencial: editando.diaPreferencial,
+        });
+        showToast("Inventário atualizado.");
       } else {
         await salvarInventario(payload);
-        showToast('Inventário agendado.');
+        showToast("Inventário agendado.");
       }
       setShowModal(false);
       await carregar();
     } catch (error) {
       // O backend devolve a regra violada em texto claro — mostrar tal e qual.
-      setFormError(error.message || 'Erro ao salvar o inventário.');
-      if (error.codigo === 'CONFLITO_RECEBIMENTO') {
+      setFormError(error.message || "Erro ao salvar o inventário.");
+      if (error.codigo === "CONFLITO_RECEBIMENTO") {
         setConflitoPendente(true);
       }
     }
@@ -312,17 +378,48 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
 
   const handleDelete = async (inv) => {
     const confirmado = await confirmar({
-      titulo: 'Excluir inventário',
+      titulo: "Excluir inventário",
       mensagem: `Excluir o inventário da filial "${nomeFilial(inv.filialId)}" em ${formatarBR(inv.data)}?`,
     });
     if (!confirmado) return;
 
     try {
       await deletarInventario(inv.id);
-      showToast('Inventário excluído.');
+      showToast("Inventário excluído.");
       await carregar();
     } catch (error) {
-      showToast(error.message || 'Erro ao excluir o inventário.', 'error');
+      showToast(error.message || "Erro ao excluir o inventário.", "error");
+    }
+  };
+
+  const openDiaSemana = () => {
+    setDiaSemanaForm({ filialId: "", diaSemana: "SATURDAY" });
+    setShowDiaSemanaModal(true);
+  };
+
+  const handleGerarPorDiaSemana = async () => {
+    if (!diaSemanaForm.filialId) {
+      showToast("Selecione a filial.", "error");
+      return;
+    }
+
+    setGerandoDiaSemana(true);
+    try {
+      const resp = await gerarInventarioPorDiaSemana({
+        filialId: Number(diaSemanaForm.filialId),
+        diaSemana: diaSemanaForm.diaSemana,
+        ano,
+        mes,
+      });
+      showToast(
+        `Inventários gerados: ${resp.criados} criados, ${resp.ignorados} ignorados.`,
+      );
+      setShowDiaSemanaModal(false);
+      await carregar();
+    } catch (error) {
+      showToast(error.message || "Erro ao gerar os inventários.", "error");
+    } finally {
+      setGerandoDiaSemana(false);
     }
   };
 
@@ -331,7 +428,7 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
   const porData = useMemo(() => {
     const mapa = new Map();
     for (const inv of inventarios) {
-      if (inv.status === 'CANCELADO') continue;
+      if (inv.status === "CANCELADO") continue;
       if (!mapa.has(inv.data)) mapa.set(inv.data, []);
       mapa.get(inv.data).push(inv);
     }
@@ -357,11 +454,14 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-200">
             <p className="font-semibold">
-              {semGrupo.length} {semGrupo.length === 1 ? 'filial está' : 'filiais estão'} sem grupo de recebimento
+              {semGrupo.length}{" "}
+              {semGrupo.length === 1 ? "filial está" : "filiais estão"} sem
+              grupo de recebimento
             </p>
             <p className="text-amber-200/80 mt-0.5">
-              {semGrupo.map((f) => `${f.numeroFilial} — ${f.nome}`).join(' · ')}. Defina o grupo em
-              Gestão de Filiais para incluí-{semGrupo.length === 1 ? 'la' : 'las'} no plano.
+              {semGrupo.map((f) => `${f.numeroFilial} — ${f.nome}`).join(" · ")}
+              . Defina o grupo em Gestão de Filiais para incluí-
+              {semGrupo.length === 1 ? "la" : "las"} no plano.
             </p>
           </div>
         </div>
@@ -372,7 +472,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
           <div className="text-sm text-red-200">
             <p className="font-semibold">
-              {conflitos.length} {conflitos.length === 1 ? 'inventário conflita' : 'inventários conflitam'} com o calendário de recebimento
+              {conflitos.length}{" "}
+              {conflitos.length === 1
+                ? "inventário conflita"
+                : "inventários conflitam"}{" "}
+              com o calendário de recebimento
             </p>
             <ul className="mt-1 space-y-0.5 text-red-200/80">
               {conflitos.map((c) => (
@@ -395,13 +499,17 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                 Gerar plano do mês
               </h2>
               <p className="text-dark-400 text-sm mt-1">
-                Repete o dia do mês anterior de cada loja, desviando dos dias de recebimento.
-                A proposta é editável antes de salvar.
+                Repete o dia do mês anterior de cada loja, desviando dos dias de
+                recebimento. A proposta é editável antes de salvar.
               </p>
             </div>
-            <button onClick={handleGerar} className="btn-primary shrink-0" disabled={gerando}>
+            <button
+              onClick={handleGerar}
+              className="btn-primary shrink-0"
+              disabled={gerando}
+            >
               <Sparkles className="w-4 h-4" />
-              {gerando ? 'Gerando...' : 'Gerar plano'}
+              {gerando ? "Gerando..." : "Gerar plano"}
             </button>
           </div>
 
@@ -410,7 +518,10 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               {proposta.avisos?.length > 0 && (
                 <div className="mb-4 space-y-1">
                   {proposta.avisos.map((aviso, i) => (
-                    <p key={i} className="text-sm text-amber-300 flex items-center gap-2">
+                    <p
+                      key={i}
+                      className="text-sm text-amber-300 flex items-center gap-2"
+                    >
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       {aviso}
                     </p>
@@ -425,10 +536,19 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               />
 
               <div className="flex justify-end gap-3 mt-5">
-                <button onClick={() => setProposta(null)} className="btn-secondary">Descartar</button>
-                <button onClick={handleSalvarPlano} className="btn-primary" disabled={salvandoPlano}>
+                <button
+                  onClick={() => setProposta(null)}
+                  className="btn-secondary"
+                >
+                  Descartar
+                </button>
+                <button
+                  onClick={handleSalvarPlano}
+                  className="btn-primary"
+                  disabled={salvandoPlano}
+                >
                   <Save className="w-4 h-4" />
-                  {salvandoPlano ? 'Salvando...' : 'Salvar plano'}
+                  {salvandoPlano ? "Salvando..." : "Salvar plano"}
                 </button>
               </div>
             </div>
@@ -442,13 +562,21 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-primary-400" />
             Inventários do mês
-            <span className="text-sm font-normal text-dark-400">({inventarios.length})</span>
+            <span className="text-sm font-normal text-dark-400">
+              ({inventarios.length})
+            </span>
           </h2>
           {canWrite && (
-            <button onClick={openNew} className="btn-primary">
-              <Plus className="w-4 h-4" />
-              Novo Inventário
-            </button>
+            <div className="flex gap-3">
+              <button onClick={openDiaSemana} className="btn-secondary">
+                <Repeat className="w-4 h-4" />
+                Cadastrar por dia da semana
+              </button>
+              <button onClick={openNew} className="btn-primary">
+                <Plus className="w-4 h-4" />
+                Novo Inventário
+              </button>
+            </div>
           )}
         </div>
 
@@ -469,10 +597,20 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                 >
                   <FileSpreadsheet className="w-4 h-4" />
                 </button>
-                <button onClick={() => openEdit(inv)} className="btn-secondary px-3 py-1.5" title="Editar" aria-label="Editar">
+                <button
+                  onClick={() => openEdit(inv)}
+                  className="btn-secondary px-3 py-1.5"
+                  title="Editar"
+                  aria-label="Editar"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button onClick={() => handleDelete(inv)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                <button
+                  onClick={() => handleDelete(inv)}
+                  className="btn-danger px-3 py-1.5"
+                  title="Excluir"
+                  aria-label="Excluir"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </>
@@ -489,8 +627,11 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
         </h2>
 
         <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-            <div key={d} className="text-center text-[10px] sm:text-xs font-semibold text-dark-400 uppercase tracking-wider py-1 sm:py-2">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+            <div
+              key={d}
+              className="text-center text-[10px] sm:text-xs font-semibold text-dark-400 uppercase tracking-wider py-1 sm:py-2"
+            >
               {d}
             </div>
           ))}
@@ -508,21 +649,28 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
                 key={iso}
                 className={`min-h-14 sm:min-h-20 md:min-h-24 rounded-lg border p-1 sm:p-2 ${
                   doDia.length > 0
-                    ? 'bg-primary-500/10 border-primary-500/30'
-                    : 'bg-dark-800 border-dark-700'
+                    ? "bg-primary-500/10 border-primary-500/30"
+                    : "bg-dark-800 border-dark-700"
                 }`}
               >
-                <span className={`text-xs sm:text-sm font-bold ${doDia.length > 0 ? 'text-primary-300' : 'text-dark-500'}`}>
+                <span
+                  className={`text-xs sm:text-sm font-bold ${doDia.length > 0 ? "text-primary-300" : "text-dark-500"}`}
+                >
                   {data.getDate()}
                 </span>
                 <div className="mt-0.5 sm:mt-1 space-y-0.5">
                   {doDia.map((inv) => {
                     const f = filialPorId.get(inv.filialId);
                     return (
-                      <p key={inv.id} className="text-[9px] sm:text-[10px] leading-tight text-dark-200 truncate"
-                         title={nomeFilial(inv.filialId)}>
-                        {f ? f.numeroFilial : '?'}{' '}
-                        <span className="hidden sm:inline">— {f ? f.nome : 'removida'}</span>
+                      <p
+                        key={inv.id}
+                        className="text-[9px] sm:text-[10px] leading-tight text-dark-200 truncate"
+                        title={nomeFilial(inv.filialId)}
+                      >
+                        {f ? f.numeroFilial : "?"}{" "}
+                        <span className="hidden sm:inline">
+                          — {f ? f.nome : "removida"}
+                        </span>
                       </p>
                     );
                   })}
@@ -536,72 +684,108 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
       <SidePanel
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editando ? 'Editar Inventário' : 'Novo Inventário'}
+        title={editando ? "Editar Inventário" : "Novo Inventário"}
         size="md"
         footer={
           <>
-            <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+            <button
+              onClick={() => setShowModal(false)}
+              className="btn-secondary"
+            >
+              Cancelar
+            </button>
             <button onClick={handleSave} className="btn-primary">
-              {editando ? 'Salvar Alterações' : 'Agendar Inventário'}
+              {editando ? "Salvar Alterações" : "Agendar Inventário"}
             </button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="inventario-filial" className="block text-sm font-medium text-dark-300 mb-2">Filial *</label>
+            <label
+              htmlFor="inventario-filial"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Filial *
+            </label>
             <select
               id="inventario-filial"
               value={form.filialId}
-              onChange={(e) => alterarFilialOuData('filialId', e.target.value)}
+              onChange={(e) => alterarFilialOuData("filialId", e.target.value)}
               className="select-field"
             >
               <option value="">Selecione a filial...</option>
               {filiais.map((f) => (
                 <option key={f.id} value={f.id} disabled={!f.grupoRecebimento}>
                   {f.numeroFilial} — {f.nome}
-                  {f.grupoRecebimento ? ` (${grupoLabels[f.grupoRecebimento]})` : ' — sem grupo'}
+                  {f.grupoRecebimento
+                    ? ` (${grupoLabels[f.grupoRecebimento]})`
+                    : " — sem grupo"}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label htmlFor="inventario-data" className="block text-sm font-medium text-dark-300 mb-2">Data *</label>
+            <label
+              htmlFor="inventario-data"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Data *
+            </label>
             <input
               id="inventario-data"
               type="date"
               value={form.data}
-              onChange={(e) => alterarFilialOuData('data', e.target.value)}
+              onChange={(e) => alterarFilialOuData("data", e.target.value)}
               className="input-field"
             />
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="inventario-hora-inicio" className="block text-sm font-medium text-dark-300 mb-2">Horário de início</label>
+              <label
+                htmlFor="inventario-hora-inicio"
+                className="block text-sm font-medium text-dark-300 mb-2"
+              >
+                Horário de início
+              </label>
               <input
                 id="inventario-hora-inicio"
                 type="time"
                 value={form.horarioInicio}
-                onChange={(e) => setForm({ ...form, horarioInicio: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, horarioInicio: e.target.value })
+                }
                 className="input-field"
               />
             </div>
             <div>
-              <label htmlFor="inventario-hora-fim" className="block text-sm font-medium text-dark-300 mb-2">Horário de término</label>
+              <label
+                htmlFor="inventario-hora-fim"
+                className="block text-sm font-medium text-dark-300 mb-2"
+              >
+                Horário de término
+              </label>
               <input
                 id="inventario-hora-fim"
                 type="time"
                 value={form.horarioFim}
-                onChange={(e) => setForm({ ...form, horarioFim: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, horarioFim: e.target.value })
+                }
                 className="input-field"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="inventario-status" className="block text-sm font-medium text-dark-300 mb-2">Status</label>
+            <label
+              htmlFor="inventario-status"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Status
+            </label>
             <select
               id="inventario-status"
               value={form.status}
@@ -615,28 +799,45 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
           </div>
 
           <div>
-            <label htmlFor="inventario-responsavel" className="block text-sm font-medium text-dark-300 mb-2">Responsável</label>
+            <label
+              htmlFor="inventario-responsavel"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Responsável
+            </label>
             <input
               id="inventario-responsavel"
               type="text"
               value={form.responsavel}
-              onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, responsavel: e.target.value })
+              }
               className="input-field"
               placeholder="Quem vai conduzir o inventário"
             />
           </div>
 
           <div>
-            <label htmlFor="inventario-observacao" className="block text-sm font-medium text-dark-300 mb-2">
-              Observação{conflitoPendente ? ' *' : ''}
+            <label
+              htmlFor="inventario-observacao"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Observação{conflitoPendente ? " *" : ""}
             </label>
             <input
               id="inventario-observacao"
               type="text"
               value={form.observacao}
-              onChange={(e) => { setForm({ ...form, observacao: e.target.value }); if (formError) setFormError(''); }}
+              onChange={(e) => {
+                setForm({ ...form, observacao: e.target.value });
+                if (formError) setFormError("");
+              }}
               className="input-field"
-              placeholder={conflitoPendente ? 'Justifique o inventário no mesmo dia do recebimento' : 'Opcional'}
+              placeholder={
+                conflitoPendente
+                  ? "Justifique o inventário no mesmo dia do recebimento"
+                  : "Opcional"
+              }
             />
           </div>
 
@@ -645,18 +846,26 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="text-sm text-amber-200 flex-1">
                 <p>
-                  Essa filial recebe material nessa data. O cadastro não é mais bloqueado, mas
-                  é preciso confirmar ciência e justificar na observação acima.
+                  Essa filial recebe material nessa data. O cadastro não é mais
+                  bloqueado, mas é preciso confirmar ciência e justificar na
+                  observação acima.
                 </p>
                 <label className="flex items-center gap-3 cursor-pointer mt-3">
                   <input
                     type="checkbox"
                     checked={form.cienteConflitoRecebimento}
-                    onChange={(e) => { setForm({ ...form, cienteConflitoRecebimento: e.target.checked }); if (formError) setFormError(''); }}
+                    onChange={(e) => {
+                      setForm({
+                        ...form,
+                        cienteConflitoRecebimento: e.target.checked,
+                      });
+                      if (formError) setFormError("");
+                    }}
                     className="w-5 h-5 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
                   />
                   <span className="text-amber-100">
-                    Estou ciente do conflito e confirmo o agendamento mesmo assim.
+                    Estou ciente do conflito e confirmo o agendamento mesmo
+                    assim.
                   </span>
                 </label>
               </div>
@@ -671,11 +880,101 @@ export function InventoryPlan({ ano, mes, canWrite, showToast, conflitosExternos
         </div>
       </SidePanel>
 
+      <SidePanel
+        isOpen={showDiaSemanaModal}
+        onClose={() => setShowDiaSemanaModal(false)}
+        title="Cadastrar por dia da semana"
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={() => setShowDiaSemanaModal(false)}
+              className="btn-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleGerarPorDiaSemana}
+              className="btn-primary"
+              disabled={gerandoDiaSemana}
+            >
+              <Repeat className="w-4 h-4" />
+              {gerandoDiaSemana ? "Gerando..." : "Gerar"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="dia-semana-filial"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Filial *
+            </label>
+            <select
+              id="dia-semana-filial"
+              value={diaSemanaForm.filialId}
+              onChange={(e) =>
+                setDiaSemanaForm({ ...diaSemanaForm, filialId: e.target.value })
+              }
+              className="select-field"
+            >
+              <option value="">Selecione a filial...</option>
+              {filiais.map((f) => (
+                <option key={f.id} value={f.id} disabled={!f.grupoRecebimento}>
+                  {f.numeroFilial} — {f.nome}
+                  {f.grupoRecebimento
+                    ? ` (${grupoLabels[f.grupoRecebimento]})`
+                    : " — sem grupo"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="dia-semana-dia"
+              className="block text-sm font-medium text-dark-300 mb-2"
+            >
+              Dia da semana *
+            </label>
+            <select
+              id="dia-semana-dia"
+              value={diaSemanaForm.diaSemana}
+              onChange={(e) =>
+                setDiaSemanaForm({
+                  ...diaSemanaForm,
+                  diaSemana: e.target.value,
+                })
+              }
+              className="select-field"
+            >
+              {Object.entries(diasSemanaLabels).map(([valor, label]) => (
+                <option key={valor} value={valor}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="text-sm text-dark-400">
+            Cria um inventário planejado em todos os{" "}
+            {diasSemanaLabels[diaSemanaForm.diaSemana]} de{" "}
+            {String(mes).padStart(2, "0")}/{ano}, pulando datas que já têm
+            inventário ou que conflitam com o recebimento (essas precisam ser
+            cadastradas manualmente).
+          </p>
+        </div>
+      </SidePanel>
+
       {inventarioResultado && (
         <InventoryResultPanel
           inventario={inventarioResultado}
           nomeFilial={nomeFilial(inventarioResultado.filialId)}
-          estoqueDividido={Boolean(filialPorId.get(inventarioResultado.filialId)?.estoqueDividido)}
+          estoqueDividido={Boolean(
+            filialPorId.get(inventarioResultado.filialId)?.estoqueDividido,
+          )}
           canWrite={canWrite}
           showToast={showToast}
           onClose={() => setInventarioResultado(null)}
