@@ -1,6 +1,5 @@
 package portal.ti.queiroz.controller;
 
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +30,7 @@ public class ZebraEnvioController {
 
     @PostMapping
     public ZebraEnvio criar(@RequestParam(defaultValue = "false") boolean jaEnviado,
-                             @Valid @RequestBody ZebraEnvio envio) {
+                             @RequestBody ZebraEnvio envio) {
         return service.salvar(envio, jaEnviado);
     }
 
