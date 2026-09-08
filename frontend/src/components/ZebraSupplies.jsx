@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  AlertTriangle, Send, Tag, Layers, Settings, Edit, Trash2, History,
-  CheckCircle2, Store, FileText
+  AlertTriangle, Send, Tag, Layers, Settings, Edit, Trash2, CalendarDays,
+  CheckCircle2, Store, FileText, Upload, Loader2, XCircle, TrendingUp,
 } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { DataTable } from './DataTable.jsx';
@@ -12,16 +12,26 @@ import {
   listarFiliais,
   listarEstoqueItens,
   listarZebraCotas, salvarZebraCota, atualizarZebraCota, deletarZebraCota,
-  listarZebraEnvios, salvarZebraEnvio, deletarZebraEnvio
+  listarZebraEnvios, salvarZebraEnvio, confirmarZebraEnvio, cancelarZebraEnvio,
+  importarCronogramaZebra, deletarZebraEnvio,
+  buscarResumoConsumoZebra, buscarPrevisaoConsumoZebra, buscarRankingConsumoZebra,
 } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useConfirm } from '../hooks/useConfirm.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { Toast } from './Toast.jsx';
 import { getBranchNumber, branchLabel } from '../utils/filiais.js';
-import { toISO } from '../utils/datas.js';
+import { toISO, limitesDoMes, MESES } from '../utils/datas.js';
+import { STATUS_ZEBRA_ENVIO } from '../utils/zebra.js';
 
-function colunasHistoricoZebra(branches) {
+const CLASSIFICACAO_BADGE = {
+  'Muito Alto Consumo': 'badge-danger',
+  'Alto Consumo': 'badge-warning',
+  'Médio/Baixo Consumo': 'badge-info',
+  'Sem histórico': 'badge',
+};
+
+function colunasCronogramaZebra(branches) {
   return [
     {
       chave: 'filial',
@@ -31,27 +41,26 @@ function colunasHistoricoZebra(branches) {
       render: (d) => branchLabel(branches, d.filialId),
     },
     {
-      chave: 'data',
-      header: 'Data',
-      mobile: 'subtitulo',
-      tdClassName: 'whitespace-nowrap text-white',
-      render: (d) => new Date(d.dataEnvio + 'T00:00:00').toLocaleDateString('pt-BR'),
+      chave: 'quinzena',
+      header: 'Quinzena',
+      render: (d) => (d.envioNumero ? `${d.envioNumero}º envio` : '—'),
     },
     {
-      chave: 'tipo',
-      header: 'Tipo',
+      chave: 'dataPrevista',
+      header: 'Data prevista',
+      mobile: 'subtitulo',
+      tdClassName: 'whitespace-nowrap',
+      render: (d) => d.dataPrevista ? new Date(d.dataPrevista + 'T00:00:00').toLocaleDateString('pt-BR') : '—',
+    },
+    {
+      chave: 'status',
+      header: 'Status',
       mobile: 'badge',
-      render: (d) =>
-        d.tipoEnvio === 'EXTRA' ? (
-          <span
-            className="badge bg-accent-500/10 text-accent-400 border-accent-500/30"
-            title={d.motivoExtra}
-          >
-            Extra
-          </span>
-        ) : (
-          <span className="badge badge-success">Regular</span>
-        ),
+      render: (d) => (
+        <span className={`badge ${STATUS_ZEBRA_ENVIO[d.status]?.badge || 'badge'}`}>
+          {STATUS_ZEBRA_ENVIO[d.status]?.label || d.status}
+        </span>
+      ),
     },
     {
       chave: 'etiquetas',
@@ -87,8 +96,46 @@ function colunasHistoricoZebra(branches) {
         </span>
       ),
     },
+    {
+      chave: 'dataReal',
+      header: 'Data real',
+      tdClassName: 'whitespace-nowrap text-dark-300',
+      render: (d) => d.dataEnvio ? new Date(d.dataEnvio + 'T00:00:00').toLocaleDateString('pt-BR') : '—',
+    },
   ];
 }
+
+function colunasResumoConsumo() {
+  return [
+    {
+      chave: 'filial',
+      header: 'Filial',
+      mobile: 'titulo',
+      tdClassName: 'font-medium text-white',
+      render: (r) => `${r.numeroFilial} — ${r.nomeFilial}`,
+    },
+    { chave: 'etiquetas', header: 'Etiquetas', tdClassName: 'text-center', render: (r) => r.totalEtiquetas },
+    { chave: 'ribbons', header: 'Ribbons', tdClassName: 'text-center', render: (r) => r.totalRibbons },
+    {
+      chave: 'classificacao',
+      header: 'Classificação',
+      mobile: 'badge',
+      render: (r) => (
+        <span className={`badge ${CLASSIFICACAO_BADGE[r.classificacao] || 'badge'}`}>{r.classificacao}</span>
+      ),
+    },
+  ];
+}
+
+const emptyDispatchForm = {
+  filialId: '', // Guarda o NUMERO da filial (numero_filial)
+  qtdEtiquetas: 0,
+  qtdRibbons: 0,
+  dataPrevista: toISO(new Date()),
+  tipoEnvio: 'REGULAR',
+  motivoExtra: '',
+  jaEnviado: true,
+};
 
 export function ZebraSupplies() {
   const { canWrite } = useAuth();
@@ -100,14 +147,12 @@ export function ZebraSupplies() {
   const [stockItems, setStockItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [dispatchForm, setDispatchForm] = useState({
-    filialId: '', // Guarda o NUMERO da filial (numero_filial)
-    qtdEtiquetas: 0,
-    qtdRibbons: 0,
-    dataEnvio: toISO(new Date()),
-    tipoEnvio: 'REGULAR',
-    motivoExtra: '',
-  });
+  const hoje = new Date();
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth() + 1);
+  const isMesAtual = ano === hoje.getFullYear() && mes === hoje.getMonth() + 1;
+
+  const [dispatchForm, setDispatchForm] = useState(emptyDispatchForm);
 
   // Só validação de campo (síncrona, antes de qualquer chamada) fica inline, perto do
   // formulário -- o resultado da submissão em si (sucesso ou erro do backend) vira toast.
@@ -120,13 +165,29 @@ export function ZebraSupplies() {
     filialId: '', etiquetasPadrao: 5, ribbonsPadrao: 2, diaEnvio1: 5, diaEnvio2: 20,
   });
 
+  // Confirmação de envio (PREVISTO -> ENVIADO)
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmandoEnvio, setConfirmandoEnvio] = useState(null);
+  const [confirmForm, setConfirmForm] = useState({ dataEnvio: toISO(new Date()), qtdEtiquetas: 0, qtdRibbons: 0 });
+
+  // Importação da planilha de cronograma
+  const [arquivoCronograma, setArquivoCronograma] = useState(null);
+  const [importandoCronograma, setImportandoCronograma] = useState(false);
+
+  // Análise de consumo
+  const [resumoConsumo, setResumoConsumo] = useState([]);
+  const [previsaoConsumo, setPrevisaoConsumo] = useState([]);
+  const [rankingConsumo, setRankingConsumo] = useState([]);
+  const [carregandoAnalytics, setCarregandoAnalytics] = useState(false);
+
   const carregarDados = useCallback(async () => {
     try {
       setIsLoading(true);
+      const { inicio, fim } = limitesDoMes(ano, mes);
       const [filiaisData, cotasData, enviosData, estoqueData] = await Promise.all([
         listarFiliais(),
         listarZebraCotas(),
-        listarZebraEnvios(),
+        listarZebraEnvios(inicio, fim),
         listarEstoqueItens()
       ]);
       setBranches(filiaisData);
@@ -138,60 +199,71 @@ export function ZebraSupplies() {
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [ano, mes, showToast]);
 
   useEffect(() => {
     carregarDados();
   }, [carregarDados]);
 
+  const carregarAnalytics = useCallback(async () => {
+    try {
+      setCarregandoAnalytics(true);
+      const [resumo, previsao, ranking] = await Promise.all([
+        buscarResumoConsumoZebra(ano, mes),
+        buscarPrevisaoConsumoZebra(),
+        buscarRankingConsumoZebra(ano, mes, 5),
+      ]);
+      setResumoConsumo(resumo);
+      setPrevisaoConsumo(previsao);
+      setRankingConsumo(ranking);
+    } catch (error) {
+      showToast('Erro ao carregar a análise de consumo.', 'error');
+    } finally {
+      setCarregandoAnalytics(false);
+    }
+  }, [ano, mes, showToast]);
+
+  useEffect(() => {
+    carregarAnalytics();
+  }, [carregarAnalytics]);
+
   const paginacaoDistribuicoes = usePaginacao(distributions);
 
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  const currentDay = today.getDate();
+  const currentDay = hoje.getDate();
 
   // Filtragem de estoque considerando categoriaZebra ou nome
   const labelItems = stockItems.filter(i => i.categoriaZebra === 'ETIQUETA' || (!i.categoriaZebra && i.name.toLowerCase().includes('etiqueta')));
   const ribbonItems = stockItems.filter(i => i.categoriaZebra === 'RIBBON' || (!i.categoriaZebra && i.name.toLowerCase().includes('ribbon')));
-  
+
   const totalLabelStock = labelItems.reduce((sum, i) => sum + i.quantity, 0);
   const totalRibbonStock = ribbonItems.reduce((sum, i) => sum + i.quantity, 0);
 
-  // Lógica de Identificação de Envios Pendentes (Quinzena)
-  const pendingBranches = quotas.filter((quota) => {
-    const enviosRegularesNoMes = distributions.filter(d => {
-      const dDate = new Date(d.dataEnvio + 'T00:00:00');
-      return d.filialId.toString() === quota.filialId.toString() && 
-             d.tipoEnvio === 'REGULAR' && 
-             dDate.getMonth() === currentMonth && 
-             dDate.getFullYear() === currentYear;
-    });
+  // Só envios já confirmados contam como consumo de fato -- os PREVISTO ainda não tocaram o estoque.
+  const enviadosDoMes = distributions.filter((d) => d.status === 'ENVIADO');
+
+  // Lógica de Identificação de Envios Pendentes (Quinzena) -- só faz sentido olhando o mês atual.
+  const pendingBranches = isMesAtual ? quotas.filter((quota) => {
+    const enviosRegularesNoMes = distributions.filter(d =>
+      d.filialId.toString() === quota.filialId.toString() &&
+      d.tipoEnvio === 'REGULAR' &&
+      d.status !== 'CANCELADO'
+    );
 
     if (enviosRegularesNoMes.length === 0 && currentDay >= quota.diaEnvio1) return true;
     if (enviosRegularesNoMes.length === 1 && currentDay >= quota.diaEnvio2) return true;
     return false;
-  });
-
-  const thisMonthDistributions = distributions.filter((d) => {
-    const dDate = new Date(d.dataEnvio + 'T00:00:00');
-    return dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
-  });
+  }) : [];
 
   // Autopreenchimento Dinâmico ao Selecionar Filial pelo Número
   const handleBranchSelect = (branchNumStr) => {
     if (!branchNumStr) {
-      setDispatchForm({
-        filialId: '', qtdEtiquetas: 0, qtdRibbons: 0,
-        dataEnvio: toISO(new Date()),
-        tipoEnvio: 'REGULAR', motivoExtra: '',
-      });
+      setDispatchForm(emptyDispatchForm);
       return;
     }
 
     const filialNum = Number(branchNumStr);
     const quota = quotas.find((q) => q.filialId.toString() === filialNum.toString());
-    
+
     // Verifica se há pendência regular para sugerir o tipo
     const isPending = pendingBranches.some(q => q.filialId.toString() === filialNum.toString());
     const tipoSugerido = isPending ? 'REGULAR' : 'EXTRA';
@@ -216,10 +288,12 @@ export function ZebraSupplies() {
     if (dispatchForm.qtdEtiquetas <= 0 && dispatchForm.qtdRibbons <= 0) {
       setFormError('Informe ao menos uma quantidade maior que zero.'); return;
     }
-    if (dispatchForm.qtdEtiquetas > totalLabelStock) {
+    // Estoque só é conferido de verdade quando o envio já sai confirmado -- um PREVISTO
+    // pode ser cadastrado mesmo sem estoque hoje, e ser confirmado depois de reabastecer.
+    if (dispatchForm.jaEnviado && dispatchForm.qtdEtiquetas > totalLabelStock) {
       setFormError(`Estoque insuficiente de etiquetas. Disponível: ${totalLabelStock} rolos.`); return;
     }
-    if (dispatchForm.qtdRibbons > totalRibbonStock) {
+    if (dispatchForm.jaEnviado && dispatchForm.qtdRibbons > totalRibbonStock) {
       setFormError(`Estoque insuficiente de ribbons. Disponível: ${totalRibbonStock} unidades.`); return;
     }
     if (dispatchForm.tipoEnvio === 'EXTRA' && !dispatchForm.motivoExtra.trim()) {
@@ -227,39 +301,107 @@ export function ZebraSupplies() {
     }
 
     try {
-      // Uma única chamada: o backend dá baixa nos itens de estoque atingidos e grava o
-      // envio na mesma transação -- nada fica gravado pela metade se algo falhar no meio
-      // (antes, cada item de estoque era atualizado com um PUT solto, um por um, seguido
-      // de um POST separado pro envio).
-      await salvarZebraEnvio(dispatchForm);
+      const payload = {
+        filialId: dispatchForm.filialId,
+        qtdEtiquetas: dispatchForm.qtdEtiquetas,
+        qtdRibbons: dispatchForm.qtdRibbons,
+        dataPrevista: dispatchForm.dataPrevista,
+        tipoEnvio: dispatchForm.tipoEnvio,
+        motivoExtra: dispatchForm.motivoExtra,
+      };
+      // Uma única chamada: se jaEnviado, o backend cria o PREVISTO e já confirma (baixa
+      // o estoque) na mesma transação -- nada fica gravado pela metade se algo falhar no meio.
+      await salvarZebraEnvio(payload, dispatchForm.jaEnviado);
 
       const label = branchLabel(branches, dispatchForm.filialId);
-      showToast(`Envio (${dispatchForm.tipoEnvio}) para "${label}" registrado. Estoque atualizado!`);
+      showToast(
+        dispatchForm.jaEnviado
+          ? `Envio (${dispatchForm.tipoEnvio}) para "${label}" registrado. Estoque atualizado!`
+          : `Envio (${dispatchForm.tipoEnvio}) para "${label}" adicionado ao cronograma como previsto.`
+      );
 
-      setDispatchForm({
-        filialId: '', qtdEtiquetas: 0, qtdRibbons: 0,
-        dataEnvio: toISO(new Date()),
-        tipoEnvio: 'REGULAR', motivoExtra: '',
-      });
-
+      setDispatchForm(emptyDispatchForm);
       await carregarDados();
+      await carregarAnalytics();
     } catch (error) {
       showToast(error.message || 'Erro de comunicação ao salvar envio.', 'error');
     }
   };
 
-  const handleDeleteDistribution = async (id) => {
+  const openConfirmModal = (envio) => {
+    setConfirmandoEnvio(envio);
+    setConfirmForm({
+      dataEnvio: toISO(new Date()),
+      qtdEtiquetas: envio.qtdEtiquetas,
+      qtdRibbons: envio.qtdRibbons,
+    });
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmarEnvio = async () => {
+    try {
+      await confirmarZebraEnvio(confirmandoEnvio.id, confirmForm);
+      showToast('Envio confirmado e estoque atualizado.');
+      setShowConfirmModal(false);
+      await carregarDados();
+      await carregarAnalytics();
+    } catch (error) {
+      showToast(error.message || 'Erro ao confirmar envio.', 'error');
+    }
+  };
+
+  const handleCancelarEnvio = async (envio) => {
     const confirmado = await confirmar({
-      titulo: 'Excluir registro de envio',
-      mensagem: 'Excluir este registro de envio?\n\nAtenção: o estoque NÃO será restaurado automaticamente.',
+      titulo: 'Cancelar envio previsto',
+      mensagem: `Cancelar o envio previsto para "${branchLabel(branches, envio.filialId)}"? Isso não afeta o estoque.`,
     });
     if (!confirmado) return;
 
     try {
-      await deletarZebraEnvio(id);
+      await cancelarZebraEnvio(envio.id);
+      showToast('Envio cancelado.');
       await carregarDados();
     } catch (error) {
-      showToast('Erro ao excluir registro.', 'error');
+      showToast(error.message || 'Erro ao cancelar envio.', 'error');
+    }
+  };
+
+  const handleDeleteDistribution = async (d) => {
+    const confirmado = await confirmar({
+      titulo: 'Excluir registro de envio',
+      mensagem: 'Excluir este registro do cronograma?',
+    });
+    if (!confirmado) return;
+
+    try {
+      await deletarZebraEnvio(d.id);
+      await carregarDados();
+    } catch (error) {
+      showToast(error.message || 'Erro ao excluir registro.', 'error');
+    }
+  };
+
+  const handleImportarCronograma = async () => {
+    if (!arquivoCronograma) {
+      showToast('Selecione o arquivo da planilha antes de importar.', 'error');
+      return;
+    }
+    setImportandoCronograma(true);
+    try {
+      const resp = await importarCronogramaZebra(arquivoCronograma);
+      showToast(
+        `Planilha importada: ${resp.criados} criados, ${resp.atualizados} atualizados, ${resp.ignorados} ignorados.`
+      );
+      if (resp.avisos?.length > 0) {
+        showToast(resp.avisos[0], 'error');
+      }
+      setArquivoCronograma(null);
+      await carregarDados();
+      await carregarAnalytics();
+    } catch (error) {
+      showToast(error.message || 'Erro ao importar a planilha.', 'error');
+    } finally {
+      setImportandoCronograma(false);
     }
   };
 
@@ -304,10 +446,14 @@ export function ZebraSupplies() {
   const branchesWithoutQuota = branches.filter(
     (b) => {
       const num = getBranchNumber(b);
-      return !quotas.some((q) => q.filialId.toString() === num?.toString()) || 
+      return !quotas.some((q) => q.filialId.toString() === num?.toString()) ||
              (editingQuota && editingQuota.filialId.toString() === num?.toString());
     }
   );
+
+  const totalEtiquetasPrevistas = previsaoConsumo.reduce((s, p) => s + p.etiquetasPrevistas, 0);
+  const totalRibbonsPrevistas = previsaoConsumo.reduce((s, p) => s + p.ribbonsPrevistas, 0);
+  const maiorConsumoRanking = Math.max(...rankingConsumo.map((r) => r.totalEtiquetas + r.totalRibbons), 1);
 
   return (
     <div className="space-y-6">
@@ -319,22 +465,34 @@ export function ZebraSupplies() {
         <div>
           <h1 className="text-2xl font-bold text-white">Logística de Insumos Zebra</h1>
           <p className="text-dark-400 mt-1">
-            Distribuição quinzenal de etiquetas e ribbons
+            Cronograma quinzenal de etiquetas e ribbons -- previsto até confirmado
           </p>
         </div>
-        {canWrite && (
-          <button
-            onClick={() => {
-              setEditingQuota(null);
-              setQuotaForm({ filialId: '', etiquetasPadrao: 5, ribbonsPadrao: 2, diaEnvio1: 5, diaEnvio2: 20 });
-              setShowQuotaModal(true);
-            }}
-            className="btn-secondary"
-          >
-            <Settings className="w-4 h-4" />
-            Gerenciar Cronogramas
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="select-field w-auto">
+            {MESES.map((nome, i) => (
+              <option key={nome} value={i + 1}>{nome}</option>
+            ))}
+          </select>
+          <select value={ano} onChange={(e) => setAno(Number(e.target.value))} className="select-field w-auto">
+            {[ano - 1, ano, ano + 1].map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          {canWrite && (
+            <button
+              onClick={() => {
+                setEditingQuota(null);
+                setQuotaForm({ filialId: '', etiquetasPadrao: 5, ribbonsPadrao: 2, diaEnvio1: 5, diaEnvio2: 20 });
+                setShowQuotaModal(true);
+              }}
+              className="btn-secondary"
+            >
+              <Settings className="w-4 h-4" />
+              Gerenciar Cronogramas
+            </button>
+          )}
+        </div>
       </div>
 
       {/* AVISO QUANDO NÃO EXISTIR FILIAL NO BANCO DE DADOS */}
@@ -349,8 +507,8 @@ export function ZebraSupplies() {
         </div>
       )}
 
-      {/* PAINEL INTELIGENTE DE ALERTAS */}
-      {!isLoading && pendingBranches.length > 0 ? (
+      {/* PAINEL INTELIGENTE DE ALERTAS (só no mês atual) */}
+      {isMesAtual && !isLoading && pendingBranches.length > 0 ? (
         <div className="flex items-start gap-4 p-4 rounded-xl bg-accent-500/10 border border-accent-500/30">
           <div className="w-10 h-10 bg-accent-500/20 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle className="w-5 h-5 text-accent-400" />
@@ -368,7 +526,7 @@ export function ZebraSupplies() {
           </div>
         </div>
       ) : (
-        !isLoading && quotas.length > 0 && (
+        isMesAtual && !isLoading && quotas.length > 0 && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-primary-500/10 border border-primary-500/30">
             <CheckCircle2 className="w-5 h-5 text-primary-400 shrink-0" />
             <p className="text-sm text-primary-300 font-medium">
@@ -428,12 +586,14 @@ export function ZebraSupplies() {
                 </select>
               </div>
               <div>
-                <label htmlFor="zebra-data-envio" className="block text-sm font-medium text-dark-300 mb-2">Data do Envio *</label>
+                <label htmlFor="zebra-data-envio" className="block text-sm font-medium text-dark-300 mb-2">
+                  {dispatchForm.jaEnviado ? 'Data do Envio *' : 'Data Prevista *'}
+                </label>
                 <input
                   id="zebra-data-envio"
                   type="date"
-                  value={dispatchForm.dataEnvio}
-                  onChange={(e) => setDispatchForm({ ...dispatchForm, dataEnvio: e.target.value })}
+                  value={dispatchForm.dataPrevista}
+                  onChange={(e) => setDispatchForm({ ...dispatchForm, dataPrevista: e.target.value })}
                   className="input-field"
                 />
               </div>
@@ -495,6 +655,18 @@ export function ZebraSupplies() {
               </div>
             </div>
 
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-dark-700/50 border border-dark-600">
+              <input
+                type="checkbox"
+                checked={dispatchForm.jaEnviado}
+                onChange={(e) => setDispatchForm({ ...dispatchForm, jaEnviado: e.target.checked })}
+                className="w-5 h-5 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-sm text-dark-200">
+                Já foi enviado <span className="text-dark-400">(desmarque para só planejar -- o estoque só é descontado na confirmação)</span>
+              </span>
+            </label>
+
             {formError && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
                 <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
@@ -508,7 +680,7 @@ export function ZebraSupplies() {
               className="btn-primary w-full justify-center py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
-              Confirmar e Dar Baixa no Estoque
+              {dispatchForm.jaEnviado ? 'Confirmar e Dar Baixa no Estoque' : 'Adicionar ao Cronograma (Previsto)'}
             </button>
           </div>
         </div>
@@ -521,19 +693,19 @@ export function ZebraSupplies() {
             </h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-dark-700/50">
-                <span className="text-sm text-dark-300">Total de Entregas</span>
-                <span className="font-bold text-sm text-white">{thisMonthDistributions.length}</span>
+                <span className="text-sm text-dark-300">Envios Confirmados</span>
+                <span className="font-bold text-sm text-white">{enviadosDoMes.length}</span>
               </div>
               <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-dark-700/50">
                 <span className="text-sm text-dark-300">Etiquetas Consumidas</span>
                 <span className="font-bold text-sm text-primary-400">
-                  {thisMonthDistributions.reduce((s, d) => s + d.qtdEtiquetas, 0)} rolos
+                  {enviadosDoMes.reduce((s, d) => s + d.qtdEtiquetas, 0)} rolos
                 </span>
               </div>
               <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-dark-700/50">
                 <span className="text-sm text-dark-300">Ribbons Consumidos</span>
                 <span className="font-bold text-sm text-accent-400">
-                  {thisMonthDistributions.reduce((s, d) => s + d.qtdRibbons, 0)} unid.
+                  {enviadosDoMes.reduce((s, d) => s + d.qtdRibbons, 0)} unid.
                 </span>
               </div>
             </div>
@@ -576,29 +748,140 @@ export function ZebraSupplies() {
         </div>
       </div>
 
+      {canWrite && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Upload className="w-5 h-5 text-primary-400" />
+            Importar Planilha de Cronograma
+          </h2>
+          <p className="text-dark-400 text-sm mb-4">
+            Importa um arquivo .csv com o cronograma de envios previstos do mês. Linhas que já
+            batem com um envio existente são atualizadas; envios já confirmados nunca são
+            sobrescritos.
+          </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setArquivoCronograma(e.target.files?.[0] || null)}
+              disabled={importandoCronograma}
+              className="input-field file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-dark-700 file:text-dark-200 file:text-sm disabled:opacity-50"
+            />
+            <button
+              onClick={handleImportarCronograma}
+              disabled={importandoCronograma || !arquivoCronograma}
+              className="btn-primary shrink-0 disabled:opacity-50"
+            >
+              {importandoCronograma ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importandoCronograma ? 'Importando...' : 'Importar'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <History className="w-5 h-5 text-primary-400" />
-            Histórico de Envios
+            <CalendarDays className="w-5 h-5 text-primary-400" />
+            Cronograma do Mês
           </h2>
           <span className="badge badge-info">{distributions.length} registros</span>
         </div>
 
         <DataTable
-          colunas={colunasHistoricoZebra(branches)}
+          colunas={colunasCronogramaZebra(branches)}
           dados={paginacaoDistribuicoes.itensPagina}
           carregando={isLoading}
-          vazio="Nenhum envio registrado."
+          vazio="Nenhum envio no cronograma deste mês."
           acoes={(d) =>
             canWrite && (
-              <button onClick={() => handleDeleteDistribution(d.id)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <>
+                {d.status === 'PREVISTO' && (
+                  <>
+                    <button onClick={() => openConfirmModal(d)} className="btn-secondary px-3 py-1.5" title="Confirmar envio" aria-label="Confirmar envio">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleCancelarEnvio(d)} className="btn-secondary px-3 py-1.5" title="Cancelar" aria-label="Cancelar">
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                {d.status !== 'ENVIADO' && (
+                  <button onClick={() => handleDeleteDistribution(d)} className="btn-danger px-3 py-1.5" title="Excluir" aria-label="Excluir">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </>
             )
           }
         />
         <Paginacao {...paginacaoDistribuicoes} rotulo="envios" />
+      </div>
+
+      <div className="card">
+        <h2 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary-400" />
+          Análise de Consumo
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="p-4 rounded-xl bg-dark-700/50 border border-dark-600">
+            <h3 className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-3">
+              Média Mensal / Previsão do Próximo Mês
+            </h3>
+            <p className="text-xs text-dark-400 mb-3">Baseada na média dos últimos 3 meses confirmados.</p>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-2xl font-bold text-primary-400">{totalEtiquetasPrevistas.toFixed(1)}</p>
+                <p className="text-xs text-dark-400">etiquetas/mês</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-accent-400">{totalRibbonsPrevistas.toFixed(1)}</p>
+                <p className="text-xs text-dark-400">ribbons/mês</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-dark-700/50 border border-dark-600">
+            <h3 className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-3">
+              Filiais que Mais Consumiram ({MESES[mes - 1]}/{ano})
+            </h3>
+            {rankingConsumo.length === 0 ? (
+              <p className="text-dark-400 text-sm py-2">Nenhum envio confirmado neste mês.</p>
+            ) : (
+              <div className="space-y-2">
+                {rankingConsumo.map((r, i) => {
+                  const total = r.totalEtiquetas + r.totalRibbons;
+                  const largura = Math.round((total / maiorConsumoRanking) * 100);
+                  return (
+                    <div key={r.filialId} className="relative p-2.5 rounded-lg border border-dark-600 bg-dark-800 overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 bg-primary-500/15" style={{ width: `${largura}%` }} />
+                      <div className="relative flex items-center justify-between gap-2 text-sm">
+                        <span className="text-white font-medium truncate">
+                          #{i + 1} {r.numeroFilial} — {r.nomeFilial}
+                        </span>
+                        <span className="text-xs text-dark-300 shrink-0">
+                          <span className="text-primary-400 font-semibold">{r.totalEtiquetas}</span> etiq. &bull;{' '}
+                          <span className="text-accent-400 font-semibold">{r.totalRibbons}</span> ribbons
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <h3 className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-3">
+          Classificação de Consumo por Filial ({MESES[mes - 1]}/{ano})
+        </h3>
+        <DataTable
+          colunas={colunasResumoConsumo()}
+          dados={resumoConsumo}
+          carregando={carregandoAnalytics}
+          vazio="Sem dados de consumo para este mês."
+        />
       </div>
 
       <SidePanel
@@ -676,8 +959,8 @@ export function ZebraSupplies() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white truncate">{branchLabel(branches, q.filialId)}</p>
                   <p className="text-xs text-dark-400 mt-0.5">
-                    Dias <span className="text-white">{q.diaEnvio1}</span> e <span className="text-white">{q.diaEnvio2}</span> &bull; 
-                    <span className="text-primary-400 ml-1">{q.etiquetasPadrao} etiq.</span> &bull; 
+                    Dias <span className="text-white">{q.diaEnvio1}</span> e <span className="text-white">{q.diaEnvio2}</span> &bull;
+                    <span className="text-primary-400 ml-1">{q.etiquetasPadrao} etiq.</span> &bull;
                     <span className="text-accent-400">{q.ribbonsPadrao} ribbons</span>
                   </p>
                 </div>
@@ -687,6 +970,63 @@ export function ZebraSupplies() {
             ))
           )}
         </div>
+      </SidePanel>
+
+      <SidePanel
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Confirmar Envio"
+        size="sm"
+      >
+        {confirmandoEnvio && (
+          <div className="space-y-4">
+            <p className="text-sm text-dark-300">
+              Confirmando o envio previsto para{' '}
+              <span className="font-semibold text-white">{branchLabel(branches, confirmandoEnvio.filialId)}</span>.
+            </p>
+            <div>
+              <label htmlFor="confirmar-data" className="block text-sm font-medium text-dark-300 mb-2">Data real do envio *</label>
+              <input
+                id="confirmar-data"
+                type="date"
+                value={confirmForm.dataEnvio}
+                onChange={(e) => setConfirmForm({ ...confirmForm, dataEnvio: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="confirmar-etiquetas" className="block text-sm font-medium text-dark-300 mb-2">Etiquetas</label>
+                <input
+                  id="confirmar-etiquetas"
+                  type="number"
+                  min="0"
+                  value={confirmForm.qtdEtiquetas}
+                  onChange={(e) => setConfirmForm({ ...confirmForm, qtdEtiquetas: parseInt(e.target.value) || 0 })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label htmlFor="confirmar-ribbons" className="block text-sm font-medium text-dark-300 mb-2">Ribbons</label>
+                <input
+                  id="confirmar-ribbons"
+                  type="number"
+                  min="0"
+                  value={confirmForm.qtdRibbons}
+                  onChange={(e) => setConfirmForm({ ...confirmForm, qtdRibbons: parseInt(e.target.value) || 0 })}
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowConfirmModal(false)} className="btn-secondary">Cancelar</button>
+              <button onClick={handleConfirmarEnvio} className="btn-primary">
+                <CheckCircle2 className="w-4 h-4" />
+                Confirmar Envio
+              </button>
+            </div>
+          </div>
+        )}
       </SidePanel>
     </div>
   );

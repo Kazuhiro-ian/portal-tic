@@ -30,8 +30,7 @@ public class ZebraEnvio {
     @Column(nullable = false)
     private Integer qtdRibbons;
 
-    @NotNull
-    @Column(nullable = false)
+    @Column
     private LocalDate dataEnvio;
 
     @NotBlank
@@ -40,4 +39,18 @@ public class ZebraEnvio {
 
     @Column(columnDefinition = "TEXT")
     private String motivoExtra; // obrigatório apenas se tipoEnvio for "EXTRA"
+
+    @NotNull
+    @Column(nullable = false)
+    private LocalDate dataPrevista;
+
+    @Enumerated(EnumType.STRING)
+    @NotNull
+    @Column(nullable = false)
+    private StatusZebraEnvio status;
+    
+    private Integer envioNumero;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacao;
 }

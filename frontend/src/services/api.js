@@ -176,11 +176,26 @@ export const atualizarZebraCota = (id, cotaData) =>
   apiPut(`/api/zebra-cotas/${id}`, cotaData);
 export const deletarZebraCota = (id) => apiDelete(`/api/zebra-cotas/${id}`);
 
-// --- ROTAS DE ENVIOS ZEBRA ---
-export const listarZebraEnvios = () => apiGet("/api/zebra-envios");
-export const salvarZebraEnvio = (envioData) =>
-  apiPost("/api/zebra-envios", envioData);
+// --- ROTAS DE ENVIOS ZEBRA (cronograma PREVISTO -> ENVIADO -> CANCELADO) ---
+export const listarZebraEnvios = (inicio, fim) =>
+  apiGet(`/api/zebra-envios?inicio=${inicio}&fim=${fim}`);
+export const salvarZebraEnvio = (envioData, jaEnviado) =>
+  apiPost(`/api/zebra-envios?jaEnviado=${jaEnviado}`, envioData);
+export const confirmarZebraEnvio = (id, payload) =>
+  apiPost(`/api/zebra-envios/${id}/confirmar`, payload);
+export const cancelarZebraEnvio = (id) =>
+  apiPost(`/api/zebra-envios/${id}/cancelar`, {});
+export const importarCronogramaZebra = (arquivo) =>
+  apiUpload("/api/zebra-envios/importar-cronograma", arquivo);
 export const deletarZebraEnvio = (id) => apiDelete(`/api/zebra-envios/${id}`);
+
+// --- ROTAS DE ANÁLISE DE CONSUMO ZEBRA ---
+export const buscarResumoConsumoZebra = (ano, mes) =>
+  apiGet(`/api/zebra-envios/analytics/resumo-mensal?ano=${ano}&mes=${mes}`);
+export const buscarPrevisaoConsumoZebra = () =>
+  apiGet("/api/zebra-envios/analytics/previsao-proximo-mes");
+export const buscarRankingConsumoZebra = (ano, mes, limite) =>
+  apiGet(`/api/zebra-envios/analytics/ranking?ano=${ano}&mes=${mes}${limite ? `&limite=${limite}` : ""}`);
 
 // --- ROTAS DE AVISOS DA EQUIPE ---
 export const listarAvisos = () => apiGet("/api/avisos");

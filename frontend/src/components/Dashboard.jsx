@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Printer, Package, Users, AlertTriangle, ExternalLink, Plus, X, Zap, Cloud, Server, Tag, ClipboardCheck, Truck } from 'lucide-react';
 import { SidePanel } from './SidePanel.jsx';
 import { listarAtivos, listarEstoqueItens, listarColaboradores, listarFiliais, listarZebraCotas, listarZebraEnvios, listarInventarios, listarDiasRecebimento, listarAvisos, salvarAviso, deletarAviso, listarEscalasPorPeriodo, listarLinks } from '../services/api.js';
-import { toISO } from '../utils/datas.js';
+import { toISO, limitesDoMes } from '../utils/datas.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { estaTrabalhando, indexarEscalasPorColaboradorEData } from '../utils/escala.js';
 import { useToast } from '../hooks/useToast.js';
@@ -36,6 +36,7 @@ export function Dashboard() {
       amanha.setDate(amanha.getDate() + 1);
       const hojeISO = toISO(hoje);
       const amanhaISO = toISO(amanha);
+      const { inicio: inicioMesZebra, fim: fimMesZebra } = limitesDoMes(hoje.getFullYear(), hoje.getMonth() + 1);
 
       setIsLoading(true);
       const [ativosData, estoqueData, colaboradoresData, filiaisData, cotasData, enviosData, inventariosData, diasRecebimentoData, avisosData, escalasData, linksData] = await Promise.all([
@@ -44,7 +45,7 @@ export function Dashboard() {
         listarColaboradores(),
         listarFiliais(),
         listarZebraCotas(),
-        listarZebraEnvios(),
+        listarZebraEnvios(inicioMesZebra, fimMesZebra),
         listarInventarios(hojeISO, amanhaISO),
         listarDiasRecebimento(hojeISO, amanhaISO),
         listarAvisos(),
@@ -155,18 +156,17 @@ export function Dashboard() {
 
   const zebraPendingBranches = (() => {
     const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
     const currentDay = today.getDate();
 
+    // zebraDistributions já vem filtrado pro mês atual (ver carregarDados) -- basta ignorar
+    // os cancelados. Um envio ainda PREVISTO conta pra quota mesmo sem dataEnvio (só ganha
+    // data real quando confirmado).
     return branchQuotas.filter((quota) => {
-      const enviosRegularesNoMes = zebraDistributions.filter((d) => {
-        const dDate = new Date(d.dataEnvio + 'T00:00:00');
-        return d.filialId?.toString() === quota.filialId?.toString() &&
-          d.tipoEnvio === 'REGULAR' &&
-          dDate.getMonth() === currentMonth &&
-          dDate.getFullYear() === currentYear;
-      });
+      const enviosRegularesNoMes = zebraDistributions.filter((d) =>
+        d.filialId?.toString() === quota.filialId?.toString() &&
+        d.tipoEnvio === 'REGULAR' &&
+        d.status !== 'CANCELADO'
+      );
 
       if (enviosRegularesNoMes.length === 0 && currentDay >= quota.diaEnvio1) return true;
       if (enviosRegularesNoMes.length === 1 && currentDay >= quota.diaEnvio2) return true;
